@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+/* ── Admin-scoped dark mode (data attribute on wrapper div, not <html>) ────── */
+@custom-variant dark (&:where([data-admin-theme="dark"], [data-admin-theme="dark"] *));
+
+/* ── Design tokens — Light (storefront always uses these) ────────────────── */
+:root {
+  --background:      hsl(0 0% 100%);
+  --foreground:      hsl(222.2 84% 4.9%);
+  --primary:         hsl(152 64% 22%);
+  --primary-glow:    hsl(152 54% 40%);
+  --secondary:       hsl(210 40% 96.1%);
+  --muted:           hsl(210 40% 96.1%);
+  --muted-fg:        hsl(215.4 16.3% 46.9%);
+  --accent:          hsl(217 60% 26%);
+  --destructive:     hsl(0 84.2% 60.2%);
+  --border:          hsl(214.3 31.8% 91.4%);
+  --ring:            hsl(152 64% 22%);
+  --radius:          0.5rem;
+
+  --gradient-primary: linear-gradient(135deg, hsl(152 64% 22%), hsl(152 54% 40%));
+  --gradient-hero:    linear-gradient(135deg, hsl(152 64% 22% / 0.06), hsl(217 60% 26% / 0.04));
+  --gradient-card:    linear-gradient(135deg, hsl(0 0% 100%), hsl(210 40% 98%));
+  --shadow-elegant:   0 10px 30px -10px hsl(152 64% 22% / 0.18);
+  --shadow-glow:      0 0 40px hsl(152 54% 40% / 0.12);
+}
+
+/* ── Admin dark mode tokens (scoped to data-admin-theme="dark" wrapper) ───── */
+[data-admin-theme="dark"] {
+  --background:      hsl(222.2 84% 4.9%);
+  --foreground:      hsl(210 40% 98%);
+  --secondary:       hsl(217.2 32.6% 17.5%);
+  --muted:           hsl(217.2 32.6% 17.5%);
+  --muted-fg:        hsl(215 20.2% 65.1%);
+  --border:          hsl(217.2 32.6% 22%);
+
+  --gradient-hero:   linear-gradient(135deg, hsl(152 64% 22% / 0.12), hsl(217 60% 26% / 0.07));
+  --gradient-card:   linear-gradient(135deg, hsl(217.2 32.6% 17.5%), hsl(222.2 84% 8%));
+  --shadow-elegant:  0 10px 30px -10px hsl(152 64% 22% / 0.35);
+  --shadow-glow:     0 0 40px hsl(152 54% 40% / 0.2);
+}
+
+/* ── Tailwind theme mapping ──────────────────────────────────────────────── */
+@theme inline {
+  --color-background:   var(--background);
+  --color-foreground:   var(--foreground);
+  --color-primary:      var(--primary);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary:    var(--secondary);
+  --color-muted:        var(--muted);
+  --color-muted-fg:     var(--muted-fg);
+  --color-accent:       var(--accent);
+  --color-destructive:  var(--destructive);
+  --color-border:       var(--border);
+  --color-ring:         var(--ring);
+  --font-sans:          var(--font-geist-sans);
+  --font-mono:          var(--font-geist-mono);
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Prevent any media/element from forcing horizontal scroll on mobile */
+img, video, canvas, svg, iframe { max-width: 100%; }
+
+/* ── Keyframe animations ─────────────────────────────────────────────────── */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-18px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 10px hsl(152 64% 22% / 0.3); }
+  50%       { box-shadow: 0 0 30px hsl(152 54% 40% / 0.6), 0 0 60px hsl(152 64% 22% / 0.2); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes wave {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Animation utility classes ───────────────────────────────────────────── */
+.animate-slide-in-right  { animation: slide-in-right 0.25s ease-out; }
+.animate-shimmer         { animation: shimmer 3s linear infinite; background-size: 200% auto; }
+.animate-float           { animation: float 6s ease-in-out infinite; }
+.animate-glow-pulse      { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-gradient-shift  { animation: gradient-shift 8s ease infinite; background-size: 200% 200%; }
+.animate-wave            { animation: wave 2s ease-in-out infinite; }
+.animate-count-up        { animation: count-up 0.6s ease-out; }
+.animate-fade-in-up      { animation: fade-in-up 0.5s ease-out; }
+.animate-marquee         { animation: marquee 22s linear infinite; }
+
+/* Shimmer text — gradient sweep across text */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--primary) 0%,
+    var(--primary-glow) 40%,
+    var(--primary) 60%,
+    var(--primary-glow) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ── Glassmorphism ───────────────────────────────────────────────────────── */
+.glassmorphism {
+  background: hsl(0 0% 100%);
+  border: 1px solid hsl(0 0% 90%);
+}
+
+/* ── Magnetic hover ──────────────────────────────────────────────────────── */
+.magnetic-hover {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.magnetic-hover:hover { transform: scale(1.05); }
+
+/* ── Admin portal dark mode ──────────────────────────────────────────────────
+   All selectors scoped to [data-admin-theme="dark"] — zero impact on storefront.
+   Targets .admin-main so the always-dark sidebar is unaffected.
+─────────────────────────────────────────────────────────────────────────── */
+
+/* Outer wrapper */
+[data-admin-theme="dark"] .admin-wrapper {
+  background-color: hsl(222 22% 7%);
+}
+
+/* Backgrounds */
+[data-admin-theme="dark"] .admin-main .bg-white        { background-color: hsl(222 22% 10%); }
+[data-admin-theme="dark"] .admin-main .bg-gray-50      { background-color: hsl(222 22% 8%); }
+[data-admin-theme="dark"] .admin-main .bg-gray-100     { background-color: hsl(222 18% 16%); }
+[data-admin-theme="dark"] .admin-main .bg-gray-200     { background-color: hsl(222 18% 20%); }
+
+/* Borders */
+[data-admin-theme="dark"] .admin-main .border-gray-50  { border-color: hsl(222 18% 17%); }
+[data-admin-theme="dark"] .admin-main .border-gray-100 { border-color: hsl(222 18% 20%); }
+[data-admin-theme="dark"] .admin-main .border-gray-200 { border-color: hsl(222 18% 24%); }
+[data-admin-theme="dark"] .admin-main .border-gray-300 { border-color: hsl(222 14% 30%); }
+
+/* Text */
+[data-admin-theme="dark"] .admin-main .text-gray-900   { color: hsl(220 20% 92%); }
+[data-admin-theme="dark"] .admin-main .text-gray-800   { color: hsl(220 15% 82%); }
+[data-admin-theme="dark"] .admin-main .text-gray-700   { color: hsl(220 12% 70%); }
+[data-admin-theme="dark"] .admin-main .text-gray-600   { color: hsl(220 10% 60%); }
+[data-admin-theme="dark"] .admin-main .text-gray-500   { color: hsl(220 10% 50%); }
+[data-admin-theme="dark"] .admin-main .text-gray-400   { color: hsl(220 10% 42%); }
+[data-admin-theme="dark"] .admin-main .text-gray-300   { color: hsl(220 10% 36%); }
+
+/* Hover backgrounds */
+[data-admin-theme="dark"] .admin-main .hover\:bg-gray-50:hover      { background-color: hsl(222 22% 13%); }
+[data-admin-theme="dark"] .admin-main .hover\:bg-gray-100:hover     { background-color: hsl(222 18% 18%); }
+[data-admin-theme="dark"] .admin-main .hover\:bg-gray-200:hover     { background-color: hsl(222 18% 22%); }
+[data-admin-theme="dark"] .admin-main .hover\:bg-amber-100:hover    { background-color: hsl(38 90% 12% / 0.5); }
+
+/* Hover text */
+[data-admin-theme="dark"] .admin-main .hover\:text-gray-700:hover   { color: hsl(220 12% 72%); }
+[data-admin-theme="dark"] .admin-main .hover\:text-gray-900:hover   { color: hsl(220 20% 92%); }
+[data-admin-theme="dark"] .admin-main .hover\:text-black:hover      { color: hsl(220 20% 92%); }
+[data-admin-theme="dark"] .admin-main .hover\:text-indigo-800:hover { color: hsl(238 76% 80%); }
+
+/* Shadows */
+[data-admin-theme="dark"] .admin-main .shadow-sm {
+  box-shadow: 0 1px 3px hsl(222 30% 4% / 0.5), 0 0 0 1px hsl(222 18% 20% / 0.6);
+}
+[data-admin-theme="dark"] .admin-main .hover\:shadow-md:hover {
+  box-shadow: 0 4px 20px -4px hsl(222 30% 4% / 0.6), 0 0 0 1px hsl(222 18% 22% / 0.6);
+}
+
+/* Status badges */
+[data-admin-theme="dark"] .admin-main .bg-yellow-100   { background-color: hsl(48 90% 18% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-yellow-800 { color: hsl(48 90% 68%); }
+[data-admin-theme="dark"] .admin-main .bg-blue-100     { background-color: hsl(214 90% 18% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-blue-800   { color: hsl(214 90% 70%); }
+[data-admin-theme="dark"] .admin-main .bg-teal-100     { background-color: hsl(173 80% 14% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-teal-800   { color: hsl(173 80% 62%); }
+[data-admin-theme="dark"] .admin-main .bg-purple-100   { background-color: hsl(270 70% 18% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-purple-800 { color: hsl(270 70% 72%); }
+[data-admin-theme="dark"] .admin-main .bg-indigo-100   { background-color: hsl(238 76% 18% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-indigo-800 { color: hsl(238 76% 74%); }
+[data-admin-theme="dark"] .admin-main .bg-green-100    { background-color: hsl(142 60% 14% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-green-800  { color: hsl(142 60% 58%); }
+[data-admin-theme="dark"] .admin-main .bg-red-100      { background-color: hsl(0 70% 16% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-red-800    { color: hsl(0 70% 68%); }
+
+/* KPI accent backgrounds */
+[data-admin-theme="dark"] .admin-main .bg-indigo-50    { background-color: hsl(238 76% 14% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-blue-50      { background-color: hsl(214 90% 14% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-violet-50    { background-color: hsl(258 80% 14% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-emerald-50   { background-color: hsl(156 70% 10% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-rose-50      { background-color: hsl(350 80% 14% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-amber-50     { background-color: hsl(38 90% 10% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-green-50     { background-color: hsl(142 60% 8% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-red-50       { background-color: hsl(0 70% 10% / 0.5); }
+
+/* KPI accent text */
+[data-admin-theme="dark"] .admin-main .text-indigo-600  { color: hsl(238 76% 74%); }
+[data-admin-theme="dark"] .admin-main .text-blue-600    { color: hsl(214 90% 72%); }
+[data-admin-theme="dark"] .admin-main .text-violet-600  { color: hsl(258 80% 76%); }
+[data-admin-theme="dark"] .admin-main .text-emerald-600 { color: hsl(156 70% 58%); }
+[data-admin-theme="dark"] .admin-main .text-rose-600    { color: hsl(350 80% 68%); }
+[data-admin-theme="dark"] .admin-main .text-amber-600   { color: hsl(38 90% 62%); }
+[data-admin-theme="dark"] .admin-main .text-green-700   { color: hsl(142 60% 54%); }
+[data-admin-theme="dark"] .admin-main .text-red-600     { color: hsl(0 70% 64%); }
+
+/* Warning / success banners */
+[data-admin-theme="dark"] .admin-main .border-amber-200  { border-color: hsl(38 90% 28% / 0.45); }
+[data-admin-theme="dark"] .admin-main .text-amber-800    { color: hsl(38 90% 66%); }
+[data-admin-theme="dark"] .admin-main .text-amber-700    { color: hsl(38 85% 60%); }
+[data-admin-theme="dark"] .admin-main .text-amber-600    { color: hsl(38 80% 56%); }
+[data-admin-theme="dark"] .admin-main .border-green-100  { border-color: hsl(142 60% 24% / 0.4); }
+[data-admin-theme="dark"] .admin-main .text-green-800    { color: hsl(142 60% 58%); }
+
+/* Trend badges */
+[data-admin-theme="dark"] .admin-main .bg-green-50.text-green-700 { background-color: hsl(142 60% 10% / 0.5); }
+[data-admin-theme="dark"] .admin-main .bg-red-50.text-red-600     { background-color: hsl(0 70% 10% / 0.5); }
+
+/* Input / form elements */
+[data-admin-theme="dark"] .admin-main input,
+[data-admin-theme="dark"] .admin-main select,
+[data-admin-theme="dark"] .admin-main textarea {
+  background-color: hsl(222 22% 12%);
+  border-color: hsl(222 18% 22%);
+  color: hsl(220 20% 88%);
+}
+[data-admin-theme="dark"] .admin-main input::placeholder,
+[data-admin-theme="dark"] .admin-main textarea::placeholder { color: hsl(220 10% 42%); }
+[data-admin-theme="dark"] .admin-main input:focus,
+[data-admin-theme="dark"] .admin-main select:focus,
+[data-admin-theme="dark"] .admin-main textarea:focus {
+  border-color: hsl(238 76% 55%);
+  outline-color: hsl(238 76% 55%);
+}

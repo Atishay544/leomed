@@ -1,0 +1,43 @@
+# Leomed Pharma
+
+> India's online pharmacy for OTC medicines, health devices, and wellness products.
+
+## About
+
+Leomed Pharma is an Indian online pharmacy offering over-the-counter (OTC) medicines, health devices, personal care, and wellness products. Every product is shipped pan-India with care.
+
+Brand: Leomed Pharma.
+
+## What We Sell
+
+- OTC medicines
+- Health devices — BP monitors, thermometers, first aid
+- Personal care products
+- Wellness & supplements
+
+We do not sell or dispense prescription (Rx) medicines.
+
+## Why Customers Choose Leomed Pharma
+
+- Genuine, authentic products
+- Fast pan-India delivery
+- Secure payment — Cash on Delivery, UPI, cards, net banking
+- Tamper-evident, sealed packaging
+
+## Site Pages
+
+- [Home](https://www.leomedpharma.in/)
+- [All Products](https://www.leomedpharma.in/products)
+- [Cart](https://www.leomedpharma.in/cart)
+- [Wishlist](https://www.leomedpharma.in/wishlist)
+- [Search](https://www.leomedpharma.in/search)
+- [Account Login](https://www.leomedpharma.in/login)
+
+## Contact
+
+- Email: leomedpharma1@gmail.com
+- Phone: +91 63986 97503
+
+## AI Crawlers
+
+This site welcomes indexing by AI assistants including GPTBot, ClaudeBot, PerplexityBot, and Google-Extended to improve answer quality for users asking about OTC medicines and wellness products in India.
