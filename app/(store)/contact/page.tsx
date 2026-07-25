@@ -58,11 +58,11 @@ export default function ContactPage() {
 
           <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-600 space-y-1">
             <p className="font-medium text-gray-900 mb-2">Business Details</p>
-            {/* TODO: replace with registered address, Drug License No., and Pharmacist-in-Charge details once available */}
             <p>Leomed Pharma</p>
-            <p className="text-xs text-gray-400">[Registered address — TODO]</p>
-            <p className="text-xs text-gray-400">[Drug License No. — TODO]</p>
-            <p className="text-xs text-gray-400">[GSTIN — TODO]</p>
+            {/* TODO: confirm full address — city/pincode not visible on the shop signboard photo used for this */}
+            <p className="text-xs text-gray-500">Gher Kalerai, Hanuman Chowk, Bhagat Singh Road, Uttar Pradesh</p>
+            <p className="text-xs text-gray-500">Licence No: UP1220B001821</p>
+            <p className="text-xs text-gray-500">GSTIN: 09ADRPT8009N4ZG</p>
           </div>
 
           <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-600 space-y-1">

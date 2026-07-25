@@ -84,6 +84,9 @@ export default function Footer({ categories = [] }: { categories?: Category[] })
           <a href="tel:+916398697503" className="hover:text-white">+91 63986 97503</a>
         </div>
       </div>
+      <div className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 pt-2 text-xs text-gray-600 text-center sm:text-left">
+        GSTIN: 09ADRPT8009N4ZG · Drug Licence No: UP1220B001821
+      </div>
     </footer>
   )
 }

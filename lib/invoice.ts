@@ -94,8 +94,9 @@ export async function downloadInvoicePDF(order: InvoiceOrder) {
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...GRAY_600)
-  doc.text('Tax Invoice / Bill of Supply', pageW - 14, HDR_TOP + 11, { align: 'right' })
-  doc.text('GSTIN: N/A (Composition/Exempt)', pageW - 14, HDR_TOP + 16, { align: 'right' })
+  doc.text('Tax Invoice / Bill of Supply', pageW - 14, HDR_TOP + 9, { align: 'right' })
+  doc.text('GSTIN: 09ADRPT8009N4ZG', pageW - 14, HDR_TOP + 13, { align: 'right' })
+  doc.text('Drug Licence No: UP1220B001821', pageW - 14, HDR_TOP + 17, { align: 'right' })
 
   // ── 3. Thin divider ───────────────────────────────────────────────────────
   const DIV1 = HDR_TOP + 20
@@ -109,7 +110,7 @@ export async function downloadInvoicePDF(order: InvoiceOrder) {
 
   // Left: Invoice details
   const metaRows: [string, string][] = [
-    ['Invoice No.',  `#HF-${orderId}`],
+    ['Invoice No.',  `#LP-${orderId}`],
     ['Order Date',   new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })],
     ['Status',       order.status.toUpperCase().replace(/_/g, ' ')],
   ]
@@ -274,12 +275,12 @@ export async function downloadInvoicePDF(order: InvoiceOrder) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(...GRAY_600)
-  doc.text('Thank you for your order! Returns accepted within 7 days.', 14, FOOTER_Y + 5)
+  doc.text('Thank you for your order! See our Refund Policy for return eligibility.', 14, FOOTER_Y + 5)
   doc.text('leomedpharma1@gmail.com  |  +91 63986 97503', 14, FOOTER_Y + 10)
 
   doc.setTextColor(...GRAY_200)
   doc.text(`Generated on ${new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`, pageW - 14, FOOTER_Y, { align: 'right' })
-  doc.text(`Invoice #LF-${orderId}`, pageW - 14, FOOTER_Y + 5, { align: 'right' })
+  doc.text(`Invoice #LP-${orderId}`, pageW - 14, FOOTER_Y + 5, { align: 'right' })
 
   doc.save(`invoice-HF-${orderId}.pdf`)
 }

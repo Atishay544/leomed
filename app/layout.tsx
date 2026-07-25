@@ -106,7 +106,17 @@ const orgJsonLd = {
       },
       image: { "@id": `${BASE_URL}/#logo` },
       description: "Shop OTC medicines, health devices, personal care, and wellness products online at Leomed Pharma. Pan-India delivery.",
-      // TODO: add Drug License No. / GSTIN / Registered Pharmacist details once available
+      taxID: "09ADRPT8009N4ZG",
+      // TODO: confirm full registered address (city/pincode not visible on the shop signboard photo used for this)
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "Gher Kalerai, Hanuman Chowk, Bhagat Singh Road",
+        addressRegion: "Uttar Pradesh",
+        addressCountry: "IN",
+      },
+      additionalProperty: [
+        { "@type": "PropertyValue", name: "Drug Licence No.", value: "UP1220B001821" },
+      ],
       foundingDate: "2026",
       areaServed: { "@type": "Country", name: "India" },
       contactPoint: [
