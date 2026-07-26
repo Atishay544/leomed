@@ -30,7 +30,7 @@ export function AnimatedGradient() {
             width: size,
             height: size,
             transform: 'translate(-50%, -50%)',
-            background: 'radial-gradient(circle, hsl(250 84% 54% / 0.18) 0%, hsl(250 84% 54% / 0) 70%)',
+            background: 'radial-gradient(circle, hsl(152 64% 22% / 0.18) 0%, hsl(152 64% 22% / 0) 70%)',
           }}
           animate={{ x: ['0%', '8%', '-5%', '3%', '0%'], y: ['0%', '-6%', '8%', '-3%', '0%'] }}
           transition={{ duration: dur, delay, repeat: Infinity, ease: 'easeInOut' }}
@@ -48,7 +48,7 @@ export function AnimatedGradient() {
             width: size,
             height: size,
             transform: 'translate(-50%, -50%)',
-            background: 'radial-gradient(circle, hsl(270 84% 64% / 0.1) 0%, hsl(200 84% 60% / 0) 70%)',
+            background: 'radial-gradient(circle, hsl(217 60% 26% / 0.1) 0%, hsl(152 54% 40% / 0) 70%)',
           }}
           animate={{ x: ['-4%', '6%', '0%', '-8%', '-4%'], y: ['5%', '0%', '-7%', '4%', '5%'] }}
           transition={{ duration: dur, delay, repeat: Infinity, ease: 'easeInOut' }}

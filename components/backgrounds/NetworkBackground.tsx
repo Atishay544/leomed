@@ -81,7 +81,7 @@ export function NetworkBackground() {
             ctx.beginPath()
             ctx.moveTo(nodes[i].x, nodes[i].y)
             ctx.lineTo(nodes[j].x, nodes[j].y)
-            ctx.strokeStyle = `rgba(139, 92, 246, ${opacity})`
+            ctx.strokeStyle = `rgba(20, 92, 58, ${opacity})`
             ctx.lineWidth = 0.8
             ctx.stroke()
           }
@@ -91,8 +91,8 @@ export function NetworkBackground() {
       // Draw nodes
       for (const n of nodes) {
         const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.radius * 4)
-        grad.addColorStop(0, 'rgba(167, 139, 250, 0.8)')
-        grad.addColorStop(1, 'rgba(139, 92, 246, 0)')
+        grad.addColorStop(0, 'rgba(47, 158, 107, 0.8)')
+        grad.addColorStop(1, 'rgba(20, 92, 58, 0)')
         ctx.beginPath()
         ctx.arc(n.x, n.y, n.radius * 4, 0, Math.PI * 2)
         ctx.fillStyle = grad
