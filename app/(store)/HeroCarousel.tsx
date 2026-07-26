@@ -50,14 +50,14 @@ export default function HeroCarousel({ banners }: { banners: Banner[] }) {
   // ── Fallback (no banners) ─────────────────────────────────────────────────
   if (count === 0) {
     return (
-      <section className="relative w-full overflow-hidden bg-gray-900 text-white max-h-[88vh] min-h-60" style={{ aspectRatio: '2048 / 1143' }}>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-gray-800 via-gray-900 to-black" />
+      <section className="relative w-full overflow-hidden text-white max-h-[88vh] min-h-60" style={{ aspectRatio: '2048 / 1143' }}>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#1f6b46] via-[#145c3a] to-[#0a1f14]" />
         <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-6 py-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] mb-4 opacity-60">Official Store</p>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight">New Season Arrivals</h1>
-          <p className="text-base md:text-lg mb-8 opacity-70 max-w-lg mx-auto">Discover the latest styles at unbeatable prices</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] mb-4 opacity-60">Trusted Online Pharmacy</p>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight">OTC Medicines &amp; Wellness</h1>
+          <p className="text-base md:text-lg mb-8 opacity-70 max-w-lg mx-auto">Genuine products, fast delivery across India</p>
           <Link href="/products"
-            className="inline-flex items-center gap-2 border-2 border-white/80 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all duration-300 active:scale-95">
+            className="inline-flex items-center gap-2 border-2 border-white/80 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-white hover:text-emerald-800 transition-all duration-300 active:scale-95">
             Shop Now
           </Link>
         </div>
@@ -124,7 +124,7 @@ export default function HeroCarousel({ banners }: { banners: Banner[] }) {
 // ── Slide renderer ─────────────────────────────────────────────────────────────
 function SlideRenderer({ slide, onRatio }: { slide: Banner; onRatio?: (r: string) => void }) {
   const style = slide.display_style ?? 'overlay'
-  const bg    = slide.bg_color   ?? '#111827'
+  const bg    = slide.bg_color   ?? '#145c3a'
   const color = slide.text_color ?? '#ffffff'
   const link  = slide.link_url   ?? '/products'
 

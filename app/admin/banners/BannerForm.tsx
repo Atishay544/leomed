@@ -21,7 +21,7 @@ export default function BannerForm() {
   const [images, setImages]       = useState<string[]>([])
   const [linkUrl, setLinkUrl]     = useState('')
   const [linkText, setLinkText]   = useState('')
-  const [bgColor, setBgColor]     = useState('#111827')
+  const [bgColor, setBgColor]     = useState('#145c3a')
   const [textColor, setTextColor] = useState('#ffffff')
   const [sortOrder, setSortOrder] = useState('0')
   const [isActive, setIsActive]   = useState(true)

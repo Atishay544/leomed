@@ -51,8 +51,8 @@ export async function sendOtpEmail({ to, otp }: { to: string; otp: string }) {
     <h2 style="margin:0 0 4px;font-size:22px;color:#111">Your Login Code</h2>
     <p style="margin:0 0 28px;color:#666;font-size:14px">Use this 6-digit code to sign in to Leomed Pharma. It expires in <strong>10 minutes</strong>.</p>
     <div style="text-align:center;margin:8px 0 32px">
-      <div style="display:inline-block;background:#f5f3ff;border:2px solid #ddd6fe;border-radius:16px;padding:20px 48px">
-        <span style="font-size:42px;font-weight:800;letter-spacing:14px;color:#5b21b6;font-family:monospace">${otp}</span>
+      <div style="display:inline-block;background:#f0fdf4;border:2px solid #bbf7d0;border-radius:16px;padding:20px 48px">
+        <span style="font-size:42px;font-weight:800;letter-spacing:14px;color:#166534;font-family:monospace">${otp}</span>
       </div>
     </div>
     <p style="text-align:center;color:#9ca3af;font-size:12px;margin:0">If you didn't request this, you can safely ignore this email.</p>

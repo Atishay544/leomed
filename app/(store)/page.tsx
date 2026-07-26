@@ -215,9 +215,9 @@ export default async function HomePage() {
         <section className={`max-w-350 mx-auto px-4 sm:px-6 lg:px-10 ${afterFeaturedAnnouncement ? 'pt-8' : 'pt-6'} pb-8`}>
           <div
             className={`relative overflow-hidden rounded-2xl min-h-50 flex flex-col sm:flex-row items-center justify-between gap-6 px-8 sm:px-12 py-10 ${
-              dealBanner ? '' : 'bg-linear-to-r from-rose-500 to-orange-400'
+              dealBanner ? '' : 'bg-linear-to-r from-emerald-700 to-green-500'
             }`}
-            style={dealBanner ? { backgroundColor: dealBanner.bg_color ?? '#111827' } : undefined}
+            style={dealBanner ? { backgroundColor: dealBanner.bg_color ?? '#145c3a' } : undefined}
           >
             {dealBanner?.image_url && (
               <Image src={dealBanner.image_url} alt="" fill
