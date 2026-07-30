@@ -30,17 +30,10 @@ const getHealthConcernBySlug = cache(async (slug: string) => {
   return data
 })
 
-export async function generateStaticParams() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return []
-  const supabase = createPublicClient()
-  const { data } = await supabase
-    .from('categories')
-    .select('slug')
-    .eq('taxonomy', 'health_concern')
-    .order('sort_order')
-    .limit(12)
-  return (data ?? []).filter(c => c.slug && c.slug.trim().length > 0).map(c => ({ slug: c.slug }))
-}
+// NOTE: deliberately no generateStaticParams here — see the identical note in
+// app/(store)/category/[slug]/page.tsx. This page reads searchParams in the same
+// render, and combining that with generateStaticParams makes Next.js 16 throw
+// DYNAMIC_SERVER_USAGE instead of rendering dynamically per request.
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params

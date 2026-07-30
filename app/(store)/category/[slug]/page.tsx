@@ -30,19 +30,12 @@ const getCategoryBySlug = cache(async (slug: string) => {
   return data
 })
 
-// Pre-render top 12 categories at build time
-export async function generateStaticParams() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return []
-  const supabase = createPublicClient()
-  const { data } = await supabase
-    .from('categories')
-    .select('slug')
-    .is('parent_id', null)
-    .eq('taxonomy', 'product')
-    .order('sort_order')
-    .limit(12)
-  return (data ?? []).filter(c => c.slug && c.slug.trim().length > 0).map(c => ({ slug: c.slug }))
-}
+// NOTE: deliberately no generateStaticParams here. This page reads searchParams
+// (sort/page) in the same render, and combining that with generateStaticParams
+// makes Next.js 16 throw DYNAMIC_SERVER_USAGE instead of just rendering the page
+// dynamically per request — the pre-existing pattern this was copied from. With
+// dynamicParams left implicitly true and no static param list, every slug still
+// renders fine on demand and is cached per URL via `revalidate` below.
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
