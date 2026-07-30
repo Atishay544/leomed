@@ -13,7 +13,7 @@ export default async function AccountPage() {
       .single(),
     supabase
       .from('user_memberships')
-      .select('expires_at, membership_plans(name, discount_pct)')
+      .select('expires_at, discount_pct_snapshot, membership_plans(name)')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .gte('expires_at', new Date().toISOString())
@@ -32,7 +32,7 @@ export default async function AccountPage() {
             {(membership.membership_plans as any)?.name ?? 'Care Plan'} — Active
           </p>
           <p className="text-xs text-emerald-700 mt-0.5">
-            {(membership.membership_plans as any)?.discount_pct}% off every order · valid until{' '}
+            {membership.discount_pct_snapshot}% off every order · valid until{' '}
             {new Date(membership.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
         </div>

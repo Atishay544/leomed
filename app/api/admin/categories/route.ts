@@ -1,7 +1,7 @@
 import { adminGuard } from '@/lib/security/admin-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-
+import { sanitizeText } from '@/lib/security/sanitize'
 
 export async function POST(req: NextRequest) {
   const guard = await adminGuard(req)
@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const { data, error } = await admin.from('categories').insert({
-    name:         body.name,
-    slug:         body.slug,
+    name:         sanitizeText(String(body.name ?? '')),
+    slug:         sanitizeText(String(body.slug ?? '')),
     parent_id:    body.parent_id ?? null,
     sort_order:   body.sort_order ?? 0,
     taxonomy:     body.taxonomy ?? 'product',
@@ -34,8 +34,8 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
   const payload: Record<string, any> = {}
-  if (name       !== undefined) payload.name       = name
-  if (slug       !== undefined) payload.slug       = slug
+  if (name       !== undefined) payload.name       = sanitizeText(String(name))
+  if (slug       !== undefined) payload.slug       = sanitizeText(String(slug))
   if (sort_order !== undefined) payload.sort_order = parseInt(sort_order, 10) || 0
   if (taxonomy   !== undefined) payload.taxonomy   = taxonomy
   // Allow null to clear parent

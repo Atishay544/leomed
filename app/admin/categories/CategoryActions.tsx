@@ -65,6 +65,15 @@ export default function CategoryActions({
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setEditError('')
+
+    if (initialTaxonomy && taxonomy !== initialTaxonomy) {
+      const ok = window.confirm(
+        `Changing "${categoryName}" from ${initialTaxonomy === 'health_concern' ? 'Health Concern' : 'Product Category'} to ${taxonomy === 'health_concern' ? 'Health Concern' : 'Product Category'} will break its current URL ` +
+        `(/${initialTaxonomy === 'health_concern' ? 'health-concern' : 'category'}/${categorySlug} will stop working). Continue?`
+      )
+      if (!ok) return
+    }
+
     setSaving(true)
     const res = await fetch('/api/admin/categories', {
       method: 'PATCH',

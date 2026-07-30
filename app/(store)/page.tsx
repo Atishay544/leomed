@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
 import { AnimatedGrid, AnimatedItem } from './AnimatedSectionDynamic'
 import AnnouncementBar from '@/components/storefront/AnnouncementBar'
 import FeaturedCards from '@/components/storefront/FeaturedCards'
@@ -315,13 +315,6 @@ function SectionHeader({ title, href, linkLabel }: { title: string; href?: strin
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-const MERCHANDISING_LABELS: Record<string, { label: string; className: string }> = {
-  best_seller: { label: 'Best Seller', className: 'bg-amber-500' },
-  new:         { label: 'New',         className: 'bg-blue-500' },
-  trending:    { label: 'Trending',    className: 'bg-emerald-600' },
-  must_have:   { label: 'Must Have',   className: 'bg-rose-500' },
-}
-
 function ProductCard({ product, priority = false }: {
   product: { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null; merchandising_tag?: string | null }
   priority?: boolean
@@ -354,7 +347,7 @@ function ProductCard({ product, priority = false }: {
           </span>
         )}
         {badge && (
-          <span className={`absolute top-2.5 right-2.5 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badge.className}`}>
+          <span className={`absolute bottom-2.5 left-2.5 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badge.className}`}>
             {badge.label}
           </span>
         )}

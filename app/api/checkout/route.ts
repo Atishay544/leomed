@@ -279,16 +279,21 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 4a. Care Plan member discount (stacks with coupon) ────────────────────
+  // Reads the discount snapshotted at subscribe time, not a live join to
+  // membership_plans — so an admin editing the plan later doesn't retroactively
+  // change what an already-paying member is entitled to.
   let memberDiscountPct = 0
   if (user) {
     const { data: membership } = await admin
       .from('user_memberships')
-      .select('membership_plans(discount_pct)')
+      .select('discount_pct_snapshot')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .gte('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
-    if (membership) memberDiscountPct = Number((membership.membership_plans as any)?.discount_pct ?? 0)
+    if (membership) memberDiscountPct = Number(membership.discount_pct_snapshot ?? 0)
   }
   if (memberDiscountPct > 0) {
     discount += Math.round((subtotal - discount) * memberDiscountPct) / 100

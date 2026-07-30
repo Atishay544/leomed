@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient()
   const { data: membership } = await admin
     .from('user_memberships')
-    .select('expires_at, membership_plans(name, discount_pct, free_shipping)')
+    .select('expires_at, discount_pct_snapshot, free_shipping_snapshot, membership_plans(name)')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .gte('expires_at', new Date().toISOString())
@@ -26,6 +26,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     active: true,
     expires_at: membership.expires_at,
-    plan: membership.membership_plans,
+    plan: {
+      name: (membership.membership_plans as any)?.name,
+      discount_pct: membership.discount_pct_snapshot,
+      free_shipping: membership.free_shipping_snapshot,
+    },
   })
 }

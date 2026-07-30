@@ -2,6 +2,18 @@ import { adminGuard } from '@/lib/security/admin-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 
+// Only accept IDs that are actually health_concern-taxonomy categories — a
+// product-taxonomy category ID (or a garbage string) submitted here would
+// otherwise silently corrupt the health-concern browse pages.
+async function filterValidHealthConcernIds(admin: any, ids: unknown): Promise<string[]> {
+  if (!Array.isArray(ids) || ids.length === 0) return []
+  const { data } = await admin
+    .from('categories')
+    .select('id')
+    .eq('taxonomy', 'health_concern')
+    .in('id', ids)
+  return (data ?? []).map((c: any) => c.id)
+}
 
 export async function POST(req: NextRequest) {
   const guard = await adminGuard(req)
@@ -76,10 +88,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Health-concern tags (many-to-many, non-exclusive with category_id)
-  if (Array.isArray(health_concern_ids) && health_concern_ids.length > 0 && product) {
-    await admin.from('product_health_concerns').insert(
-      health_concern_ids.map((category_id: string) => ({ product_id: product.id, category_id }))
-    )
+  if (product) {
+    const validIds = await filterValidHealthConcernIds(admin, health_concern_ids)
+    if (validIds.length > 0) {
+      await admin.from('product_health_concerns').insert(
+        validIds.map((category_id: string) => ({ product_id: product.id, category_id }))
+      )
+    }
   }
 
   revalidateTag('products'); revalidateTag('admin-products'); revalidateTag('admin-dashboard')
@@ -139,7 +154,7 @@ export async function PATCH(req: NextRequest) {
     : []
 
   // Parallel: update product fields + delete old variants + delete old skus
-  const [{ error }, deleteVariants, deleteSkus] = await Promise.all([
+  const [{ error }, deleteVariants, deleteSkus, deleteHealthConcerns] = await Promise.all([
     admin.from('products').update(payload).eq('id', id),
     processedVariants !== undefined
       ? admin.from('product_variants').delete().eq('product_id', id)
@@ -155,6 +170,7 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   if (deleteVariants?.error) return NextResponse.json({ error: deleteVariants.error.message }, { status: 400 })
   if (deleteSkus?.error) return NextResponse.json({ error: deleteSkus.error.message }, { status: 400 })
+  if (deleteHealthConcerns?.error) return NextResponse.json({ error: deleteHealthConcerns.error.message }, { status: 400 })
 
   // Insert new variants after delete completes
   if (processedVariants !== undefined && variantRows.length > 0) {
@@ -162,9 +178,10 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Re-insert health-concern tags after delete completes
-  if (Array.isArray(health_concern_ids) && health_concern_ids.length > 0) {
+  const validHealthConcernIds = await filterValidHealthConcernIds(admin, health_concern_ids)
+  if (validHealthConcernIds.length > 0) {
     await admin.from('product_health_concerns').insert(
-      health_concern_ids.map((category_id: string) => ({ product_id: id, category_id }))
+      validHealthConcernIds.map((category_id: string) => ({ product_id: id, category_id }))
     )
   }
 

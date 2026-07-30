@@ -21,9 +21,12 @@ interface Plan {
 }
 
 export default function CarePlanPage() {
-  const { user, getToken } = useAuth()
+  const { user, getToken, loading: authLoading } = useAuth()
   const router = useRouter()
   const [plan, setPlan] = useState<Plan | null>(null)
+  const [planLoading, setPlanLoading] = useState(true)
+  const [planError, setPlanError] = useState(false)
+  const [membershipLoading, setMembershipLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeUntil, setActiveUntil] = useState<string | null>(null)
@@ -32,18 +35,24 @@ export default function CarePlanPage() {
     fetch('/api/membership/plan')
       .then(r => r.json())
       .then(d => setPlan(d.plan ?? null))
-      .catch(() => {})
+      .catch(() => setPlanError(true))
+      .finally(() => setPlanLoading(false))
   }, [])
 
   useEffect(() => {
-    if (!user) return
+    if (authLoading) return
+    if (!user) { setMembershipLoading(false); return }
     ;(async () => {
-      const token = await getToken()
-      const res = await fetch('/api/account/membership', { headers: { Authorization: `Bearer ${token}` } })
-      const data = await res.json()
-      if (data?.active) setActiveUntil(data.expires_at)
+      try {
+        const token = await getToken()
+        const res = await fetch('/api/account/membership', { headers: { Authorization: `Bearer ${token}` } })
+        const data = await res.json()
+        if (data?.active) setActiveUntil(data.expires_at)
+      } finally {
+        setMembershipLoading(false)
+      }
     })()
-  }, [user, getToken])
+  }, [user, authLoading, getToken])
 
   async function handleSubscribe() {
     if (!user) { router.push('/login?redirect=/care-plan'); return }
@@ -66,6 +75,10 @@ export default function CarePlanPage() {
         order_id: res.razorpay_order.id,
         prefill:  { email: user.email ?? '' },
         theme:    { color: '#145c3a' },
+        // Keep `loading` (and the disabled Subscribe button) true for the entire
+        // time the payment popup is open, not just until it's constructed —
+        // otherwise the button re-enables while payment is still in progress.
+        modal: { ondismiss: () => setLoading(false) },
         handler: async (payment: any) => {
           try {
             await api.post('/api/membership/verify', {
@@ -76,17 +89,19 @@ export default function CarePlanPage() {
             }, { headers })
             router.push('/account?membership=active')
           } catch {
+            setLoading(false)
             setError('Payment succeeded but activation failed — contact support with your payment ID.')
           }
         },
       }
-      setLoading(false)
       new window.Razorpay(options).open()
     } catch (e: any) {
       setLoading(false)
       setError(e.message ?? 'Could not start subscription. Please try again.')
     }
   }
+
+  const checkingStatus = authLoading || (!!user && membershipLoading)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-14">
@@ -97,7 +112,11 @@ export default function CarePlanPage() {
         <p className="text-gray-600 mt-3">Join Leomed Pharma's Care Plan for member-only discounts on every order.</p>
       </div>
 
-      {activeUntil ? (
+      {planLoading || checkingStatus ? (
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 text-center text-gray-400 animate-pulse">
+          Loading…
+        </div>
+      ) : activeUntil ? (
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
           <p className="font-semibold text-emerald-900">You're already a Care Plan member 🎉</p>
           <p className="text-sm text-emerald-700 mt-1">Active until {new Date(activeUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
@@ -139,7 +158,14 @@ export default function CarePlanPage() {
           {!user && <p className="text-xs text-gray-400 text-center mt-3">You'll be asked to sign in first.</p>}
         </div>
       ) : (
-        <p className="text-center text-gray-400">Care Plan is not available right now.</p>
+        <div className="text-center py-8">
+          <p className="text-gray-400">{planError ? 'Could not load Care Plan. Please check your connection.' : 'Care Plan is not available right now.'}</p>
+          {planError && (
+            <button onClick={() => location.reload()} className="mt-3 text-sm text-emerald-700 underline underline-offset-2">
+              Try again
+            </button>
+          )}
+        </div>
       )}
 
       <p className="text-center text-sm text-gray-400 mt-8">

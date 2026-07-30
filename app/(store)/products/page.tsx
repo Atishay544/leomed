@@ -2,7 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import Image from 'next/image'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
 import ProductFilters from './ProductFilters'
 import MobileFilterDrawer from './MobileFilterDrawer'
 import SortSelect from './SortSelect'
@@ -148,12 +148,6 @@ export default async function ProductsPage({ searchParams }: Props) {
   )
 }
 
-const MERCHANDISING_LABELS: Record<string, { label: string; className: string }> = {
-  best_seller: { label: 'Best Seller', className: 'bg-amber-500' },
-  new:         { label: 'New',         className: 'bg-blue-500' },
-  trending:    { label: 'Trending',    className: 'bg-emerald-600' },
-  must_have:   { label: 'Must Have',   className: 'bg-rose-500' },
-}
 
 function ProductCard({ product }: { product: any }) {
   const image = product.images?.[0]

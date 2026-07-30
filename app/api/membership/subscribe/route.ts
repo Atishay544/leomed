@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const { data: plan, error: planErr } = await admin
     .from('membership_plans')
-    .select('id, name, price, duration_months')
+    .select('id, name, price, duration_months, discount_pct, free_shipping')
     .eq('is_active', true)
     .order('created_at', { ascending: true })
     .limit(1)
@@ -39,24 +39,48 @@ export async function POST(req: NextRequest) {
 
   if (planErr || !plan) return NextResponse.json({ error: 'No active membership plan found' }, { status: 400 })
 
-  // Block duplicate active membership
-  const { data: existing } = await admin
+  // Lazily expire this user's stale rows first — there's no cron sweep, so a
+  // membership that naturally lapsed would otherwise sit at status='active'
+  // forever and permanently block renewal via the unique open-membership index.
+  await admin
     .from('user_memberships')
-    .select('id, expires_at')
+    .update({ status: 'expired' })
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .lt('expires_at', new Date().toISOString())
+
+  // Block duplicate active membership
+  const { data: existingActive } = await admin
+    .from('user_memberships')
+    .select('id')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .gte('expires_at', new Date().toISOString())
     .maybeSingle()
 
-  if (existing) return NextResponse.json({ error: 'You already have an active Care Plan membership' }, { status: 400 })
+  if (existingActive) return NextResponse.json({ error: 'You already have an active Care Plan membership' }, { status: 400 })
+
+  // A stale/abandoned pending row (e.g. user closed the payment popup without
+  // paying) shouldn't block a fresh attempt — clear it and start over.
+  await admin.from('user_memberships').delete().eq('user_id', user.id).eq('status', 'pending')
 
   const { data: membership, error: insertErr } = await admin
     .from('user_memberships')
-    .insert({ user_id: user.id, plan_id: plan.id, status: 'pending' })
+    .insert({
+      user_id: user.id,
+      plan_id: plan.id,
+      status: 'pending',
+      discount_pct_snapshot: Number(plan.discount_pct),
+      free_shipping_snapshot: plan.free_shipping,
+    })
     .select('id')
     .single()
 
   if (insertErr || !membership) {
+    // Unique-violation (23505) means a concurrent request won the race — friendly message instead of a raw 500.
+    if (insertErr?.code === '23505') {
+      return NextResponse.json({ error: 'A subscription attempt is already in progress. Please try again in a moment.' }, { status: 409 })
+    }
     console.error('Membership insert error:', insertErr)
     return NextResponse.json({ error: 'Failed to start subscription' }, { status: 500 })
   }

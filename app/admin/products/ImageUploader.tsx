@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default function ImageUploader({ value, onChange, maxImages = 5 }: Props) {
+  const multi = maxImages > 1
   const [draggingOver, setDraggingOver] = useState(false)
   const [uploading, setUploading] = useState<string[]>([]) // file names being uploaded
   const [errors, setErrors] = useState<string[]>([])
@@ -86,18 +87,20 @@ export default function ImageUploader({ value, onChange, maxImages = 5 }: Props)
           {value.map((url, i) => (
             <div
               key={url + i}
-              draggable
-              onDragStart={() => onDragStart(i)}
-              onDragEnter={() => onDragEnterReorder(i)}
-              onDragEnd={onDragEndReorder}
-              onDragOver={e => e.preventDefault()}
-              className="relative group w-24 h-24 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 cursor-grab active:cursor-grabbing"
+              draggable={multi}
+              onDragStart={() => multi && onDragStart(i)}
+              onDragEnter={() => multi && onDragEnterReorder(i)}
+              onDragEnd={() => multi && onDragEndReorder()}
+              onDragOver={e => multi && e.preventDefault()}
+              className={`relative group w-24 h-24 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 ${multi ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               <Image src={url} alt={`Product image ${i + 1}`} fill className="object-cover" />
-              {/* Reorder handle */}
-              <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5">
-                <GripVertical size={12} className="text-white" />
-              </div>
+              {/* Reorder handle — multi-image only */}
+              {multi && (
+                <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5">
+                  <GripVertical size={12} className="text-white" />
+                </div>
+              )}
               {/* Remove button */}
               <button
                 type="button"
@@ -106,8 +109,8 @@ export default function ImageUploader({ value, onChange, maxImages = 5 }: Props)
               >
                 <X size={12} className="text-white" />
               </button>
-              {/* Primary badge */}
-              {i === 0 && (
+              {/* Primary badge — only meaningful when there's more than one image */}
+              {multi && i === 0 && (
                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
                   Main
                 </span>
@@ -143,16 +146,18 @@ export default function ImageUploader({ value, onChange, maxImages = 5 }: Props)
             Drop images here or <span className="text-gray-900 underline">browse</span>
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            JPG, PNG, WebP or GIF · Max 5 MB each · Up to {maxImages} images
+            JPG, PNG, WebP or GIF · Max 5 MB each{multi ? ` · Up to ${maxImages} images` : ''}
           </p>
-          <p className="text-xs text-gray-400">
-            {value.length}/{maxImages} uploaded · Drag to reorder
-          </p>
+          {multi && (
+            <p className="text-xs text-gray-400">
+              {value.length}/{maxImages} uploaded · Drag to reorder
+            </p>
+          )}
           <input
             ref={inputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
-            multiple
+            multiple={multi}
             className="hidden"
             onChange={e => e.target.files && handleFiles(e.target.files)}
           />
