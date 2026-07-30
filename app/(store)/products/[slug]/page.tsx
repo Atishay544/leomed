@@ -5,7 +5,7 @@ import { createPublicClient, createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
-import { Star, Shield, RefreshCw, Truck, Leaf, Award, Users, Package } from 'lucide-react'
+import { Star, Shield, Zap, Truck, Leaf, Award, Users, Package } from 'lucide-react'
 import { ProductImageProvider, ConnectedGallery } from './ProductImageProvider'
 import ProductActions, { type StoreSku } from './ProductActions'
 import ReviewsList from './ReviewsList'
@@ -525,8 +525,8 @@ export default async function ProductDetailPage({ params }: Props) {
               <span className="text-[11px] font-medium text-gray-600 leading-tight">Free Delivery</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center p-3 bg-gray-50 rounded-xl">
-              <RefreshCw size={18} className="text-gray-500" />
-              <span className="text-[11px] font-medium text-gray-600 leading-tight">7-Day Returns</span>
+              <Zap size={18} className="text-gray-500" />
+              <span className="text-[11px] font-medium text-gray-600 leading-tight">Same Day Dispatch</span>
             </div>
             <div className="flex flex-col items-center gap-1 text-center p-3 bg-gray-50 rounded-xl">
               <Shield size={18} className="text-gray-500" />
@@ -546,9 +546,9 @@ export default async function ProductDetailPage({ params }: Props) {
                 <div className="flex items-start gap-0">
                   {[
                     { label: 'Order Placed', date: d(0), done: true },
-                    { label: 'Processing', date: `${d(1)}–${d(2)}`, done: false },
-                    { label: 'Dispatched', date: `${d(2)}–${d(3)}`, done: false },
-                    { label: 'Delivered', date: `${d(4)}–${d(6)}`, done: false },
+                    { label: 'Processing', date: d(0), done: false },
+                    { label: 'Dispatched', date: d(0), done: false },
+                    { label: 'Delivered', date: `${d(1)}–${d(3)}`, done: false },
                   ].map((step, i, arr) => (
                     <div key={step.label} className="flex items-start flex-1">
                       <div className="flex flex-col items-center flex-1">
@@ -570,10 +570,10 @@ export default async function ProductDetailPage({ params }: Props) {
             )
           })()}
 
-          {/* Handcrafted quality badge */}
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            <Award size={16} className="text-amber-600 shrink-0" />
-            <span className="text-xs text-amber-800 font-medium leading-tight">Handcrafted in India · Premium artisan quality · Every piece is unique</span>
+          {/* Quality + dispatch badge */}
+          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+            <Award size={16} className="text-emerald-600 shrink-0" />
+            <span className="text-xs text-emerald-800 font-medium leading-tight">Genuine, sealed products · Sourced from authorized distributors · Same day dispatch</span>
           </div>
 
           {/* Description */}
