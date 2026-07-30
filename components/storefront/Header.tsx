@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { ShoppingCart, Heart, Search, User, Menu, X, ChevronDown } from 'lucide-react'
+import { ShoppingCart, Heart, Search, User, Menu, X, ChevronDown, Crown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCartStore } from '@/lib/store/cart'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -193,6 +193,18 @@ export default function Header({ categories }: { categories: any[] }) {
             >
               <Search size={20} />
             </button>
+
+            {/* Care Plan — attention-grabbing shake to draw the eye */}
+            <Link href="/care-plan" aria-label="Care Plan" className="hidden sm:block">
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -10, 10, -6, 6, 0] }}
+                transition={{ duration: 0.7, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
+                className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full pl-2.5 pr-3 py-1.5 text-xs font-bold hover:bg-emerald-100 transition-colors"
+              >
+                <Crown size={14} />
+                Care Plan
+              </motion.div>
+            </Link>
 
             {/* Wishlist */}
             <Link href="/wishlist" aria-label="Wishlist"
