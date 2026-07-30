@@ -41,10 +41,10 @@ const getAfterFeaturedAnnouncement   = makeAnnouncementFetcher(2, 'after-feature
 const getStaticHomeData = unstable_cache(
   async () => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return { banners: [], categories: [] }
+      return { banners: [], categories: [], healthConcerns: [] }
     }
     const supabase = createPublicClient()
-    const [{ data: bannersRaw }, { data: categoriesRaw }] = await Promise.all([
+    const [{ data: bannersRaw }, { data: categoriesRaw }, { data: healthConcernsRaw }] = await Promise.all([
       supabase
         .from('banners')
         .select('id,title,subtitle,image_url,link_url,link_text,bg_color,text_color,sort_order,display_style')
@@ -52,22 +52,30 @@ const getStaticHomeData = unstable_cache(
         .order('sort_order', { ascending: true }),
       supabase
         .from('categories')
-        .select('id,name,slug,image_url')
+        .select('id,name,slug,image_url,accent_color')
         .is('parent_id', null)
+        .eq('taxonomy', 'product')
         .order('sort_order')
         .limit(6),
+      supabase
+        .from('categories')
+        .select('id,name,slug,image_url,accent_color')
+        .eq('taxonomy', 'health_concern')
+        .order('sort_order')
+        .limit(8),
     ])
     type Banner = { id: string; title: string | null; subtitle: string | null; image_url: string | null; link_url: string | null; link_text: string | null; bg_color: string | null; text_color: string | null; sort_order: number | null; display_style: string | null }
-    type Category = { id: string; name: string; slug: string; image_url: string | null }
+    type Category = { id: string; name: string; slug: string; image_url: string | null; accent_color: string | null }
     const banners = (bannersRaw ?? []) as Banner[]
     const categories = (categoriesRaw ?? []) as Category[]
-    return { banners, categories }
+    const healthConcerns = (healthConcernsRaw ?? []) as Category[]
+    return { banners, categories, healthConcerns }
   },
   ['home-static'],
   { revalidate: 600, tags: ['banners', 'categories'] }
 )
 
-type HomeProduct = { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null }
+type HomeProduct = { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null; merchandising_tag?: string | null }
 
 const getDynamicHomeProducts = unstable_cache(
   async (): Promise<{ featured: HomeProduct[]; deals: HomeProduct[] }> => {
@@ -78,13 +86,13 @@ const getDynamicHomeProducts = unstable_cache(
     const [{ data: featured }, { data: deals }] = await Promise.all([
       supabase
         .from('products')
-        .select('id,name,slug,price,compare_price,images')
+        .select('id,name,slug,price,compare_price,images,merchandising_tag')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(8),
       supabase
         .from('products')
-        .select('id,name,slug,price,compare_price,images')
+        .select('id,name,slug,price,compare_price,images,merchandising_tag')
         .eq('is_active', true)
         .not('compare_price', 'is', null)
         .order('created_at', { ascending: false })
@@ -97,7 +105,7 @@ const getDynamicHomeProducts = unstable_cache(
 )
 
 export default async function HomePage() {
-  const { banners, categories } = await getStaticHomeData()
+  const { banners, categories, healthConcerns } = await getStaticHomeData()
   const { featured, deals } = await getDynamicHomeProducts()
   const [bottomAnnouncement, afterFeaturedAnnouncement] = await Promise.all([
     getBottomAnnouncement(),
@@ -179,6 +187,33 @@ export default async function HomePage() {
                   </div>
                   <span className="text-xs font-semibold text-center text-gray-700 group-hover:text-emerald-600 transition-colors duration-200">
                     {cat.name}
+                  </span>
+                </Link>
+              </AnimatedItem>
+            ))}
+          </AnimatedGrid>
+        </section>
+      )}
+
+      {/* ── Shop by Health Concern ── */}
+      {healthConcerns && healthConcerns.length > 0 && (
+        <section className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 pb-14">
+          <SectionHeader title="Shop by Health Concern" />
+          <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mt-7">
+            {healthConcerns.map(hc => (
+              <AnimatedItem key={hc.id}>
+                <Link
+                  href={`/health-concern/${hc.slug}`}
+                  className="group relative flex flex-col items-center justify-end aspect-square rounded-2xl overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
+                  style={{ backgroundColor: hc.accent_color ?? '#e8f3ec' }}
+                >
+                  {hc.image_url && (
+                    <Image src={hc.image_url} alt={hc.name} fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 12vw"
+                      className="object-cover object-bottom opacity-90 group-hover:scale-105 transition-transform duration-300" />
+                  )}
+                  <span className="relative z-10 w-full text-center text-xs font-bold text-white py-2 bg-black/25 backdrop-blur-[1px]">
+                    {hc.name}
                   </span>
                 </Link>
               </AnimatedItem>
@@ -280,14 +315,22 @@ function SectionHeader({ title, href, linkLabel }: { title: string; href?: strin
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
+const MERCHANDISING_LABELS: Record<string, { label: string; className: string }> = {
+  best_seller: { label: 'Best Seller', className: 'bg-amber-500' },
+  new:         { label: 'New',         className: 'bg-blue-500' },
+  trending:    { label: 'Trending',    className: 'bg-emerald-600' },
+  must_have:   { label: 'Must Have',   className: 'bg-rose-500' },
+}
+
 function ProductCard({ product, priority = false }: {
-  product: { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null }
+  product: { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null; merchandising_tag?: string | null }
   priority?: boolean
 }) {
   const image    = product.images?.[0]
   const discount = product.compare_price
     ? Math.round((1 - product.price / product.compare_price) * 100)
     : 0
+  const badge = product.merchandising_tag ? MERCHANDISING_LABELS[product.merchandising_tag] : null
 
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-gray-200/60 transition-all duration-300 h-full">
@@ -308,6 +351,11 @@ function ProductCard({ product, priority = false }: {
         {discount > 0 && (
           <span className="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
             -{discount}%
+          </span>
+        )}
+        {badge && (
+          <span className={`absolute top-2.5 right-2.5 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badge.className}`}>
+            {badge.label}
           </span>
         )}
       </div>

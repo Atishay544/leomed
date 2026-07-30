@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import ImageUploader from '../products/ImageUploader'
 
 interface Category { id: string; name: string }
 
@@ -13,6 +14,9 @@ interface Props {
   parentId:     string | null
   sortOrder:    number
   categories:   Category[]   // all categories (for parent select, excluding self)
+  taxonomy?:    'product' | 'health_concern'
+  accentColor?: string | null
+  imageUrl?:    string | null
 }
 
 function slugify(str: string) {
@@ -21,6 +25,7 @@ function slugify(str: string) {
 
 export default function CategoryActions({
   categoryId, categoryName, categorySlug, parentId, sortOrder, categories,
+  taxonomy: initialTaxonomy, accentColor: initialAccentColor, imageUrl: initialImageUrl,
 }: Props) {
   const router = useRouter()
 
@@ -34,6 +39,9 @@ export default function CategoryActions({
   const [slug,       setSlug]       = useState(categorySlug)
   const [parent,     setParent]     = useState(parentId ?? '')
   const [sort,       setSort]       = useState(String(sortOrder))
+  const [taxonomy,   setTaxonomy]   = useState<'product' | 'health_concern'>(initialTaxonomy ?? 'product')
+  const [accentColor, setAccentColor] = useState(initialAccentColor ?? '#e8f3ec')
+  const [images,     setImages]     = useState<string[]>(initialImageUrl ? [initialImageUrl] : [])
   const [saving,     setSaving]     = useState(false)
   const [editError,  setEditError]  = useState('')
 
@@ -42,6 +50,9 @@ export default function CategoryActions({
     setSlug(categorySlug)
     setParent(parentId ?? '')
     setSort(String(sortOrder))
+    setTaxonomy(initialTaxonomy ?? 'product')
+    setAccentColor(initialAccentColor ?? '#e8f3ec')
+    setImages(initialImageUrl ? [initialImageUrl] : [])
     setEditError('')
     setEditing(true)
   }
@@ -59,11 +70,14 @@ export default function CategoryActions({
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id:         categoryId,
-        name:       name.trim(),
-        slug:       slug.trim(),
-        parent_id:  parent || null,
-        sort_order: parseInt(sort, 10) || 0,
+        id:           categoryId,
+        name:         name.trim(),
+        slug:         slug.trim(),
+        parent_id:    parent || null,
+        sort_order:   parseInt(sort, 10) || 0,
+        taxonomy,
+        accent_color: accentColor,
+        image_url:    images[0] ?? null,
       }),
     })
     setSaving(false)
@@ -155,6 +169,30 @@ export default function CategoryActions({
                   onChange={e => setSort(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Browse Type</label>
+                <select
+                  value={taxonomy}
+                  onChange={e => setTaxonomy(e.target.value as 'product' | 'health_concern')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                >
+                  <option value="product">Product Category</option>
+                  <option value="health_concern">Health Concern</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tile Accent Color</label>
+                <input
+                  type="color"
+                  value={accentColor}
+                  onChange={e => setAccentColor(e.target.value)}
+                  className="w-16 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tile Image</label>
+                <ImageUploader value={images} onChange={setImages} maxImages={1} />
               </div>
               <div className="flex gap-2 pt-1">
                 <button

@@ -24,11 +24,14 @@ interface Product {
   is_active: boolean
   images: string[]
   video_url?: string | null
+  merchandising_tag?: string | null
 }
 
 interface Props {
   product?: Product
   categories: Category[]
+  healthConcerns?: Category[]
+  initialHealthConcernIds?: string[]
   initialVariants?: VariantRow[]
   initialSkus?: SkuRow[]
 }
@@ -44,7 +47,7 @@ function comboKey(attrs: Record<string, string>) {
 const INPUT = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900'
 const LABEL = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'
 
-export default function ProductForm({ product, categories, initialVariants = [], initialSkus = [] }: Props) {
+export default function ProductForm({ product, categories, healthConcerns = [], initialHealthConcernIds = [], initialVariants = [], initialSkus = [] }: Props) {
   const router = useRouter()
   const isEdit = !!product
 
@@ -59,6 +62,12 @@ export default function ProductForm({ product, categories, initialVariants = [],
   const [isActive, setIsActive]     = useState(product?.is_active ?? true)
   const [images, setImages]         = useState<string[]>(product?.images ?? [])
   const [videoUrl, setVideoUrl]     = useState<string | null>(product?.video_url ?? null)
+  const [merchandisingTag, setMerchandisingTag] = useState(product?.merchandising_tag ?? '')
+  const [healthConcernIds, setHealthConcernIds] = useState<string[]>(initialHealthConcernIds)
+
+  function toggleHealthConcern(id: string) {
+    setHealthConcernIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
   const [variants, setVariants]     = useState<VariantRow[]>(initialVariants)
   const [skus, setSkus]             = useState<SkuRow[]>(initialSkus)
   // tracks which option is the main display: "variantName::optionValue"
@@ -167,6 +176,8 @@ export default function ProductForm({ product, categories, initialVariants = [],
       is_active:     isActive,
       images,
       video_url:     videoUrl || null,
+      merchandising_tag: merchandisingTag || null,
+      health_concern_ids: healthConcernIds,
       variants:      variants
         .filter(v => v.name.trim() && v.options.length > 0)
         .map(v => ({ name: v.name.trim(), options: v.options })),
@@ -286,7 +297,39 @@ export default function ProductForm({ product, categories, initialVariants = [],
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+              <div>
+                <label className={LABEL}>Merchandising Badge</label>
+                <select value={merchandisingTag} onChange={e => setMerchandisingTag(e.target.value)}
+                  className={INPUT}>
+                  <option value="">None</option>
+                  <option value="best_seller">Best Seller</option>
+                  <option value="new">New</option>
+                  <option value="trending">Trending</option>
+                  <option value="must_have">Must Have</option>
+                </select>
+              </div>
             </div>
+            {healthConcerns.length > 0 && (
+              <div>
+                <label className={LABEL}>Health Concerns (optional — shows this product under "Shop by Health Concern")</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {healthConcerns.map(hc => (
+                    <label key={hc.id}
+                      className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition ${
+                        healthConcernIds.includes(hc.id)
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-emerald-400'
+                      }`}
+                    >
+                      <input type="checkbox" className="hidden"
+                        checked={healthConcernIds.includes(hc.id)}
+                        onChange={() => toggleHealthConcern(hc.id)} />
+                      {hc.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Discount preview */}
             {price && comparePrice && parseFloat(comparePrice) > parseFloat(price) && (
               <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ImageUploader from '../products/ImageUploader'
 
 interface Category { id: string; name: string }
 interface Props { categories: Category[] }
@@ -17,6 +18,9 @@ export default function CategoryForm({ categories }: Props) {
   const [slug, setSlug]         = useState('')
   const [parentId, setParentId] = useState('')
   const [sortOrder, setSort]    = useState('0')
+  const [taxonomy, setTaxonomy] = useState<'product' | 'health_concern'>('product')
+  const [accentColor, setAccentColor] = useState('#e8f3ec')
+  const [images, setImages]     = useState<string[]>([])
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState('')
 
@@ -33,10 +37,13 @@ export default function CategoryForm({ categories }: Props) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name:       name.trim(),
-        slug:       slug.trim(),
-        parent_id:  parentId || null,
-        sort_order: parseInt(sortOrder, 10) || 0,
+        name:          name.trim(),
+        slug:          slug.trim(),
+        parent_id:     parentId || null,
+        sort_order:    parseInt(sortOrder, 10) || 0,
+        taxonomy,
+        accent_color:  accentColor,
+        image_url:     images[0] ?? null,
       }),
     })
     setSaving(false)
@@ -49,6 +56,9 @@ export default function CategoryForm({ categories }: Props) {
     setSlug('')
     setParentId('')
     setSort('0')
+    setTaxonomy('product')
+    setAccentColor('#e8f3ec')
+    setImages([])
     router.refresh()
   }
 
@@ -102,6 +112,30 @@ export default function CategoryForm({ categories }: Props) {
             onChange={e => setSort(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Browse Type</label>
+          <select
+            value={taxonomy}
+            onChange={e => setTaxonomy(e.target.value as 'product' | 'health_concern')}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          >
+            <option value="product">Product Category (e.g. Vitamins, Personal Care)</option>
+            <option value="health_concern">Health Concern (e.g. Diabetes, Skin Care)</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tile Accent Color</label>
+          <input
+            type="color"
+            value={accentColor}
+            onChange={e => setAccentColor(e.target.value)}
+            className="w-16 h-10 border border-gray-300 rounded-lg cursor-pointer"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tile Image</label>
+          <ImageUploader value={images} onChange={setImages} maxImages={1} />
         </div>
         <button
           type="submit"

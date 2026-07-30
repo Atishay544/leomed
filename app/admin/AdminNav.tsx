@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Tag, Ticket,
   Megaphone, Star, MessageSquare, Image as ImageIcon, BadgePercent,
-  Truck, BarChart2, ChevronDown,
+  Truck, BarChart2, ChevronDown, Crown,
 } from 'lucide-react'
 
 const navGroups = [
@@ -42,6 +42,7 @@ const navGroups = [
       { href: '/admin/offers',        label: 'Offers',        icon: BadgePercent },
       { href: '/admin/coupons',       label: 'Coupons',       icon: Ticket },
       { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+      { href: '/admin/membership',    label: 'Care Plan',     icon: Crown },
     ],
   },
   {

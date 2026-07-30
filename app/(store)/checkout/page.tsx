@@ -179,11 +179,11 @@ export default function CheckoutPage() {
         key:      process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount:   res.razorpay_order.amount,
         currency: res.razorpay_order.currency,
-        name:     'Layers Factory',
+        name:     'Leomed Pharma',
         description: `Order #${res.order_id}`,
         order_id: res.razorpay_order.id,
         prefill:  { name: address.name, contact: address.phone, email: user?.email ?? guestEmail },
-        theme:    { color: '#000000' },
+        theme:    { color: '#145c3a' },
         handler: async (payment: any) => {
           try {
             await api.post('/api/checkout/verify', {

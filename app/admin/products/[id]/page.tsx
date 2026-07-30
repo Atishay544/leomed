@@ -17,13 +17,15 @@ export default async function EditProductPage({ params }: PageProps) {
   const { id } = await params
   const admin = createAdminClient()
 
-  const [{ data: product }, { data: categories }, { data: variantRows }, { data: skuRows }] = await Promise.all([
+  const [{ data: product }, { data: categories }, { data: healthConcerns }, { data: variantRows }, { data: skuRows }, { data: hcLinks }] = await Promise.all([
     admin.from('products')
-      .select('id, name, slug, description, price, compare_price, stock, weight_grams, category_id, is_active, images, video_url')
+      .select('id, name, slug, description, price, compare_price, stock, weight_grams, category_id, is_active, images, video_url, merchandising_tag')
       .eq('id', id).single(),
-    admin.from('categories').select('id, name').order('name'),
+    admin.from('categories').select('id, name').eq('taxonomy', 'product').order('name'),
+    admin.from('categories').select('id, name').eq('taxonomy', 'health_concern').order('name'),
     admin.from('product_variants').select('id, name, options').eq('product_id', id),
     admin.from('product_skus').select('attributes, stock').eq('product_id', id),
+    admin.from('product_health_concerns').select('category_id').eq('product_id', id),
   ])
 
   if (!product) notFound()
@@ -57,6 +59,8 @@ export default async function EditProductPage({ params }: PageProps) {
           video_url:     product.video_url ?? null,
         }}
         categories={categories ?? []}
+        healthConcerns={healthConcerns ?? []}
+        initialHealthConcernIds={(hcLinks ?? []).map((l: any) => l.category_id)}
         initialVariants={initialVariants}
       />
     </div>

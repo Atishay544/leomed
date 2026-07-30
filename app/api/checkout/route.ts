@@ -278,6 +278,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── 4a. Care Plan member discount (stacks with coupon) ────────────────────
+  let memberDiscountPct = 0
+  if (user) {
+    const { data: membership } = await admin
+      .from('user_memberships')
+      .select('membership_plans(discount_pct)')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .gte('expires_at', new Date().toISOString())
+      .maybeSingle()
+    if (membership) memberDiscountPct = Number((membership.membership_plans as any)?.discount_pct ?? 0)
+  }
+  if (memberDiscountPct > 0) {
+    discount += Math.round((subtotal - discount) * memberDiscountPct) / 100
+  }
+
   const total = Math.max(0, subtotal - discount)
 
   // ── 4b. Resolve COD upfront offer ─────────────────────────────────────────

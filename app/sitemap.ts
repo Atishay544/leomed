@@ -10,14 +10,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const supabase = createPublicClient()
 
-  const [{ data: products }, { data: categories }] = await Promise.all([
+  const [{ data: products }, { data: categories }, { data: healthConcerns }] = await Promise.all([
     supabase.from('products').select('slug,updated_at').eq('is_active', true),
-    supabase.from('categories').select('slug,updated_at'),
+    supabase.from('categories').select('slug,updated_at').eq('taxonomy', 'product'),
+    supabase.from('categories').select('slug,updated_at').eq('taxonomy', 'health_concern'),
   ])
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${baseUrl}`,                  lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0 },
     { url: `${baseUrl}/products`,         lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
+    { url: `${baseUrl}/care-plan`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/faq`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/contact`,          lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/shipping-policy`,  lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
@@ -40,5 +42,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }))
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes]
+  const healthConcernRoutes: MetadataRoute.Sitemap = (healthConcerns ?? []).map(c => ({
+    url: `${baseUrl}/health-concern/${c.slug}`,
+    lastModified: (c as any).updated_at ? new Date((c as any).updated_at) : new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }))
+
+  return [...staticRoutes, ...categoryRoutes, ...healthConcernRoutes, ...productRoutes]
 }

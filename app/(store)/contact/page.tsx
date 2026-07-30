@@ -3,7 +3,7 @@ export const revalidate = 86400
 import type { Metadata } from 'next'
 import ContactForm from './ContactForm'
 import Link from 'next/link'
-import { Mail, MessageCircle, Clock, Phone } from 'lucide-react'
+import { Mail, MessageCircle, Clock, Phone, AlertTriangle } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Contact Us',
@@ -21,6 +21,17 @@ export default function ContactPage() {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Info */}
         <div className="space-y-5">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-1">
+              <AlertTriangle size={18} className="text-red-600" />
+              <h3 className="font-semibold text-red-900">Experienced a Reaction?</h3>
+            </div>
+            <p className="text-sm text-red-800">If you've had an adverse reaction to any product bought from us, stop use and contact our team immediately:</p>
+            <a href="tel:+916398697503" className="text-sm font-semibold text-red-900 underline underline-offset-2 mt-2 block">+91 63986 97503</a>
+            <a href="mailto:leomedpharma1@gmail.com" className="text-sm font-semibold text-red-900 underline underline-offset-2">leomedpharma1@gmail.com</a>
+            <p className="text-xs text-red-700 mt-2">For medical emergencies, contact a doctor or hospital immediately — this is not a substitute for emergency care.</p>
+          </div>
+
           <div className="bg-gray-50 rounded-2xl p-5">
             <div className="flex items-center gap-3 mb-1">
               <MessageCircle size={18} className="text-gray-700" />

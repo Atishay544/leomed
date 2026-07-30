@@ -27,6 +27,7 @@ export default async function CategoriesPage() {
                 <tr>
                   <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Name</th>
                   <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Slug</th>
+                  <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Type</th>
                   <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Parent</th>
                   <th className="text-right px-5 py-3 text-xs text-gray-500 font-medium">Actions</th>
                 </tr>
@@ -36,6 +37,11 @@ export default async function CategoriesPage() {
                   <tr key={cat.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-800">{cat.name}</td>
                     <td className="px-5 py-3 font-mono text-xs text-gray-500">{cat.slug}</td>
+                    <td className="px-5 py-3 text-xs">
+                      <span className={`px-2 py-0.5 rounded-full font-medium ${(cat as any).taxonomy === 'health_concern' ? 'bg-teal-100 text-teal-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {(cat as any).taxonomy === 'health_concern' ? 'Health Concern' : 'Product'}
+                      </span>
+                    </td>
                     <td className="px-5 py-3 text-gray-500 text-xs">
                       {(cat.categories as any)?.name ?? '—'}
                     </td>
@@ -46,6 +52,9 @@ export default async function CategoriesPage() {
                         categorySlug={cat.slug}
                         parentId={cat.parent_id ?? null}
                         sortOrder={cat.sort_order ?? 0}
+                        taxonomy={(cat as any).taxonomy}
+                        accentColor={(cat as any).accent_color}
+                        imageUrl={(cat as any).image_url}
                         categories={categories?.map(c => ({ id: c.id, name: c.name })) ?? []}
                       />
                     </td>
@@ -70,6 +79,9 @@ export default async function CategoriesPage() {
                 <div className="min-w-0">
                   <p className="font-medium text-gray-800 text-sm">{cat.name}</p>
                   <p className="font-mono text-xs text-gray-400 mt-0.5">{cat.slug}</p>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${(cat as any).taxonomy === 'health_concern' ? 'bg-teal-100 text-teal-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {(cat as any).taxonomy === 'health_concern' ? 'Health Concern' : 'Product'}
+                  </span>
                   {(cat.categories as any)?.name && (
                     <p className="text-xs text-gray-400 mt-0.5">Parent: {(cat.categories as any).name}</p>
                   )}
@@ -80,6 +92,9 @@ export default async function CategoriesPage() {
                   categorySlug={cat.slug}
                   parentId={cat.parent_id ?? null}
                   sortOrder={cat.sort_order ?? 0}
+                  taxonomy={(cat as any).taxonomy}
+                  accentColor={(cat as any).accent_color}
+                  imageUrl={(cat as any).image_url}
                   categories={categories?.map(c => ({ id: c.id, name: c.name })) ?? []}
                 />
               </div>

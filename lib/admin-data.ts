@@ -212,7 +212,7 @@ export const getAdminCategories = unstable_cache(
     const db = createAdminClient()
     const { data } = await db
       .from('categories')
-      .select('id, name, slug, parent_id, sort_order, categories!parent_id(name)')
+      .select('id, name, slug, parent_id, sort_order, taxonomy, accent_color, image_url, categories!parent_id(name)')
       .order('sort_order', { ascending: true })
     return data ?? []
   },

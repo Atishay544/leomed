@@ -50,7 +50,7 @@ const getProductsPage = unstable_cache(
 
     let query = supabase
       .from('products')
-      .select('id,name,slug,price,compare_price,images,categories(name,slug)', { count: 'exact' })
+      .select('id,name,slug,price,compare_price,images,merchandising_tag,categories(name,slug)', { count: 'exact' })
       .eq('is_active', true)
       .range(offset, offset + PAGE_SIZE - 1)
 
@@ -148,10 +148,18 @@ export default async function ProductsPage({ searchParams }: Props) {
   )
 }
 
+const MERCHANDISING_LABELS: Record<string, { label: string; className: string }> = {
+  best_seller: { label: 'Best Seller', className: 'bg-amber-500' },
+  new:         { label: 'New',         className: 'bg-blue-500' },
+  trending:    { label: 'Trending',    className: 'bg-emerald-600' },
+  must_have:   { label: 'Must Have',   className: 'bg-rose-500' },
+}
+
 function ProductCard({ product }: { product: any }) {
   const image = product.images?.[0]
   const discount = product.compare_price
     ? Math.round((1 - product.price / product.compare_price) * 100) : 0
+  const badge = product.merchandising_tag ? MERCHANDISING_LABELS[product.merchandising_tag] : null
 
   return (
     <div className="group relative">
@@ -168,6 +176,11 @@ function ProductCard({ product }: { product: any }) {
           {discount > 0 && (
             <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
               -{discount}%
+            </span>
+          )}
+          {badge && (
+            <span className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
+              {badge.label}
             </span>
           )}
         </div>

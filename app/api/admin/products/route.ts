@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const { admin } = guard
 
   const body = await req.json()
-  const { variants, skus, defaultVariantRef, ...productData } = body
+  const { variants, skus, defaultVariantRef, health_concern_ids, ...productData } = body
 
   // Mark isDefault on the matching option + build processed variants
   const processedVariants = (variants ?? []).map((v: any) => ({
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       is_active:     productData.is_active ?? true,
       images:        finalImages,
       video_url:     productData.video_url || null,
+      merchandising_tag: productData.merchandising_tag || null,
     })
     .select()
     .single()
@@ -74,6 +75,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Health-concern tags (many-to-many, non-exclusive with category_id)
+  if (Array.isArray(health_concern_ids) && health_concern_ids.length > 0 && product) {
+    await admin.from('product_health_concerns').insert(
+      health_concern_ids.map((category_id: string) => ({ product_id: product.id, category_id }))
+    )
+  }
+
   revalidateTag('products'); revalidateTag('admin-products'); revalidateTag('admin-dashboard')
   return NextResponse.json({ data: product })
 }
@@ -84,7 +92,7 @@ export async function PATCH(req: NextRequest) {
   const { admin } = guard
 
   const body = await req.json()
-  const { id, variants, skus, defaultVariantRef, ...fields } = body
+  const { id, variants, skus, defaultVariantRef, health_concern_ids, ...fields } = body
 
   // Mark isDefault + process variants for PATCH
   const processedVariants = variants !== undefined
@@ -120,6 +128,7 @@ export async function PATCH(req: NextRequest) {
   if (fields.is_active     !== undefined) payload.is_active     = fields.is_active
   if (fields.images        !== undefined) payload.images        = fields.images
   if (fields.video_url     !== undefined) payload.video_url     = fields.video_url || null
+  if (fields.merchandising_tag !== undefined) payload.merchandising_tag = fields.merchandising_tag || null
   payload.updated_at = new Date().toISOString()
 
   // Precompute variant rows before parallel execution
@@ -138,6 +147,9 @@ export async function PATCH(req: NextRequest) {
     skus !== undefined
       ? admin.from('product_skus').delete().eq('product_id', id)
       : Promise.resolve({ error: null }),
+    Array.isArray(health_concern_ids)
+      ? admin.from('product_health_concerns').delete().eq('product_id', id)
+      : Promise.resolve({ error: null }),
   ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -147,6 +159,13 @@ export async function PATCH(req: NextRequest) {
   // Insert new variants after delete completes
   if (processedVariants !== undefined && variantRows.length > 0) {
     await admin.from('product_variants').insert(variantRows)
+  }
+
+  // Re-insert health-concern tags after delete completes
+  if (Array.isArray(health_concern_ids) && health_concern_ids.length > 0) {
+    await admin.from('product_health_concerns').insert(
+      health_concern_ids.map((category_id: string) => ({ product_id: id, category_id }))
+    )
   }
 
   // Insert new SKUs after delete completes
