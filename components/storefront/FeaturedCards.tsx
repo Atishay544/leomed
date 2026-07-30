@@ -22,7 +22,7 @@ export default function FeaturedCards({ cards }: { cards: CardBanner[] }) {
           <Link
             key={card.id}
             href={card.link_url ?? '/products'}
-            className="group relative overflow-hidden rounded-3xl min-h-[280px] sm:min-h-[340px] flex"
+            className="group relative overflow-hidden rounded-3xl aspect-square flex"
             style={{ backgroundColor: card.bg_color ?? '#e8f3ec' }}
           >
             {/* Person / product image — anchored to the right */}
