@@ -190,7 +190,7 @@ export const getAdminProducts = unstable_cache(
       (() => {
         let qb = db
           .from('products')
-          .select('id, name, price, stock, is_active, category_id, images, categories(name), product_skus(stock)', { count: 'exact' })
+          .select('id, name, price, stock, is_active, category_id, images, categories!products_category_id_fkey(name), product_skus(stock)', { count: 'exact' })
           .order('created_at', { ascending: false })
           .range(from, to)
         if (q) qb = qb.ilike('name', `%${q}%`)

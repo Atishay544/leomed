@@ -45,7 +45,7 @@ const getProductBySlug = unstable_cache(
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('products')
-      .select('*, categories(name, slug)')
+      .select('*, categories!products_category_id_fkey(name, slug)')
       .eq('slug', slug)
       .maybeSingle()
     if (error) console.error('[product page] product query:', error.message)

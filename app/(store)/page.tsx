@@ -175,11 +175,11 @@ export default async function HomePage() {
               <AnimatedItem key={cat.id}>
                 <Link
                   href={`/category/${cat.slug}`}
-                  className="group flex flex-col items-center gap-3 p-5 bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                  className="group flex flex-col items-center gap-2 p-2 bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
                 >
-                  <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-emerald-200 transition-all duration-300">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-emerald-200 transition-all duration-300">
                     {cat.image_url ? (
-                      <Image src={cat.image_url} alt={cat.name} width={64} height={64}
+                      <Image src={cat.image_url} alt={cat.name} width={128} height={128}
                         className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-2xl">🏷️</div>
@@ -199,7 +199,7 @@ export default async function HomePage() {
       {healthConcerns && healthConcerns.length > 0 && (
         <section className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 pb-14">
           <SectionHeader title="Shop by Health Concern" />
-          <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mt-7">
+          <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-5 sm:gap-6 mt-7">
             {healthConcerns.map(hc => (
               <AnimatedItem key={hc.id}>
                 <Link

@@ -50,7 +50,7 @@ const getProductsPage = unstable_cache(
 
     let query = supabase
       .from('products')
-      .select('id,name,slug,price,compare_price,images,merchandising_tag,categories(name,slug)', { count: 'exact' })
+      .select('id,name,slug,price,compare_price,images,merchandising_tag,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
       .eq('is_active', true)
       .range(offset, offset + PAGE_SIZE - 1)
 
