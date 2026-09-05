@@ -169,6 +169,10 @@ export default function DoctorVisitForm() {
       setError('Pick a date for the follow-up.')
       return
     }
+    if (locationPhoto.latitude == null || locationPhoto.longitude == null) {
+      setError('Capture your current location before saving the visit.')
+      return
+    }
 
     requestId.current ??= (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`)
 
@@ -561,9 +565,9 @@ export default function DoctorVisitForm() {
       <Section
         icon={MapPin}
         title="Photo & location"
-        subtitle="Optional — a photo and your current location as proof of the visit."
+        subtitle="Your current location is required with every visit. A photo is optional."
       >
-        <VisitLocationPhoto value={locationPhoto} onChange={setLocationPhoto} />
+        <VisitLocationPhoto value={locationPhoto} onChange={setLocationPhoto} locationRequired />
       </Section>
 
       <Section icon={ClipboardList} title="Remarks">

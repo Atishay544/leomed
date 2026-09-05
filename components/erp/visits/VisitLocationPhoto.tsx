@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Camera, Loader2, MapPin, X } from 'lucide-react'
 
@@ -19,9 +19,12 @@ export interface LocationPhotoValue {
 interface Props {
   value: LocationPhotoValue
   onChange: (value: LocationPhotoValue) => void
+  /** The photo stays optional either way — this only affects the location
+   *  button's label and styling, matching the caller's own submit-time check. */
+  locationRequired?: boolean
 }
 
-export default function VisitLocationPhoto({ value, onChange }: Props) {
+export default function VisitLocationPhoto({ value, onChange, locationRequired }: Props) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [locating, setLocating] = useState(false)
@@ -45,6 +48,14 @@ export default function VisitLocationPhoto({ value, onChange }: Props) {
       if (fileInput.current) fileInput.current.value = ''
     }
   }
+
+  // Location is mandatory on the visit forms — ask for it as soon as this
+  // section mounts instead of waiting for the MR to notice the button, so
+  // the permission prompt (and any denial) surfaces early, not at save time.
+  useEffect(() => {
+    if (locationRequired && value.latitude == null) captureLocation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function captureLocation() {
     setError(null)
@@ -123,7 +134,9 @@ export default function VisitLocationPhoto({ value, onChange }: Props) {
                       disabled:opacity-60 ${
                         value.latitude != null
                           ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          : locationRequired
+                            ? 'border-red-300 bg-red-50 text-red-800 hover:bg-red-100'
+                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
         >
           {locating ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
@@ -131,7 +144,9 @@ export default function VisitLocationPhoto({ value, onChange }: Props) {
             ? 'Getting location…'
             : value.latitude != null
               ? 'Location captured'
-              : 'Capture current location'}
+              : locationRequired
+                ? 'Capture current location (required)'
+                : 'Capture current location'}
         </button>
       </div>
 
