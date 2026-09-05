@@ -3,7 +3,6 @@ import { unstable_cache } from 'next/cache'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
-import { MERCHANDISING_LABELS } from '@/lib/utils'
 import { AnimatedGrid, AnimatedItem } from './AnimatedSectionDynamic'
 import AnnouncementBar from '@/components/storefront/AnnouncementBar'
 import FeaturedCards from '@/components/storefront/FeaturedCards'
@@ -55,7 +54,7 @@ const getStaticHomeData = unstable_cache(
         .is('parent_id', null)
         .eq('taxonomy', 'product')
         .order('sort_order')
-        .limit(6),
+        .limit(8),
       supabase
         .from('categories')
         .select('id,name,slug,image_url,accent_color')
@@ -74,30 +73,42 @@ const getStaticHomeData = unstable_cache(
   { revalidate: 600, tags: ['banners', 'categories'] }
 )
 
-type HomeProduct = { id: string; name: string; slug: string; images: string[] | null; merchandising_tag?: string | null }
+type CategoryProduct = { id: string; name: string; slug: string; images: string[] | null; composition: string | null; description: string | null; category_id: string | null }
 
-const getDynamicHomeProducts = unstable_cache(
-  async (): Promise<{ featured: HomeProduct[] }> => {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return { featured: [] }
+const PRODUCTS_PER_CATEGORY = 4
+
+// One section per category, each showing that category's own products —
+// not a generic "featured" grid. Categories with no active products yet
+// are simply skipped (no empty section).
+const getCategoryProducts = unstable_cache(
+  async (categoryIds: string[]): Promise<Record<string, CategoryProduct[]>> => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || categoryIds.length === 0) {
+      return {}
     }
     const supabase = createPublicClient()
-    const { data: featured } = await supabase
+    const { data } = await supabase
       .from('products')
-      .select('id,name,slug,images,merchandising_tag')
+      .select('id,name,slug,images,composition,description,category_id')
       .eq('is_active', true)
+      .in('category_id', categoryIds)
       .order('created_at', { ascending: false })
-      .limit(8)
-    return { featured: featured ?? [] }
+
+    const byCategory: Record<string, CategoryProduct[]> = {}
+    for (const p of (data ?? []) as CategoryProduct[]) {
+      if (!p.category_id) continue
+      const bucket = byCategory[p.category_id] ?? (byCategory[p.category_id] = [])
+      if (bucket.length < PRODUCTS_PER_CATEGORY) bucket.push(p)
+    }
+    return byCategory
   },
-  ['home-products'],
+  ['home-category-products'],
   { revalidate: 600, tags: ['products'] }
 )
 
 export default async function HomePage() {
   const { banners, categories, healthConcerns } = await getStaticHomeData()
-  const { featured } = await getDynamicHomeProducts()
-  const [bottomAnnouncement, afterFeaturedAnnouncement] = await Promise.all([
+  const [categoryProducts, bottomAnnouncement, afterFeaturedAnnouncement] = await Promise.all([
+    getCategoryProducts(categories.map(c => c.id)),
     getBottomAnnouncement(),
     getAfterFeaturedAnnouncement(),
   ])
@@ -140,34 +151,23 @@ export default async function HomePage() {
       {/* ── Hero Carousel — full bleed ── */}
       <HeroCarousel banners={heroSlides} />
 
-      {/* ── Categories ── */}
-      {categories && categories.length > 0 && (
-        <section className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 py-14">
-          <SectionHeader title="Categories" />
-          <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-7">
-            {categories.map(cat => (
-              <AnimatedItem key={cat.id}>
-                <Link
-                  href={`/category/${cat.slug}`}
-                  className="group flex flex-col items-center gap-2 p-2 bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                >
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full bg-gray-100 overflow-hidden ring-2 ring-transparent group-hover:ring-emerald-200 transition-all duration-300">
-                    {cat.image_url ? (
-                      <Image src={cat.image_url} alt={cat.name} width={128} height={128}
-                        className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-2xl">🏷️</div>
-                    )}
-                  </div>
-                  <span className="text-xs font-semibold text-center text-gray-700 group-hover:text-emerald-600 transition-colors duration-200">
-                    {cat.name}
-                  </span>
-                </Link>
-              </AnimatedItem>
-            ))}
-          </AnimatedGrid>
-        </section>
-      )}
+      {/* ── Categories, each with its own products ── */}
+      {categories.map(cat => {
+        const products = categoryProducts[cat.id]
+        if (!products || products.length === 0) return null
+        return (
+          <section key={cat.id} className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 py-10">
+            <SectionHeader title={cat.name} href={`/category/${cat.slug}`} linkLabel="View all →" />
+            <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 mt-6">
+              {products.map(p => (
+                <AnimatedItem key={p.id}>
+                  <CategoryProductCard product={p} />
+                </AnimatedItem>
+              ))}
+            </AnimatedGrid>
+          </section>
+        )
+      })}
 
       {/* ── Health Concerns ── */}
       {healthConcerns && healthConcerns.length > 0 && (
@@ -202,21 +202,7 @@ export default async function HomePage() {
       {/* ── For Him / For Her promo cards (admin-managed) ── */}
       {featuredCards.length > 0 && <FeaturedCards cards={featuredCards} />}
 
-      {/* ── Featured Products ── */}
-      {featured && featured.length > 0 && (
-        <section className={`max-w-350 mx-auto px-4 sm:px-6 lg:px-10 pt-8 ${afterFeaturedAnnouncement ? 'pb-6' : 'pb-12'}`}>
-          <SectionHeader title="Featured Products" href="/products" linkLabel="View all →" />
-          <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 mt-6">
-            {featured.map((p, i) => (
-              <AnimatedItem key={p.id}>
-                <ProductCard product={p} priority={i < 4} />
-              </AnimatedItem>
-            ))}
-          </AnimatedGrid>
-        </section>
-      )}
-
-      {/* ── Announcement — below featured products (sort 2) ── */}
+      {/* ── Announcement — below category sections (sort 2) ── */}
       {afterFeaturedAnnouncement && <AnnouncementBar data={afterFeaturedAnnouncement} />}
     </div>
   )
@@ -237,41 +223,37 @@ function SectionHeader({ title, href, linkLabel }: { title: string; href?: strin
   )
 }
 
-// ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ product, priority = false }: {
-  product: { id: string; name: string; slug: string; images: string[] | null; merchandising_tag?: string | null }
-  priority?: boolean
-}) {
+// ── Category Product Card — image, name, composition, description ──────────────
+function CategoryProductCard({ product }: { product: CategoryProduct }) {
   const image = product.images?.[0]
-  const badge = product.merchandising_tag ? MERCHANDISING_LABELS[product.merchandising_tag] : null
 
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-gray-200/60 transition-all duration-300 h-full">
       <Link href={`/products/${product.slug}`} className="block">
-      <div className="aspect-3/4 bg-gray-50 relative overflow-hidden">
-        {image ? (
-          <Image
-            src={image}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            priority={priority}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300 text-5xl">📦</div>
-        )}
-        {badge && (
-          <span className={`absolute bottom-2.5 left-2.5 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badge.className}`}>
-            {badge.label}
-          </span>
-        )}
-      </div>
-      <div className="p-3.5">
-        <p className="text-sm font-medium line-clamp-2 text-gray-800 group-hover:text-gray-900 transition-colors leading-snug">
-          {product.name}
-        </p>
-      </div>
+        <div className="aspect-square bg-gray-50 relative overflow-hidden">
+          {image ? (
+            <Image
+              src={image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-300 text-5xl">📦</div>
+          )}
+        </div>
+        <div className="p-3.5 space-y-1">
+          <p className="text-sm font-semibold line-clamp-2 text-gray-900 group-hover:text-emerald-700 transition-colors leading-snug">
+            {product.name}
+          </p>
+          {product.composition && (
+            <p className="text-xs text-gray-500 line-clamp-2">{product.composition}</p>
+          )}
+          {product.description && (
+            <p className="text-xs text-gray-400 line-clamp-2">{product.description}</p>
+          )}
+        </div>
       </Link>
     </div>
   )
