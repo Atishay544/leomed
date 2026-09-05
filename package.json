@@ -11,7 +11,10 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "bench": "npx tsx scripts/bench-apis.ts"
+    "bench": "npx tsx scripts/bench-apis.ts",
+    "erp:seed": "node scripts/erp-seed.js",
+    "erp:test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/erp_business_rules.sql",
+    "erp:test:e2e": "playwright test e2e/erp-access.spec.ts"
   },
   "dependencies": {
     "@google-analytics/data": "^6.1.0",

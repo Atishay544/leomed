@@ -26,6 +26,18 @@
 4. Railway auto-detects Node.js via Nixpacks
 5. Health check: GET /health
 
+## ERP (field force / billing / inventory) → same deployment
+
+The ERP at `/erp` ships inside this app and needs no extra hosting or env vars.
+
+1. Apply the ERP migrations (`supabase db push`, or paste
+   `supabase/migrations/20260904*_erp_*.sql` into the SQL editor in filename order).
+   They only create `erp_`-prefixed objects — the storefront schema is untouched.
+2. Create the first administrator (see `docs/ERP.md` §2.3). There is no self-signup for staff.
+3. Optional, non-production only: `npm run erp:seed` for sample data.
+4. Verify: `psql "$DATABASE_URL" -f supabase/tests/erp_business_rules.sql` should end with
+   "All ERP business-rule tests passed."
+
 ## Post-deploy checklist
 - [ ] Update Supabase Auth → Site URL to production URL
 - [ ] Update Supabase Auth → Redirect URLs to include production URL
@@ -35,3 +47,6 @@
 - [ ] Test login flow end-to-end
 - [ ] Test checkout with Razorpay test mode
 - [ ] Promote admin user via SQL UPDATE
+- [ ] Apply the ERP migrations and create the first `erp_users` ADMIN row
+- [ ] Confirm `/erp` redirects to `/erp/login` when signed out, and that a storefront
+      customer account cannot reach it

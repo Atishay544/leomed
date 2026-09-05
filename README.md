@@ -1,4 +1,20 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Leomed Pharma
+
+One Next.js application serving two systems that share a Supabase database:
+
+| | Path | Who uses it |
+|---|---|---|
+| **Storefront** | `/` and `/admin` | Customers, and the shop administrator |
+| **Field force ERP** | `/erp` | Medical representatives, accounts, management |
+
+The ERP covers doctor and chemist visits, field orders, distributor sales, purchase billing,
+batch inventory, follow-ups, targets and reporting — see **[docs/ERP.md](docs/ERP.md)** for setup,
+roles and daily use, and
+[docs/plans/2026-09-04-erp-field-force-implementation.md](docs/plans/2026-09-04-erp-field-force-implementation.md)
+for the schema and the reasoning behind it.
+
+The two systems share `auth.users` and nothing else. Every ERP table is prefixed `erp_`, so the
+storefront's `products`, `orders` and `profiles` are untouched by it.
 
 ## Getting Started
 
