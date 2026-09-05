@@ -172,6 +172,22 @@ export async function getProduct(id: string): Promise<ErpProduct | null> {
   return (data as ErpProduct) ?? null
 }
 
+/**
+ * The public storefront catalogue (public.products) — a separate table from
+ * this product master, used only to populate the optional "link to
+ * storefront listing" field. Linking is a pure cross-reference: it does not
+ * pull price/stock into the catalogue (still not shown publicly) and does
+ * not push the ERP product's own fields onto the storefront record.
+ */
+export async function listStorefrontProductOptions(): Promise<{ value: string; label: string }[]> {
+  const db = await erpDb()
+  const { data } = await (db as any)
+    .from('products')
+    .select('id, name')
+    .order('name', { ascending: true })
+  return ((data ?? []) as { id: string; name: string }[]).map(p => ({ value: p.id, label: p.name }))
+}
+
 /** Typeahead source for the visit and billing forms. Capped hard — this feeds
  *  a dropdown, and a dropdown with 4,000 entries is not a dropdown. */
 export async function searchProductsForPicker(q: string, limit = 20) {

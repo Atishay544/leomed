@@ -159,6 +159,9 @@ export const ErpProductSchema = z.object({
   gst_rate:        gstRate,
   hsn_code:        optionalText(20),
   min_stock_level: nonNegativeInt,
+  // Optional cross-reference to the public storefront catalogue listing
+  // (public.products) — purely a link, not a data pull in either direction.
+  storefront_product_id: optionalUuid,
 })
 
 export const ProductBatchSchema = z.object({

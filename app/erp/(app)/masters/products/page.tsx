@@ -1,11 +1,11 @@
 import { Package } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
-import { listProducts, PAGE_SIZE } from '@/lib/erp/data/masters'
+import { listProducts, listStorefrontProductOptions, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveProduct, setProductActive } from '@/lib/erp/actions/masters'
 import { can } from '@/lib/erp/permissions'
 import { money } from '@/lib/erp/format'
-import { PRODUCT_FIELDS } from '@/components/erp/master-fields'
+import { productFieldsWithStorefrontLink } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
 import SearchBar from '@/components/erp/SearchBar'
@@ -23,9 +23,11 @@ export default async function ProductsPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const { rows, total, pageCount } = await listProducts({
-    q: params.q, page, category: params.category, includeInactive: params.inactive === '1',
-  })
+  const [{ rows, total, pageCount }, storefrontOptions] = await Promise.all([
+    listProducts({ q: params.q, page, category: params.category, includeInactive: params.inactive === '1' }),
+    listStorefrontProductOptions(),
+  ])
+  const productFields = productFieldsWithStorefrontLink(storefrontOptions)
 
   // MRs select products but never define or reprice them (spec §13). A
   // dedicated capability — not the broader masters.write ACCOUNTANT also
@@ -41,7 +43,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         action={canWrite && (
           <MasterFormDialog
             action={saveProduct}
-            fields={PRODUCT_FIELDS}
+            fields={productFields}
             title="Add product"
             triggerLabel="Add product"
             submitLabel="Save product"
@@ -105,7 +107,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                         <div className="flex items-center justify-end gap-2">
                           <MasterFormDialog
                             action={saveProduct}
-                            fields={PRODUCT_FIELDS}
+                            fields={productFields}
                             title={`Edit ${p.product_name}`}
                             submitLabel="Save changes"
                             initial={p as unknown as Record<string, unknown>}

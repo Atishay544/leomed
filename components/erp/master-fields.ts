@@ -94,6 +94,25 @@ export const PRODUCT_FIELDS: FieldSpec[] = [
   },
 ]
 
+/**
+ * PRODUCT_FIELDS plus the optional storefront-catalogue link, whose options
+ * (the list of public.products) can only be known at request time. Pass the
+ * result of listStorefrontProductOptions() from the page.
+ */
+export function productFieldsWithStorefrontLink(storefrontOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    ...PRODUCT_FIELDS,
+    {
+      name: 'storefront_product_id',
+      label: 'Storefront catalogue listing',
+      type: 'select',
+      span: 2,
+      options: [{ value: '', label: '— Not shown on the website —' }, ...storefrontOptions],
+      hint: 'Optional — links this product to its listing on the public catalogue, if it has one. Does not change what shows there.',
+    },
+  ]
+}
+
 /** Batches carry no quantity field on purpose: stock arrives only through a
  *  purchase invoice or a recorded adjustment (spec §15). */
 export const BATCH_FIELDS: FieldSpec[] = [
