@@ -143,7 +143,7 @@ export default async function HomePage() {
       {/* ── Categories ── */}
       {categories && categories.length > 0 && (
         <section className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 py-14">
-          <SectionHeader title="Shop by Category" />
+          <SectionHeader title="Categories" />
           <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-7">
             {categories.map(cat => (
               <AnimatedItem key={cat.id}>
@@ -169,10 +169,10 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── Shop by Health Concern ── */}
+      {/* ── Health Concerns ── */}
       {healthConcerns && healthConcerns.length > 0 && (
         <section className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 pb-14">
-          <SectionHeader title="Shop by Health Concern" />
+          <SectionHeader title="Browse by Health Concern" />
           <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-5 sm:gap-6 mt-7">
             {healthConcerns.map(hc => (
               <AnimatedItem key={hc.id}>
