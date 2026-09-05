@@ -84,15 +84,37 @@ export const PRODUCT_FIELDS: FieldSpec[] = [
   { name: 'pack_size',     label: 'Pack size', placeholder: '10x10' },
   { name: 'unit',          label: 'Unit', type: 'select', options: UNITS, required: true },
   { name: 'hsn_code',      label: 'HSN code' },
-  { name: 'mrp',           label: 'MRP (₹)', type: 'number', step: '0.01', min: '0', required: true },
-  { name: 'purchase_rate', label: 'Purchase rate (₹)', type: 'number', step: '0.01', min: '0', required: true },
-  { name: 'sale_rate',     label: 'Sale rate (₹)', type: 'number', step: '0.01', min: '0', required: true },
+  { name: 'purchase_rate', label: 'Purchase rate (₹)', type: 'number', step: '0.01', min: '0', required: true,
+    hint: 'What we pay our supplier — unrelated to MRP.' },
+  // MRP, distributor price, and retailer price as one linked block — see
+  // components/erp/form/PricingFields.tsx. This one FieldSpec entry emits
+  // three real named inputs (mrp, distributor_price, retailer_price).
+  { name: '__pricing', label: 'Pricing', type: 'pricing', span: 2 },
   { name: 'gst_rate',      label: 'GST rate', type: 'select', options: GST_RATES, required: true },
   {
     name: 'min_stock_level', label: 'Low-stock alert at', type: 'number', min: '0',
     hint: 'Flagged on the dashboard below this quantity',
   },
 ]
+
+/**
+ * PRODUCT_FIELDS plus the optional storefront-catalogue link, whose options
+ * (the list of public.products) can only be known at request time. Pass the
+ * result of listStorefrontProductOptions() from the page.
+ */
+export function productFieldsWithStorefrontLink(storefrontOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    ...PRODUCT_FIELDS,
+    {
+      name: 'storefront_product_id',
+      label: 'Storefront catalogue listing',
+      type: 'select',
+      span: 2,
+      options: [{ value: '', label: '— Not shown on the website —' }, ...storefrontOptions],
+      hint: 'Optional — links this product to its listing on the public catalogue, if it has one. Does not change what shows there.',
+    },
+  ]
+}
 
 /** Batches carry no quantity field on purpose: stock arrives only through a
  *  purchase invoice or a recorded adjustment (spec §15). */

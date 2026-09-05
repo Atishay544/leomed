@@ -155,11 +155,24 @@ export const ErpProductSchema = z.object({
   unit:            z.string().trim().min(1).max(20).default('BOX'),
   mrp:             money,
   purchase_rate:   money,
-  sale_rate:       money,
+  // Trade prices, set as a discount off MRP in the form (the percentage
+  // itself is a UI convenience, not stored — these two numbers are the
+  // source of truth).
+  distributor_price: money,
+  retailer_price:    money,
   gst_rate:        gstRate,
   hsn_code:        optionalText(20),
   min_stock_level: nonNegativeInt,
-})
+  // Optional cross-reference to the public storefront catalogue listing
+  // (public.products) — purely a link, not a data pull in either direction.
+  storefront_product_id: optionalUuid,
+}).transform(data => ({
+  ...data,
+  // sale_rate is what purchase/sales invoice lookups suggest as the default
+  // rate (lib/erp/actions/lookup.ts) — kept in lockstep with distributor
+  // price so that existing invoicing code needs no changes at all.
+  sale_rate: data.distributor_price,
+}))
 
 export const ProductBatchSchema = z.object({
   product_id:         uuid,
@@ -307,7 +320,11 @@ export const SalesItemSchema = z.object({
 })
 
 export const SalesInvoiceSchema = z.object({
-  distributor_id: uuid,
+  // Exactly one buyer — a sale is either to a distributor or direct to a
+  // chemist, never both, never neither. The database re-checks this too
+  // (erp_sales_invoice_buyer_xor).
+  distributor_id: optionalUuid,
+  chemist_id:     optionalUuid,
   invoice_date:   dateString,
   is_interstate:  z.coerce.boolean().default(false),
   initial_payment:   money.default(0),
@@ -318,6 +335,9 @@ export const SalesInvoiceSchema = z.object({
   // batch. The database re-checks the role and refuses without a reason.
   expired_sale_reason: optionalText(500),
   items:          z.array(SalesItemSchema).min(1, 'Add at least one product line'),
+}).refine(data => !!data.distributor_id !== !!data.chemist_id, {
+  message: 'Choose either a distributor or a chemist to bill.',
+  path: ['distributor_id'],
 })
 
 // ─── Payments and receipts (Q6) ─────────────────────────────────────────────
