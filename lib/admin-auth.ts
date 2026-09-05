@@ -12,7 +12,7 @@ import { getErpSession } from '@/lib/erp/auth'
  */
 export const requireAdmin = cache(async () => {
   const session = await getErpSession()
-  if (!session) redirect('/erp/login?redirect=/admin/dashboard')
+  if (!session) redirect('/admin/login?redirect=/admin/dashboard')
   if (session.role !== 'ADMIN') redirect('/erp/denied?need=admin')
 
   return {
