@@ -228,6 +228,9 @@ const VisitBase = {
   follow_up_priority:    z.enum(FOLLOWUP_PRIORITIES).default('MEDIUM'),
   latitude:    z.union([z.coerce.number().min(-90).max(90), z.literal('')]).optional(),
   longitude:   z.union([z.coerce.number().min(-180).max(180), z.literal('')]).optional(),
+  /** A public Supabase Storage URL of a photo taken by the MR during the
+   *  visit — proof-of-visit, not a document requiring validation beyond URL shape. */
+  photo_url:   z.union([z.string().url(), z.literal('')]).optional(),
   /** Idempotency key — a retried save must not create a second visit (D11). */
   client_request_id: uuid,
   order: FieldOrderInput.optional(),

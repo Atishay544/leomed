@@ -3,10 +3,11 @@
 import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
-  CalendarClock, Check, ClipboardList, Loader2, Package, Stethoscope, Trash2,
+  CalendarClock, Check, ClipboardList, Loader2, MapPin, Package, Stethoscope, Trash2,
 } from 'lucide-react'
 import CustomerPicker, { type PickerValue } from './CustomerPicker'
 import ProductPicker from './ProductPicker'
+import VisitLocationPhoto, { type LocationPhotoValue } from './VisitLocationPhoto'
 import { lookupDoctors, findSimilarDoctors, type ProductOption } from '@/lib/erp/actions/lookup'
 import { createDoctorVisit } from '@/lib/erp/actions/visits'
 import type { DiscussionType, VisitPurpose } from '@/lib/erp/types'
@@ -96,6 +97,10 @@ export default function DoctorVisitForm() {
   const [followUpDate, setFollowUpDate] = useState('')
   const [followUpNote, setFollowUpNote] = useState('')
 
+  const [locationPhoto, setLocationPhoto] = useState<LocationPhotoValue>({
+    photoUrl: null, latitude: null, longitude: null,
+  })
+
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [saved, setSaved] = useState<Record<string, unknown> | null>(null)
@@ -130,6 +135,7 @@ export default function DoctorVisitForm() {
     setFollowUp(false)
     setFollowUpDate('')
     setFollowUpNote('')
+    setLocationPhoto({ photoUrl: null, latitude: null, longitude: null })
     setError(null)
     setFieldErrors({})
     setSaved(null)
@@ -198,6 +204,9 @@ export default function DoctorVisitForm() {
       follow_up_date: followUp ? followUpDate : undefined,
       follow_up_description: followUp ? followUpNote || undefined : undefined,
       follow_up_priority: 'MEDIUM' as const,
+      photo_url: locationPhoto.photoUrl ?? undefined,
+      latitude: locationPhoto.latitude ?? undefined,
+      longitude: locationPhoto.longitude ?? undefined,
     }
 
     startSubmit(async () => {
@@ -547,6 +556,14 @@ export default function DoctorVisitForm() {
         ) : (
           <p className="text-[13px] text-gray-500">No follow-up scheduled.</p>
         )}
+      </Section>
+
+      <Section
+        icon={MapPin}
+        title="Photo & location"
+        subtitle="Optional — a photo and your current location as proof of the visit."
+      >
+        <VisitLocationPhoto value={locationPhoto} onChange={setLocationPhoto} />
       </Section>
 
       <Section icon={ClipboardList} title="Remarks">
