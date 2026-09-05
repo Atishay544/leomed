@@ -121,17 +121,22 @@ export async function updateFollowupStatus(input: unknown): Promise<ActionState>
     if (!parsed.success) return invalid(parsed.error)
 
     const db = await erpDb()
-    const { error } = await db
+    const { error, count } = await db
       .from('erp_followups')
       .update({
         status: parsed.data.status,
         // The CHECK constraint requires a timestamp whenever status is
         // COMPLETED, so it is set here rather than left to the caller.
         completed_at: parsed.data.status === 'COMPLETED' ? new Date().toISOString() : null,
-      })
+      }, { count: 'exact' })
       .eq('id', parsed.data.followup_id)
 
     if (error) return friendlyDbError(error, 'Could not update the follow-up.')
+    // Someone else's follow-up is filtered out by RLS, not rejected with an
+    // error — 0 rows affected, which must not read as "updated".
+    if (!count) {
+      return { ok: false, error: 'That follow-up could not be found, or you cannot change it.' }
+    }
 
     revalidatePath('/erp/mr/followups')
     revalidatePath('/erp/mr')

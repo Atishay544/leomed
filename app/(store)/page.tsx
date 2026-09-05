@@ -3,11 +3,10 @@ import { unstable_cache } from 'next/cache'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
-import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
+import { MERCHANDISING_LABELS } from '@/lib/utils'
 import { AnimatedGrid, AnimatedItem } from './AnimatedSectionDynamic'
 import AnnouncementBar from '@/components/storefront/AnnouncementBar'
 import FeaturedCards from '@/components/storefront/FeaturedCards'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 const HeroCarousel = dynamic(() => import('./HeroCarousel'), { ssr: true })
 
@@ -75,30 +74,21 @@ const getStaticHomeData = unstable_cache(
   { revalidate: 600, tags: ['banners', 'categories'] }
 )
 
-type HomeProduct = { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null; merchandising_tag?: string | null }
+type HomeProduct = { id: string; name: string; slug: string; images: string[] | null; merchandising_tag?: string | null }
 
 const getDynamicHomeProducts = unstable_cache(
-  async (): Promise<{ featured: HomeProduct[]; deals: HomeProduct[] }> => {
+  async (): Promise<{ featured: HomeProduct[] }> => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return { featured: [], deals: [] }
+      return { featured: [] }
     }
     const supabase = createPublicClient()
-    const [{ data: featured }, { data: deals }] = await Promise.all([
-      supabase
-        .from('products')
-        .select('id,name,slug,price,compare_price,images,merchandising_tag')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('products')
-        .select('id,name,slug,price,compare_price,images,merchandising_tag')
-        .eq('is_active', true)
-        .not('compare_price', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(8),
-    ])
-    return { featured: featured ?? [], deals: deals ?? [] }
+    const { data: featured } = await supabase
+      .from('products')
+      .select('id,name,slug,images,merchandising_tag')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(8)
+    return { featured: featured ?? [] }
   },
   ['home-products'],
   { revalidate: 600, tags: ['products'] }
@@ -106,7 +96,7 @@ const getDynamicHomeProducts = unstable_cache(
 
 export default async function HomePage() {
   const { banners, categories, healthConcerns } = await getStaticHomeData()
-  const { featured, deals } = await getDynamicHomeProducts()
+  const { featured } = await getDynamicHomeProducts()
   const [bottomAnnouncement, afterFeaturedAnnouncement] = await Promise.all([
     getBottomAnnouncement(),
     getAfterFeaturedAnnouncement(),
@@ -115,7 +105,6 @@ export default async function HomePage() {
   // Position model: promo cards are matched by style; hero/deals by sort_order.
   // Exclude featured_card from hero/deals so a promo card never leaks into them.
   const heroSlides    = banners.filter(b => b.display_style !== 'featured_card' && b.sort_order === 0)
-  const dealBanner    = banners.find(b => b.display_style !== 'featured_card' && b.sort_order === 1) ?? null
   const featuredCards = banners.filter(b => b.display_style === 'featured_card')
 
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
@@ -126,8 +115,8 @@ export default async function HomePage() {
         '@type': 'WebPage',
         '@id': `${BASE_URL}/#webpage`,
         url: BASE_URL,
-        name: 'Leomed Pharma — OTC Medicines & Wellness Online India',
-        description: 'Shop OTC medicines, health devices, personal care, and wellness products online at Leomed Pharma. Fast pan-India delivery.',
+        name: 'Leomed Pharma — OTC Medicines & Wellness Products',
+        description: 'Browse OTC medicines, health devices, personal care, and wellness products from Leomed Pharma. Available through our distributor network.',
         isPartOf: { '@id': `${BASE_URL}/#website` },
         about: { '@id': `${BASE_URL}/#organization` },
         inLanguage: 'en-IN',
@@ -138,22 +127,7 @@ export default async function HomePage() {
           {
             '@type': 'Question',
             name: 'What is Leomed Pharma?',
-            acceptedAnswer: { '@type': 'Answer', text: 'Leomed Pharma is an Indian online pharmacy offering OTC medicines, health devices, personal care, and wellness products shipped pan-India.' },
-          },
-          {
-            '@type': 'Question',
-            name: 'Do you offer free shipping?',
-            acceptedAnswer: { '@type': 'Answer', text: 'Yes. Free shipping on all orders above ₹499 across India.' },
-          },
-          {
-            '@type': 'Question',
-            name: 'What payment methods are accepted?',
-            acceptedAnswer: { '@type': 'Answer', text: 'We accept Cash on Delivery (COD), UPI, credit/debit cards, and net banking.' },
-          },
-          {
-            '@type': 'Question',
-            name: 'What is the return policy?',
-            acceptedAnswer: { '@type': 'Answer', text: 'Medicines cannot be returned once delivered except if damaged, defective, or expired. Non-medicine items can be returned within 7 days. Contact leomedpharma1@gmail.com with your order ID.' },
+            acceptedAnswer: { '@type': 'Answer', text: 'Leomed Pharma is an Indian pharmaceutical company offering OTC medicines, health devices, personal care, and wellness products through a distributor network across India.' },
           },
         ],
       },
@@ -244,57 +218,6 @@ export default async function HomePage() {
 
       {/* ── Announcement — below featured products (sort 2) ── */}
       {afterFeaturedAnnouncement && <AnnouncementBar data={afterFeaturedAnnouncement} />}
-
-      {/* ── Deals Banner — consistent min-height ── */}
-      {deals && deals.length > 0 && (
-        <section className={`max-w-350 mx-auto px-4 sm:px-6 lg:px-10 ${afterFeaturedAnnouncement ? 'pt-8' : 'pt-6'} pb-8`}>
-          <div
-            className={`relative overflow-hidden rounded-2xl min-h-50 flex flex-col sm:flex-row items-center justify-between gap-6 px-8 sm:px-12 py-10 ${
-              dealBanner ? '' : 'bg-linear-to-r from-emerald-700 to-green-500'
-            }`}
-            style={dealBanner ? { backgroundColor: dealBanner.bg_color ?? '#145c3a' } : undefined}
-          >
-            {dealBanner?.image_url && (
-              <Image src={dealBanner.image_url} alt="" fill
-                sizes="(max-width: 1400px) 100vw, 1400px"
-                className="object-cover opacity-20 pointer-events-none" />
-            )}
-            <div className="absolute inset-0 bg-linear-to-r from-black/30 via-transparent to-black/10 pointer-events-none" />
-
-            <div className="relative z-10" style={{ color: dealBanner?.text_color ?? '#ffffff' }}>
-              {!dealBanner && (
-                <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">Limited Time</p>
-              )}
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                {dealBanner?.title ?? 'Up to 50% OFF'}
-              </h2>
-              <p className="opacity-80 mt-2 text-base md:text-lg">
-                {dealBanner?.subtitle ?? 'Selected items — while stocks last'}
-              </p>
-            </div>
-            <Link
-              href={dealBanner?.link_url ?? '/products?sale=true'}
-              className="relative z-10 shrink-0 bg-white text-gray-900 px-8 py-3.5 rounded-full font-bold text-sm hover:bg-gray-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 active:scale-95"
-            >
-              {dealBanner?.link_text ?? 'See Deals'}
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {/* ── Deals Grid ── */}
-      {deals && deals.length > 0 && (
-        <section className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 pt-8 pb-14">
-          <SectionHeader title="Deals & Offers" href="/products?sale=true" linkLabel="View all →" />
-          <AnimatedGrid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 mt-6">
-            {deals.map(p => (
-              <AnimatedItem key={p.id}>
-                <ProductCard product={p} />
-              </AnimatedItem>
-            ))}
-          </AnimatedGrid>
-        </section>
-      )}
     </div>
   )
 }
@@ -316,13 +239,10 @@ function SectionHeader({ title, href, linkLabel }: { title: string; href?: strin
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, priority = false }: {
-  product: { id: string; name: string; slug: string; price: number; compare_price: number | null; images: string[] | null; merchandising_tag?: string | null }
+  product: { id: string; name: string; slug: string; images: string[] | null; merchandising_tag?: string | null }
   priority?: boolean
 }) {
-  const image    = product.images?.[0]
-  const discount = product.compare_price
-    ? Math.round((1 - product.price / product.compare_price) * 100)
-    : 0
+  const image = product.images?.[0]
   const badge = product.merchandising_tag ? MERCHANDISING_LABELS[product.merchandising_tag] : null
 
   return (
@@ -341,11 +261,6 @@ function ProductCard({ product, priority = false }: {
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-5xl">📦</div>
         )}
-        {discount > 0 && (
-          <span className="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-            -{discount}%
-          </span>
-        )}
         {badge && (
           <span className={`absolute bottom-2.5 left-2.5 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${badge.className}`}>
             {badge.label}
@@ -353,25 +268,11 @@ function ProductCard({ product, priority = false }: {
         )}
       </div>
       <div className="p-3.5">
-        <p className="text-sm font-medium line-clamp-2 mb-2 text-gray-800 group-hover:text-gray-900 transition-colors leading-snug">
+        <p className="text-sm font-medium line-clamp-2 text-gray-800 group-hover:text-gray-900 transition-colors leading-snug">
           {product.name}
         </p>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-sm text-gray-900">{formatPrice(product.price)}</span>
-          {product.compare_price && (
-            <span className="text-xs text-gray-400 line-through">
-              {formatPrice(product.compare_price)}
-            </span>
-          )}
-        </div>
       </div>
       </Link>
-      {/* Wishlist toggle — outside Link so click doesn't navigate */}
-      <WishlistButton
-        productId={product.id}
-        size="sm"
-        className="absolute top-2.5 right-2.5 shadow-sm"
-      />
     </div>
   )
 }

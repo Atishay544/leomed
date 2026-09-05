@@ -80,8 +80,6 @@ export default async function ProductsPage({ searchParams }: PageProps) {
               <tr>
                 <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Product</th>
                 <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Category</th>
-                <th className="text-right px-4 py-3 text-xs text-gray-500 font-medium">Price</th>
-                <th className="text-right px-4 py-3 text-xs text-gray-500 font-medium">Stock</th>
                 <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Status</th>
                 <th className="text-right px-4 py-3 text-xs text-gray-500 font-medium">Actions</th>
               </tr>
@@ -112,22 +110,6 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                   <td className="px-4 py-3 text-gray-500">
                     {(product.categories as any)?.name ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-right font-medium text-gray-900">
-                    ₹{Number(product.price).toLocaleString('en-IN')}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {(() => {
-                      const skus = (product as any).product_skus as { stock: number }[] | null
-                      const effectiveStock = skus && skus.length > 0
-                        ? skus.reduce((sum, s) => sum + s.stock, 0)
-                        : product.stock
-                      return (
-                        <span className={effectiveStock < 10 ? 'text-red-600 font-semibold' : 'text-gray-700'}>
-                          {effectiveStock}
-                        </span>
-                      )
-                    })()}
-                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                       {product.is_active ? 'Active' : 'Inactive'}
@@ -144,7 +126,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
               ))}
               {(!products || products.length === 0) && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400">No products found.</td>
+                  <td colSpan={4} className="py-12 text-center text-gray-400">No products found.</td>
                 </tr>
               )}
             </tbody>
@@ -186,57 +168,41 @@ export default async function ProductsPage({ searchParams }: PageProps) {
             No products found.
           </div>
         )}
-        {products?.map(product => {
-          const skus = (product as any).product_skus as { stock: number }[] | null
-          const effectiveStock = skus && skus.length > 0
-            ? skus.reduce((sum: number, s: { stock: number }) => sum + s.stock, 0)
-            : product.stock
-          return (
-            <div key={product.id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
-                  {(product as any).images?.[0] ? (
-                    <Image
-                      src={(product as any).images[0]}
-                      alt={product.name}
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-lg text-gray-300">📦</div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Link href={`/admin/products/${product.id}`} className="font-semibold text-gray-900 hover:text-blue-600 text-sm line-clamp-2">
-                    {product.name}
-                  </Link>
-                  <p className="text-xs text-gray-400 mt-0.5">{(product.categories as any)?.name ?? 'No category'}</p>
-                </div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                  {product.is_active ? 'Active' : 'Inactive'}
-                </span>
+        {products?.map(product => (
+          <div key={product.id} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                {(product as any).images?.[0] ? (
+                  <Image
+                    src={(product as any).images[0]}
+                    alt={product.name}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-lg text-gray-300">📦</div>
+                )}
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="text-xs text-gray-400">Price</p>
-                    <p className="text-sm font-bold text-gray-900">₹{Number(product.price).toLocaleString('en-IN')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Stock</p>
-                    <p className={`text-sm font-semibold ${effectiveStock < 10 ? 'text-red-600' : 'text-gray-700'}`}>{effectiveStock}</p>
-                  </div>
-                </div>
-                <ProductActions
-                  productId={product.id}
-                  isActive={product.is_active}
-                  productName={product.name}
-                />
+              <div className="flex-1 min-w-0">
+                <Link href={`/admin/products/${product.id}`} className="font-semibold text-gray-900 hover:text-blue-600 text-sm line-clamp-2">
+                  {product.name}
+                </Link>
+                <p className="text-xs text-gray-400 mt-0.5">{(product.categories as any)?.name ?? 'No category'}</p>
               </div>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                {product.is_active ? 'Active' : 'Inactive'}
+              </span>
             </div>
-          )
-        })}
+            <div className="flex items-center justify-end">
+              <ProductActions
+                productId={product.id}
+                isActive={product.is_active}
+                productName={product.name}
+              />
+            </div>
+          </div>
+        ))}
         {totalPages > 1 && (
           <div className="flex items-center justify-between py-2">
             <p className="text-sm text-gray-500">

@@ -7,6 +7,10 @@ import { assertSameOrigin } from './csrf'
  * Combined admin auth + CSRF guard for API routes.
  * Returns { admin } on success, or a NextResponse error to return immediately.
  *
+ * Admin here means ERP staff with role = 'ADMIN' — the storefront catalogue
+ * and content management share the same staff identity as the ERP, there is
+ * no separate customer/admin account system any more.
+ *
  * Usage:
  *   const guard = await adminGuard(req)
  *   if (guard instanceof NextResponse) return guard
@@ -19,23 +23,23 @@ export async function adminGuard(req: NextRequest): Promise<
   const csrf = assertSameOrigin(req)
   if (csrf) return csrf
 
-  // 2. Auth — local JWT decode from cookie (~1ms, no Supabase API call)
+  // 2. Auth — getUser() revalidates against Supabase Auth (not just a local
+  // cookie decode) since a revoked/deactivated staff account must not reach
+  // catalogue-write endpoints.
   const supabase = await createServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // 3. Role — app_metadata is server-set and RS256-signed, cannot be forged
+  // 3. Role — read from erp_users, the single source of truth for staff roles.
   const admin = createAdminClient()
-  if (user.app_metadata?.role === 'admin') return { admin }
-
-  const { data: profile } = await admin
-    .from('profiles')
+  const { data: staff } = await admin
+    .from('erp_users')
     .select('role')
-    .eq('id', user.id)
-    .single()
+    .eq('auth_user_id', user.id)
+    .eq('active', true)
+    .maybeSingle()
 
-  if (profile?.role !== 'admin')
+  if ((staff as { role?: string } | null)?.role !== 'ADMIN')
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   return { admin }

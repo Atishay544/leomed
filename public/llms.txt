@@ -28,8 +28,6 @@ We do not sell or dispense prescription (Rx) medicines.
 
 - [Home](https://www.leomedpharma.in/)
 - [All Products](https://www.leomedpharma.in/products)
-- [Cart](https://www.leomedpharma.in/cart)
-- [Wishlist](https://www.leomedpharma.in/wishlist)
 - [Search](https://www.leomedpharma.in/search)
 - [Account Login](https://www.leomedpharma.in/login)
 

@@ -46,43 +46,8 @@ export default function ProductFilters({
         </ul>
       </div>
 
-      {/* Price range */}
-      <div>
-        <h3 className="font-semibold mb-3 text-gray-900">Price Range</h3>
-        <div className="flex gap-2 items-center">
-          <input
-            type="number"
-            placeholder="Min"
-            defaultValue={currentParams.min ?? ''}
-            onBlur={e => update('min', e.target.value || null)}
-            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-          />
-          <span className="text-gray-400">–</span>
-          <input
-            type="number"
-            placeholder="Max"
-            defaultValue={currentParams.max ?? ''}
-            onBlur={e => update('max', e.target.value || null)}
-            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Sale */}
-      <div>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={currentParams.sale === 'true'}
-            onChange={e => update('sale', e.target.checked ? 'true' : null)}
-            className="rounded"
-          />
-          <span className="font-medium">On Sale</span>
-        </label>
-      </div>
-
       {/* Clear */}
-      {(currentParams.category || currentParams.min || currentParams.max || currentParams.sale) && (
+      {currentParams.category && (
         <button
           onClick={() => router.push('/products')}
           className="text-xs text-red-500 hover:underline">

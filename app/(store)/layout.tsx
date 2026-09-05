@@ -4,7 +4,6 @@ import Header from '@/components/storefront/Header'
 import Footer from '@/components/storefront/Footer'
 import AnnouncementBar from '@/components/storefront/AnnouncementBar'
 import ChatWidgetLoader from '@/components/chat/ChatWidgetLoader'
-import VisitorTracker from '@/components/storefront/VisitorTracker'
 import WelcomePopup from '@/components/storefront/WelcomePopup'
 import { AnimatedGradient } from '@/components/backgrounds/AnimatedGradient'
 import { NetworkBackground } from '@/components/backgrounds/NetworkBackground'
@@ -68,7 +67,6 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         <main className="flex-1 overflow-x-clip">{children}</main>
         <Footer categories={roots} />
         <ChatWidgetLoader />
-        <VisitorTracker />
         <WelcomePopup />
       </div>
     </>

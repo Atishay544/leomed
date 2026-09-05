@@ -2,12 +2,10 @@ import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import Image from 'next/image'
-import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
+import { MERCHANDISING_LABELS } from '@/lib/utils'
 import ProductFilters from './ProductFilters'
 import MobileFilterDrawer from './MobileFilterDrawer'
-import SortSelect from './SortSelect'
 import ProductSkeletonGrid from '@/components/ui/ProductSkeleton'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 export const revalidate = 30
 
@@ -29,10 +27,6 @@ export async function generateMetadata() {
 
 interface FilterParams {
   category?: string
-  sort?: string
-  min?: string
-  max?: string
-  sale?: string
   page?: string
 }
 
@@ -46,23 +40,15 @@ const getProductsPage = unstable_cache(
     const supabase = createPublicClient()
     const page = Math.max(1, parseInt(params.page ?? '1'))
     const offset = (page - 1) * PAGE_SIZE
-    const sort = params.sort ?? 'newest'
 
     let query = supabase
       .from('products')
-      .select('id,name,slug,price,compare_price,images,merchandising_tag,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
+      .select('id,name,slug,images,merchandising_tag,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
       .eq('is_active', true)
+      .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1)
 
     if (params.category) query = query.eq('category_id', params.category)
-    if (params.sale === 'true') query = query.not('compare_price', 'is', null)
-    if (params.min) query = query.gte('price', parseFloat(params.min))
-    if (params.max) query = query.lte('price', parseFloat(params.max))
-
-    if (sort === 'newest')           query = query.order('created_at', { ascending: false })
-    else if (sort === 'price_asc')   query = query.order('price', { ascending: true })
-    else if (sort === 'price_desc')  query = query.order('price', { ascending: false })
-    else if (sort === 'popular')     query = query.order('stock', { ascending: false })
 
     const [{ data: products, count }, { data: categories }] = await Promise.all([
       query,
@@ -80,7 +66,6 @@ export default async function ProductsPage({ searchParams }: Props) {
   const { products, count, categories } = await getProductsPage(params)
   const page = Math.max(1, parseInt(params.page ?? '1'))
   const totalPages = Math.ceil(count / PAGE_SIZE)
-  const sort = params.sort ?? 'newest'
 
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
   const itemListJsonLd = {
@@ -116,10 +101,6 @@ export default async function ProductsPage({ searchParams }: Props) {
               <MobileFilterDrawer categories={categories} currentParams={params} />
               <p className="text-sm text-gray-500">{count} products</p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-sm text-gray-600 hidden sm:inline">Sort:</span>
-              <SortSelect current={sort} />
-            </div>
           </div>
 
           {/* Grid */}
@@ -151,8 +132,6 @@ export default async function ProductsPage({ searchParams }: Props) {
 
 function ProductCard({ product }: { product: any }) {
   const image = product.images?.[0]
-  const discount = product.compare_price
-    ? Math.round((1 - product.price / product.compare_price) * 100) : 0
   const badge = product.merchandising_tag ? MERCHANDISING_LABELS[product.merchandising_tag] : null
 
   return (
@@ -167,26 +146,14 @@ function ProductCard({ product }: { product: any }) {
                 blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
             : <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">📦</div>
           }
-          {discount > 0 && (
-            <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              -{discount}%
-            </span>
-          )}
           {badge && (
             <span className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
               {badge.label}
             </span>
           )}
         </div>
-        <p className="text-sm font-medium line-clamp-2 mb-1">{product.name}</p>
-        <div className="flex items-center gap-2">
-          <span className="font-bold">{formatPrice(product.price)}</span>
-          {product.compare_price && (
-            <span className="text-sm text-gray-400 line-through">{formatPrice(product.compare_price)}</span>
-          )}
-        </div>
+        <p className="text-sm font-medium line-clamp-2">{product.name}</p>
       </Link>
-      <WishlistButton productId={product.id} size="sm" className="absolute top-2 right-2 shadow-sm" />
     </div>
   )
 }

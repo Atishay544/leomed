@@ -155,17 +155,6 @@ async function run() {
     '(inserts chat_session + message)',
   )
 
-  // POST /api/checkout/validate-coupon (bad code — exercises DB lookup fast-path)
-  row(
-    '/api/checkout/validate-coupon — POST',
-    'POST',
-    '/api/checkout/validate-coupon',
-    await bench('validate-coupon POST', 'POST', '/api/checkout/validate-coupon', {
-      code: 'BENCH_INVALID_XYZ', subtotal: 99.99,
-    }),
-    '(expects 400 — bad code — still hits DB)',
-  )
-
   // POST /api/chat/bot-reply (greeting intent, fake session → 404, exercises classify+parallel)
   row(
     '/api/chat/bot-reply — POST (greeting)',
@@ -207,25 +196,6 @@ async function run() {
 
   // ── ADMIN ROUTES ──────────────────────────────────────────────────────────
   console.log(`${C.bold}ADMIN ROUTES${C.reset}  ${authNote}`)
-
-  // Coupons
-  row(
-    '/api/admin/coupons — POST',
-    'POST',
-    '/api/admin/coupons',
-    await bench('coupons POST', 'POST', '/api/admin/coupons', {
-      code: `BENCH${Date.now()}`, type: 'percentage', value: 10,
-    }, adminHeaders),
-  )
-
-  row(
-    '/api/admin/coupons — PATCH',
-    'PATCH',
-    '/api/admin/coupons',
-    await bench('coupons PATCH', 'PATCH', '/api/admin/coupons', {
-      id: '00000000-0000-0000-0000-000000000000', is_active: false,
-    }, adminHeaders),
-  )
 
   // Banners
   row(

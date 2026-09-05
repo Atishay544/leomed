@@ -81,7 +81,6 @@ export default function ContactPage() {
             <Link href="/faq" className="block hover:text-black transition">→ FAQs</Link>
             <Link href="/refund-policy" className="block hover:text-black transition">→ Refund Policy</Link>
             <Link href="/shipping-policy" className="block hover:text-black transition">→ Shipping Policy</Link>
-            <Link href="/account/orders" className="block hover:text-black transition">→ Track Your Order</Link>
           </div>
         </div>
 

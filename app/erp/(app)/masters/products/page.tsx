@@ -27,8 +27,11 @@ export default async function ProductsPage({ searchParams }: Props) {
     q: params.q, page, category: params.category, includeInactive: params.inactive === '1',
   })
 
-  // MRs select products but never define or reprice them (spec §13).
-  const canWrite = can(session.role, 'masters.write')
+  // MRs select products but never define or reprice them (spec §13). A
+  // dedicated capability — not the broader masters.write ACCOUNTANT also
+  // holds for distributors/suppliers — since erp_products' RLS is
+  // admin-only and the two must never drift apart again (pre-PR review).
+  const canWrite = can(session.role, 'products.write')
 
   return (
     <>

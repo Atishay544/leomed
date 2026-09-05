@@ -3,11 +3,10 @@ import Link from 'next/link'
 type Category = { id: string; name: string; slug: string }
 
 const staticLinks = {
-  Account: [
-    { label: 'My Orders', href: '/account/orders' },
-    { label: 'Wishlist', href: '/wishlist' },
-    { label: 'My Profile', href: '/account' },
-    { label: 'Care Plan', href: '/care-plan' },
+  Company: [
+    { label: 'About Us', href: '/about' },
+    { label: 'Upcoming Launches', href: '/upcoming-launches' },
+    { label: 'News & Articles', href: '/news' },
   ],
   Support: [
     { label: 'Contact Us', href: '/contact' },
