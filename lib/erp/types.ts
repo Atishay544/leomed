@@ -178,6 +178,8 @@ export interface ErpProduct {
   mrp: number
   purchase_rate: number
   sale_rate: number
+  distributor_price: number
+  retailer_price: number
   gst_rate: number
   hsn_code: string | null
   min_stock_level: number

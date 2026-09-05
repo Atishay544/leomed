@@ -77,7 +77,8 @@ export default async function ProductsPage({ searchParams }: Props) {
                   <Th>Form / Pack</Th>
                   <Th>Category</Th>
                   <Th align="right">MRP</Th>
-                  <Th align="right">Sale rate</Th>
+                  <Th align="right">Distributor</Th>
+                  <Th align="right">Retailer</Th>
                   <Th align="right">GST</Th>
                   {canWrite && <Th align="right">Actions</Th>}
                 </tr>
@@ -100,7 +101,8 @@ export default async function ProductsPage({ searchParams }: Props) {
                     </Td>
                     <Td>{p.category ?? '—'}</Td>
                     <Td align="right" className="tabular-nums">{money(p.mrp)}</Td>
-                    <Td align="right" className="tabular-nums font-medium text-gray-900">{money(p.sale_rate)}</Td>
+                    <Td align="right" className="tabular-nums font-medium text-gray-900">{money(p.distributor_price)}</Td>
+                    <Td align="right" className="tabular-nums">{money(p.retailer_price)}</Td>
                     <Td align="right" className="tabular-nums">{p.gst_rate}%</Td>
                     {canWrite && (
                       <Td align="right">

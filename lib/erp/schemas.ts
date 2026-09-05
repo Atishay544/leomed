@@ -155,14 +155,24 @@ export const ErpProductSchema = z.object({
   unit:            z.string().trim().min(1).max(20).default('BOX'),
   mrp:             money,
   purchase_rate:   money,
-  sale_rate:       money,
+  // Trade prices, set as a discount off MRP in the form (the percentage
+  // itself is a UI convenience, not stored — these two numbers are the
+  // source of truth).
+  distributor_price: money,
+  retailer_price:    money,
   gst_rate:        gstRate,
   hsn_code:        optionalText(20),
   min_stock_level: nonNegativeInt,
   // Optional cross-reference to the public storefront catalogue listing
   // (public.products) — purely a link, not a data pull in either direction.
   storefront_product_id: optionalUuid,
-})
+}).transform(data => ({
+  ...data,
+  // sale_rate is what purchase/sales invoice lookups suggest as the default
+  // rate (lib/erp/actions/lookup.ts) — kept in lockstep with distributor
+  // price so that existing invoicing code needs no changes at all.
+  sale_rate: data.distributor_price,
+}))
 
 export const ProductBatchSchema = z.object({
   product_id:         uuid,

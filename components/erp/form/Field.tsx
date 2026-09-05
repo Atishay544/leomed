@@ -1,9 +1,11 @@
 'use client'
 
+import PricingFields from './PricingFields'
+
 export interface FieldSpec {
   name: string
   label: string
-  type?: 'text' | 'number' | 'date' | 'email' | 'tel' | 'textarea' | 'select' | 'checkbox'
+  type?: 'text' | 'number' | 'date' | 'email' | 'tel' | 'textarea' | 'select' | 'checkbox' | 'pricing'
   required?: boolean
   placeholder?: string
   options?: { value: string; label: string }[]
@@ -20,13 +22,26 @@ const inputClass =
   'focus:outline-none disabled:bg-gray-50 disabled:text-gray-500'
 
 export function Field({
-  spec, defaultValue, errors,
+  spec, defaultValue, errors, initial, fieldErrors,
 }: {
   spec: FieldSpec
   defaultValue?: string | number | boolean | null
   errors?: string[]
+  /** Full record of the row being edited — only 'pricing' needs more than
+   *  its own defaultValue, since it renders three linked inputs at once. */
+  initial?: Record<string, unknown>
+  fieldErrors?: Record<string, string[] | undefined>
 }) {
   const { name, label, type = 'text', required, placeholder, options, span = 1, step, min, hint } = spec
+
+  if (type === 'pricing') {
+    return (
+      <div className={span === 2 ? 'sm:col-span-2' : ''}>
+        <PricingFields initial={initial} errors={fieldErrors} />
+      </div>
+    )
+  }
+
   const invalid = !!errors?.length
   const describedBy = invalid ? `${name}-error` : hint ? `${name}-hint` : undefined
 
@@ -59,7 +74,7 @@ export function Field({
           aria-describedby={describedBy}
           className={inputClass}
         >
-          {!required && <option value="">—</option>}
+          {!required && !options?.some(o => o.value === '') && <option value="">—</option>}
           {options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       ) : type === 'checkbox' ? (

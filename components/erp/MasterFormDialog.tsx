@@ -132,6 +132,8 @@ export default function MasterFormDialog({
                       spec={spec}
                       defaultValue={initial?.[spec.name] as string | number | boolean | null}
                       errors={state.fieldErrors?.[spec.name]}
+                      initial={initial}
+                      fieldErrors={state.fieldErrors}
                     />
                   ))}
                 </div>

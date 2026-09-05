@@ -84,9 +84,12 @@ export const PRODUCT_FIELDS: FieldSpec[] = [
   { name: 'pack_size',     label: 'Pack size', placeholder: '10x10' },
   { name: 'unit',          label: 'Unit', type: 'select', options: UNITS, required: true },
   { name: 'hsn_code',      label: 'HSN code' },
-  { name: 'mrp',           label: 'MRP (₹)', type: 'number', step: '0.01', min: '0', required: true },
-  { name: 'purchase_rate', label: 'Purchase rate (₹)', type: 'number', step: '0.01', min: '0', required: true },
-  { name: 'sale_rate',     label: 'Sale rate (₹)', type: 'number', step: '0.01', min: '0', required: true },
+  { name: 'purchase_rate', label: 'Purchase rate (₹)', type: 'number', step: '0.01', min: '0', required: true,
+    hint: 'What we pay our supplier — unrelated to MRP.' },
+  // MRP, distributor price, and retailer price as one linked block — see
+  // components/erp/form/PricingFields.tsx. This one FieldSpec entry emits
+  // three real named inputs (mrp, distributor_price, retailer_price).
+  { name: '__pricing', label: 'Pricing', type: 'pricing', span: 2 },
   { name: 'gst_rate',      label: 'GST rate', type: 'select', options: GST_RATES, required: true },
   {
     name: 'min_stock_level', label: 'Low-stock alert at', type: 'number', min: '0',
