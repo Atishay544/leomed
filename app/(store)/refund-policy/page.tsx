@@ -52,8 +52,8 @@ export default function RefundPolicyPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-900 mb-3">How to Initiate an Eligible Return</h2>
           <ol className="list-decimal pl-5 space-y-2 mt-2">
-            <li>Log in to your account and go to <Link href="/account/orders" className="text-black underline underline-offset-2">My Orders</Link>.</li>
-            <li>Select the order and click <strong>"Request Return"</strong> (only shown for eligible items).</li>
+            <li>Contact our <Link href="/contact" className="text-black underline underline-offset-2">support team</Link> with your order details.</li>
+            <li>Our team will confirm eligibility and guide you through the return.</li>
             <li>Select the item(s) and reason for return.</li>
             <li>We'll email you return instructions within 24 hours.</li>
           </ol>

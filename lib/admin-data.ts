@@ -2,46 +2,28 @@ import { unstable_cache } from 'next/cache'
 import { createAdminClient } from './supabase/admin'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-// The storefront is browse-only — checkout, orders, delivery, and visitor
-// tracking were removed, so this reports only what's still live: the catalog
-// and signed-up customers. Historical order/revenue data still exists in the
-// database (untouched) but has no admin screen anymore, so it's deliberately
-// not surfaced here.
+// This is a B2B informational catalogue now — no accounts, no purchases, no
+// stock/price shown publicly. There's nothing customer-shaped left to report
+// on; the dashboard just surfaces catalogue health.
 
 export const getAdminDashboard = unstable_cache(
   async () => {
     const db = createAdminClient()
 
-    const now   = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const d30   = new Date(today); d30.setDate(d30.getDate() - 30)
-
-    const [profilesTotalRes, profilesNewRes, productsTotalRes, lowStockRes] = await Promise.all([
-      db.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'customer'),
-      db.from('profiles').select('id', { count: 'exact', head: true })
-        .eq('role', 'customer').gte('created_at', d30.toISOString()),
+    const [productsTotalRes, newsTotalRes, launchesTotalRes] = await Promise.all([
       db.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
-      db.from('products').select('id, name, stock, product_skus(stock)')
-        .eq('is_active', true).order('stock', { ascending: true }).limit(50),
+      (db as any).from('news_articles').select('id', { count: 'exact', head: true }).eq('is_published', true),
+      (db as any).from('upcoming_launches').select('id', { count: 'exact', head: true }).eq('is_active', true),
     ])
 
     return {
-      newCustomers30d: profilesNewRes.count   ?? 0,
-      totalCustomers:  profilesTotalRes.count ?? 0,
-      totalProducts:   productsTotalRes.count ?? 0,
-      lowStock: ((lowStockRes.data ?? []) as { id: string; name: string; stock: number; product_skus?: { stock: number }[] }[])
-        .map(p => {
-          const skuTotal = (p.product_skus ?? []).reduce((s, sk) => s + sk.stock, 0)
-          const effectiveStock = skuTotal > 0 ? skuTotal : p.stock
-          return { id: p.id, name: p.name, stock: effectiveStock }
-        })
-        .filter(p => p.stock <= 10)
-        .sort((a, b) => a.stock - b.stock)
-        .slice(0, 6),
+      totalProducts:      productsTotalRes.count   ?? 0,
+      publishedNews:      newsTotalRes.count        ?? 0,
+      activeLaunches:     launchesTotalRes.count    ?? 0,
     }
   },
   ['admin-dashboard'],
-  { revalidate: 30, tags: ['admin-dashboard', 'admin-products'] }
+  { revalidate: 30, tags: ['admin-dashboard', 'admin-products', 'admin-news', 'admin-launches'] }
 )
 
 // ─── Products list ────────────────────────────────────────────────────────────
@@ -59,7 +41,7 @@ export const getAdminProducts = unstable_cache(
       (() => {
         let qb = db
           .from('products')
-          .select('id, name, price, stock, is_active, category_id, images, categories!products_category_id_fkey(name), product_skus(stock)', { count: 'exact' })
+          .select('id, name, is_active, category_id, images, categories!products_category_id_fkey(name)', { count: 'exact' })
           .order('created_at', { ascending: false })
           .range(from, to)
         if (q) qb = qb.ilike('name', `%${q}%`)
@@ -111,4 +93,40 @@ export const getAdminAnnouncements = unstable_cache(
   },
   ['admin-announcements'],
   { revalidate: 60, tags: ['admin-announcements'] }
+)
+
+// ─── News & Articles ────────────────────────────────────────────────────────────
+
+export const getAdminNews = unstable_cache(
+  async () => {
+    const db = createAdminClient()
+    const { data } = await (db as any).from('news_articles').select('*').order('sort_order').order('created_at', { ascending: false })
+    return data ?? []
+  },
+  ['admin-news'],
+  { revalidate: 30, tags: ['admin-news'] }
+)
+
+// ─── Upcoming Launches ────────────────────────────────────────────────────────────
+
+export const getAdminUpcomingLaunches = unstable_cache(
+  async () => {
+    const db = createAdminClient()
+    const { data } = await (db as any).from('upcoming_launches').select('*').order('sort_order').order('created_at', { ascending: false })
+    return data ?? []
+  },
+  ['admin-launches'],
+  { revalidate: 30, tags: ['admin-launches'] }
+)
+
+// ─── About page ───────────────────────────────────────────────────────────────
+
+export const getAdminAbout = unstable_cache(
+  async () => {
+    const db = createAdminClient()
+    const { data } = await (db as any).from('about_content').select('*').eq('id', 1).single()
+    return data ?? { id: 1, title: 'About Leomed Pharma', body: '' }
+  },
+  ['admin-about'],
+  { revalidate: 60, tags: ['admin-about'] }
 )

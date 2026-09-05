@@ -4,21 +4,23 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { Search, User, Menu, X, ChevronDown } from 'lucide-react'
+import { Search, Menu, X, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@/lib/hooks/useAuth'
-import ProfileDrawer from './ProfileDrawer'
 
 // Max categories shown inline before collapsing into "More ▾"
 const VISIBLE_LIMIT = 4
 
+const STATIC_LINKS = [
+  { href: '/about',              label: 'About' },
+  { href: '/upcoming-launches',  label: 'Upcoming' },
+  { href: '/news',               label: 'News' },
+]
+
 export default function Header({ categories }: { categories: any[] }) {
-  const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [searchQ, setSearchQ] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -164,6 +166,21 @@ export default function Header({ categories }: { categories: any[] }) {
                 )}
               </Link>
             )}
+
+            {STATIC_LINKS.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={false}
+                className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                  pathname === link.href
+                    ? 'text-emerald-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
 
           {/* Search */}
@@ -188,23 +205,6 @@ export default function Header({ categories }: { categories: any[] }) {
             >
               <Search size={20} />
             </button>
-
-            {/* Profile (desktop only — on mobile it lives inside the hamburger menu) */}
-            <button
-              onClick={() => user ? setProfileOpen(true) : router.push('/login')}
-              aria-label={user ? 'My account' : 'Sign in'}
-              className="hidden md:flex items-center gap-2 ml-1 min-h-11 transition-all duration-200"
-            >
-              {user
-                ? <div className="w-8 h-8 rounded-full bg-foreground hover:bg-primary text-background flex items-center justify-center text-xs font-bold transition-colors duration-200">
-                    {user.email?.[0]?.toUpperCase() ?? 'U'}
-                  </div>
-                : <div className="flex items-center gap-1.5 text-sm font-medium text-muted-fg hover:text-primary hover:border-primary border border-border rounded-full px-3 py-1.5 transition-all duration-200">
-                    <User size={14} />
-                    <span className="hidden sm:inline">Sign in</span>
-                  </div>
-              }
-            </button>
           </div>
         </div>
 
@@ -219,34 +219,6 @@ export default function Header({ categories }: { categories: any[] }) {
               className="md:hidden border-t border-border bg-background overflow-hidden"
             >
               <div className="px-4 py-4 space-y-0.5">
-                {/* Profile / Account — moved here from the top bar on mobile */}
-                {user ? (
-                  <button
-                    onClick={() => { setMobileOpen(false); setProfileOpen(true) }}
-                    className="w-full flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold shrink-0">
-                      {user.email?.[0]?.toUpperCase() ?? 'U'}
-                    </div>
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-sm font-semibold text-gray-900 leading-tight">My Account</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                    </div>
-                    <ChevronDown size={14} className="-rotate-90 text-gray-300 shrink-0" />
-                  </button>
-                ) : (
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2.5 py-2.5 px-3 text-sm font-medium text-gray-700 hover:text-black hover:bg-gray-50 rounded-lg transition-colors duration-150"
-                  >
-                    <User size={16} className="text-gray-400 shrink-0" />
-                    Sign in / Register
-                  </Link>
-                )}
-
-                <div className="h-px bg-border my-2" />
-
                 {categories.map(cat => (
                   <MobileCategoryItem
                     key={cat.id}
@@ -267,6 +239,21 @@ export default function Header({ categories }: { categories: any[] }) {
                 >
                   All Products
                 </Link>
+                {STATIC_LINKS.map(link => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    prefetch={false}
+                    className={`block py-2.5 px-3 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                      pathname === link.href
+                        ? 'text-emerald-600 bg-emerald-50'
+                        : 'text-gray-700 hover:text-black hover:bg-gray-50'
+                    }`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
                 <form onSubmit={handleSearch} className="flex items-center bg-gray-100 rounded-full px-3 py-2 gap-2 mt-3">
                   <Search size={14} className="text-gray-400" />
                   <input
@@ -282,8 +269,6 @@ export default function Header({ categories }: { categories: any[] }) {
           )}
         </AnimatePresence>
       </header>
-
-      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
     </>
   )
 }

@@ -73,8 +73,7 @@ export default function ShippingPolicyPage() {
           <p>Once your order is shipped:</p>
           <ol className="list-decimal pl-5 space-y-1 mt-2">
             <li>You'll receive an email with your tracking number and carrier link.</li>
-            <li>Log in and visit <Link href="/account/orders" className="text-black underline underline-offset-2">My Orders</Link> to see live status updates.</li>
-            <li>You can also ask our <Link href="/contact" className="text-black underline underline-offset-2">support chat</Link> — our bot will pull up your tracking instantly.</li>
+            <li>You can also reach our <Link href="/contact" className="text-black underline underline-offset-2">support chat</Link> with your order details for a status update.</li>
           </ol>
         </section>
 

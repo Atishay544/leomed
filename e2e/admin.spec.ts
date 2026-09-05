@@ -3,9 +3,8 @@ import { test, expect } from '@playwright/test'
 test.describe('Admin portal access control', () => {
   test('redirects unauthenticated users from admin', async ({ page }) => {
     await page.goto('/admin/dashboard')
-    // Should redirect to login or home
-    const url = page.url()
-    expect(url).not.toContain('/admin/dashboard')
+    // Storefront admin now shares the ERP staff login — should land on /erp/login
+    await expect(page).toHaveURL(/\/erp\/login/)
   })
 
   test('redirects non-admin users from admin', async ({ page }) => {
@@ -25,15 +24,11 @@ test.describe('Admin dashboard (requires credentials)', () => {
   test.skip(!adminEmail || !adminPassword, 'E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD not set')
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login')
-    // Switch to email/password tab
-    const emailTab = page.locator('button', { hasText: /Email.*Password/i })
-    if (await emailTab.isVisible()) await emailTab.click()
-
-    await page.locator('input[type="email"]').fill(adminEmail!)
-    await page.locator('input[type="password"]').fill(adminPassword!)
+    await page.goto('/erp/login')
+    await page.locator('input#email').fill(adminEmail!)
+    await page.locator('input#password').fill(adminPassword!)
     await page.locator('button[type="submit"]').click()
-    await page.waitForURL(/account|\//, { timeout: 10000 })
+    await page.waitForURL(/admin|erp/, { timeout: 10000 })
   })
 
   test('admin can access dashboard', async ({ page }) => {
@@ -45,7 +40,7 @@ test.describe('Admin dashboard (requires credentials)', () => {
   test('admin dashboard shows key metrics', async ({ page }) => {
     await page.goto('/admin/dashboard')
     // Look for stats cards
-    await expect(page.locator('text=/customers|products|visitors/i').first()).toBeVisible()
+    await expect(page.locator('text=/products|news|launches/i').first()).toBeVisible()
   })
 
   test('admin products page loads', async ({ page }) => {

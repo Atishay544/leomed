@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Package, Users, Tag,
-  Megaphone, Star, MessageSquare, Image as ImageIcon,
-  ChevronDown,
+  LayoutDashboard, Package, Tag,
+  Megaphone, MessageSquare, Image as ImageIcon,
+  Newspaper, Rocket, Info, ChevronDown,
 } from 'lucide-react'
 
 const navGroups = [
@@ -27,19 +27,20 @@ const navGroups = [
   },
   {
     label: 'Content',
-    defaultOpen: false,
+    defaultOpen: true,
     items: [
-      { href: '/admin/banners',       label: 'Banners',       icon: ImageIcon },
-      { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+      { href: '/admin/banners',           label: 'Banners',           icon: ImageIcon },
+      { href: '/admin/announcements',     label: 'Announcements',     icon: Megaphone },
+      { href: '/admin/news',              label: 'News & Articles',   icon: Newspaper },
+      { href: '/admin/upcoming-launches', label: 'Upcoming Launches', icon: Rocket },
+      { href: '/admin/about',             label: 'About Page',        icon: Info },
     ],
   },
   {
     label: 'Support',
     defaultOpen: false,
     items: [
-      { href: '/admin/customers', label: 'Customers',   icon: Users },
-      { href: '/admin/reviews',   label: 'Reviews',     icon: Star },
-      { href: '/admin/chat',      label: 'Chat Support', icon: MessageSquare },
+      { href: '/admin/chat', label: 'Chat Support', icon: MessageSquare },
     ],
   },
 ]

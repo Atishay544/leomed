@@ -84,6 +84,12 @@ const MR_CAPABILITIES: readonly Capability[] = [
  * rates on invoices but does not define the product master (spec §13,
  * "only admins may define products") — erp_products' RLS enforces the same
  * line, so this list must not add products.write without also changing that.
+ *
+ * inventory.adjust IS included: an accountant owns the ledger end-to-end —
+ * purchase/sales invoices already move stock through their hands, and manual
+ * corrections (damage, expiry write-off, opening balance) are part of the
+ * same job. erp_adjust_inventory() checks erp_can_write_billing() (ADMIN or
+ * ACCOUNTANT) to match, not erp_is_admin() alone.
  */
 const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'masters.read',
@@ -93,6 +99,7 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'billing.sales.read',
   'billing.sales.write',
   'inventory.read',
+  'inventory.adjust',
 ]
 
 /** Reads the whole field force and the money, changes only order status. */

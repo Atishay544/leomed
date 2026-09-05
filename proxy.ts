@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-// Routes that require a logged-in user
-const PROTECTED = ['/account', '/admin']
-
-// The ERP (field force / billing / inventory) signs in at its own door and
-// against its own staff directory, so it never shares /login with storefront
-// customers. This is an optimistic edge gate only — lib/erp/auth.ts re-reads
-// erp_users on the server and RLS enforces the rest.
+// The storefront has no public accounts any more — the only login door is
+// the ERP's own (/erp/login), shared by ERP staff and storefront admins
+// (catalogue/content management, gated on erp_users.role = 'ADMIN').
 const ERP_ROOT  = '/erp'
 const ERP_LOGIN = '/erp/login'
+const STAFF_ROOTS = [ERP_ROOT, '/admin']
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -27,17 +24,15 @@ export async function proxy(req: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  const needsErpAuth = pathname.startsWith(ERP_ROOT) && !pathname.startsWith(ERP_LOGIN)
+  // This is a cheap edge gate only: "is anyone signed in at all?" The
+  // authoritative check — is this signed-in user active ERP staff, and do
+  // they hold the ADMIN role for /admin — happens server-side in
+  // lib/erp/auth.ts / lib/admin-auth.ts, because a JWT claim can go stale
+  // (deactivated overnight, role changed) while the cookie is still valid.
+  const needsStaffAuth = STAFF_ROOTS.some(root => pathname.startsWith(root)) && !pathname.startsWith(ERP_LOGIN)
 
   if (!supabaseUrl || !supabaseKey) {
-    if (needsErpAuth) return NextResponse.redirect(new URL(ERP_LOGIN, req.url))
-
-    const needsAuth = PROTECTED.some(p => pathname.startsWith(p))
-    if (needsAuth) {
-      const loginUrl = new URL('/login', req.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
+    if (needsStaffAuth) return NextResponse.redirect(new URL(ERP_LOGIN, req.url))
     return response
   }
 
@@ -55,28 +50,10 @@ export async function proxy(req: NextRequest) {
   })
 
   // getSession() decodes JWT from cookie locally — no Supabase API call (~1ms).
-  // app_metadata is server-set and RS256-signed — cannot be forged by clients.
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user ?? null
 
-  const needsAuth = PROTECTED.some(p => pathname.startsWith(p))
-  if (needsAuth && !user) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  // Admin role check — app_metadata.role is embedded in the signed JWT
-  if (pathname.startsWith('/admin') && user) {
-    if (user.app_metadata?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/?error=unauthorized', req.url))
-    }
-  }
-
-  // ERP gate. Only "is anyone signed in?" is decided here: the staff record and
-  // role are read from erp_users server-side, because a JWT claim can go stale
-  // (deactivated overnight, role changed) while the cookie is still valid.
-  if (needsErpAuth && !user) {
+  if (needsStaffAuth && !user) {
     const loginUrl = new URL(ERP_LOGIN, req.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)

@@ -4,14 +4,14 @@ import { createPublicClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
+import { MERCHANDISING_LABELS } from '@/lib/utils'
 
 export const revalidate = 3600
 export const dynamicParams = true
 
 interface Props {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ sort?: string; page?: string }>
+  searchParams: Promise<{ page?: string }>
 }
 
 const PAGE_SIZE = 20
@@ -39,8 +39,8 @@ export async function generateMetadata({ params }: Props) {
   const concern = await getHealthConcernBySlug(slug)
   if (!concern) return { title: 'Not Found' }
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
-  const title = `${concern.name} Products — Buy Online | Leomed Pharma`
-  const description = `Shop products for ${concern.name} online at Leomed Pharma. Free shipping above ₹499.`
+  const title = `${concern.name} Products | Leomed Pharma`
+  const description = `Browse products for ${concern.name} at Leomed Pharma.`
   const canonical = `${BASE_URL}/health-concern/${slug}`
   return {
     title,
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 const getHealthConcernProducts = unstable_cache(
-  async (categoryId: string, sort: string, page: number) => {
+  async (categoryId: string, page: number) => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { products: [], count: 0 }
     const supabase = createPublicClient()
 
@@ -68,19 +68,14 @@ const getHealthConcernProducts = unstable_cache(
     if (productIds.length === 0) return { products: [], count: 0 }
 
     const offset = (page - 1) * PAGE_SIZE
-    let query = supabase
+    const { data: products } = await supabase
       .from('products')
-      .select('id,name,slug,price,compare_price,images,merchandising_tag')
+      .select('id,name,slug,images,merchandising_tag')
       .in('id', productIds)
       .eq('is_active', true)
+      .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1)
 
-    if (sort === 'price_asc')       query = query.order('price', { ascending: true })
-    else if (sort === 'price_desc') query = query.order('price', { ascending: false })
-    else if (sort === 'popular')    query = query.order('stock', { ascending: false })
-    else                            query = query.order('created_at', { ascending: false })
-
-    const { data: products } = await query
     return { products: products ?? [], count: count ?? 0 }
   },
   ['health-concern-products'],
@@ -89,13 +84,13 @@ const getHealthConcernProducts = unstable_cache(
 
 export default async function HealthConcernPage({ params, searchParams }: Props) {
   const { slug } = await params
-  const { sort = 'newest', page: pageStr = '1' } = await searchParams
+  const { page: pageStr = '1' } = await searchParams
   const page = Math.max(1, parseInt(pageStr))
 
   const concern = await getHealthConcernBySlug(slug)
   if (!concern) notFound()
 
-  const { products, count } = await getHealthConcernProducts(concern.id, sort, page)
+  const { products, count } = await getHealthConcernProducts(concern.id, page)
   const totalPages = Math.ceil(count / PAGE_SIZE)
 
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
@@ -107,7 +102,7 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
         '@type': 'CollectionPage',
         '@id': `${pageUrl}#collection`,
         name: `${concern.name} Products — Leomed Pharma`,
-        description: `Shop products for ${concern.name} online at Leomed Pharma.`,
+        description: `Browse products for ${concern.name} at Leomed Pharma.`,
         url: pageUrl,
         ...(concern.image_url ? { image: concern.image_url } : {}),
         numberOfItems: count,
@@ -137,23 +132,11 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
       )}
       {!concern.image_url && <h1 className="text-2xl font-bold mb-6">{concern.name}</h1>}
 
-      <div className="flex items-center justify-between mb-5 gap-3">
-        <p className="text-sm text-gray-500 shrink-0">{count} products</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-          {[['newest','Newest'],['popular','Popular'],['price_asc','Price ↑'],['price_desc','Price ↓']].map(([v, l]) => (
-            <Link key={v}
-              href={`/health-concern/${slug}?sort=${v}`}
-              className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition ${sort === v ? 'bg-black text-white border-black' : 'border-gray-300 hover:border-gray-500'}`}>
-              {l}
-            </Link>
-          ))}
-        </div>
-      </div>
+      <p className="text-sm text-gray-500 mb-5">{count} products</p>
 
       {products.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {products.map((p: any) => {
-            const discount = p.compare_price ? Math.round((1 - p.price / p.compare_price) * 100) : 0
             const badge = p.merchandising_tag ? MERCHANDISING_LABELS[p.merchandising_tag] : null
             return (
               <div key={p.id} className="group relative">
@@ -167,11 +150,6 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                           placeholder="blur"
                           blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
                       : <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300">📦</div>}
-                    {discount > 0 && (
-                      <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                        -{discount}%
-                      </span>
-                    )}
                     {badge && (
                       <span className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
                         {badge.label}
@@ -179,10 +157,6 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                     )}
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{p.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-bold text-sm">{formatPrice(p.price)}</span>
-                    {p.compare_price && <span className="text-xs text-gray-400 line-through">{formatPrice(p.compare_price)}</span>}
-                  </div>
                 </Link>
               </div>
             )
@@ -195,7 +169,7 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
       {totalPages > 1 && (
         <div className="flex flex-wrap justify-center gap-2 mt-10">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-            <Link key={p} href={`/health-concern/${slug}?sort=${sort}&page=${p}`}
+            <Link key={p} href={`/health-concern/${slug}?page=${p}`}
               className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition
                 ${p === page ? 'bg-black text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
               {p}

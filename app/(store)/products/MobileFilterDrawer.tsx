@@ -13,7 +13,7 @@ export default function MobileFilterDrawer({
   currentParams: Record<string, string | undefined>
 }) {
   const [open, setOpen] = useState(false)
-  const activeCount = [currentParams.category, currentParams.min, currentParams.max, currentParams.sale === 'true' ? 'true' : null].filter(Boolean).length
+  const activeCount = [currentParams.category].filter(Boolean).length
 
   return (
     <>
