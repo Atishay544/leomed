@@ -320,7 +320,11 @@ export const SalesItemSchema = z.object({
 })
 
 export const SalesInvoiceSchema = z.object({
-  distributor_id: uuid,
+  // Exactly one buyer — a sale is either to a distributor or direct to a
+  // chemist, never both, never neither. The database re-checks this too
+  // (erp_sales_invoice_buyer_xor).
+  distributor_id: optionalUuid,
+  chemist_id:     optionalUuid,
   invoice_date:   dateString,
   is_interstate:  z.coerce.boolean().default(false),
   initial_payment:   money.default(0),
@@ -331,6 +335,9 @@ export const SalesInvoiceSchema = z.object({
   // batch. The database re-checks the role and refuses without a reason.
   expired_sale_reason: optionalText(500),
   items:          z.array(SalesItemSchema).min(1, 'Add at least one product line'),
+}).refine(data => !!data.distributor_id !== !!data.chemist_id, {
+  message: 'Choose either a distributor or a chemist to bill.',
+  path: ['distributor_id'],
 })
 
 // ─── Payments and receipts (Q6) ─────────────────────────────────────────────

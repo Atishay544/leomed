@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Plus, ShoppingCart } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listSalesInvoices } from '@/lib/erp/data/billing'
-import { listDistributors } from '@/lib/erp/data/masters'
+import { listDistributors, listChemists } from '@/lib/erp/data/masters'
 import { PAGE_SIZE, parsePage } from '@/lib/erp/data/query'
 import { can } from '@/lib/erp/permissions'
 import { formatDate, money, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES } from '@/lib/erp/format'
@@ -17,7 +17,7 @@ export const metadata = { title: 'Sales' }
 interface Props {
   searchParams: Promise<{
     page?: string; q?: string; from?: string; to?: string
-    distributor?: string; payment?: string
+    distributor?: string; chemist?: string; payment?: string
   }>
 }
 
@@ -26,23 +26,24 @@ export default async function SalesPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const [{ rows, total, pageCount }, distributors] = await Promise.all([
+  const [{ rows, total, pageCount }, distributors, chemists] = await Promise.all([
     listSalesInvoices({
       page, q: params.q, from: params.from, to: params.to,
-      partyId: params.distributor, paymentStatus: params.payment,
+      partyId: params.distributor, chemistId: params.chemist, paymentStatus: params.payment,
     }),
     listDistributors({ page: 1 }),
+    listChemists({ page: 1 }),
   ])
 
   const canWrite = can(session.role, 'billing.sales.write')
-  const hasFilters = !!(params.from || params.to || params.distributor || params.payment)
+  const hasFilters = !!(params.from || params.to || params.distributor || params.chemist || params.payment)
   const pageTotal = rows.reduce((sum, i) => sum + Number(i.grand_total ?? 0), 0)
 
   return (
     <>
       <PageHeader
         title="Sales"
-        description="Leomed's own invoices to distributors. Saving one deducts stock from the batches sold."
+        description="Leomed's own invoices to distributors or direct to chemists. Saving one deducts stock from the batches sold."
         action={canWrite && (
           <ButtonLink href="/erp/accounting/sales/new">
             <Plus size={15} /> New sales invoice
@@ -71,6 +72,11 @@ export default async function SalesPage({ searchParams }: Props) {
             allLabel="All distributors"
           />
           <FilterSelect
+            name="chemist" label="Chemist" defaultValue={params.chemist}
+            options={chemists.rows.map(c => ({ value: c.id, label: c.chemist_name }))}
+            allLabel="All chemists"
+          />
+          <FilterSelect
             name="payment" label="Payment" defaultValue={params.payment}
             options={PAYMENT_STATUSES.map(s => ({ value: s, label: PAYMENT_STATUS_LABELS[s] }))}
           />
@@ -82,7 +88,7 @@ export default async function SalesPage({ searchParams }: Props) {
             title={hasFilters || params.q ? 'No sales match' : 'No sales invoices yet'}
             description={
               canWrite
-                ? 'Raise your first invoice to a distributor.'
+                ? 'Raise your first invoice to a distributor or chemist.'
                 : 'Sales invoices raised by accounting will appear here.'
             }
             action={canWrite && (
@@ -96,7 +102,7 @@ export default async function SalesPage({ searchParams }: Props) {
                 <tr>
                   <Th>Invoice</Th>
                   <Th>Date</Th>
-                  <Th>Distributor</Th>
+                  <Th>Bill to</Th>
                   <Th align="center">Lines</Th>
                   <Th align="right">Taxable</Th>
                   <Th align="right">GST</Th>
@@ -120,8 +126,11 @@ export default async function SalesPage({ searchParams }: Props) {
                       <Td>{formatDate(inv.invoice_date)}</Td>
                       <Td>
                         <span className="font-medium text-gray-900">
-                          {inv.erp_distributors?.distributor_name ?? '—'}
+                          {inv.erp_distributors?.distributor_name ?? inv.erp_chemists?.chemist_name ?? '—'}
                         </span>
+                        {inv.chemist_id && (
+                          <Badge className="ml-1.5 bg-blue-50 text-blue-700 ring-blue-600/20">Direct</Badge>
+                        )}
                       </Td>
                       <Td align="center" className="tabular-nums">
                         {inv.erp_sales_invoice_items?.length ?? 0}

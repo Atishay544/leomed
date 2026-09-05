@@ -35,9 +35,16 @@ interface InvoiceDetail {
     reference_number: string | null; remarks: string | null; created_at: string
     erp_users: { name: string } | null
   }[] | null
+  distributor_id: string | null
+  chemist_id: string | null
   erp_distributors: {
     distributor_name: string; distributor_code: string; gst_number: string | null
     city: string | null; state: string | null; phone: string | null
+    drug_license_number: string | null
+  } | null
+  erp_chemists: {
+    chemist_name: string; gst_number: string | null
+    city: string | null; phone: string | null
     drug_license_number: string | null
   } | null
   erp_sales_invoice_items: {
@@ -61,6 +68,7 @@ export default async function SalesInvoiceDetailPage({
   if (!invoice) notFound()
 
   const distributor = invoice.erp_distributors
+  const chemist = invoice.erp_chemists
   const tax = gstSplit(Number(invoice.tax), invoice.is_interstate)
 
   const receipts: PaymentEntry[] = (invoice.erp_sales_receipts ?? [])
@@ -195,22 +203,28 @@ export default async function SalesInvoiceDetailPage({
 
         <div className="space-y-4">
           <Card>
-            <h2 className="mb-3 text-[13px] font-semibold text-gray-800">Distributor</h2>
-            <p className="text-[14px] font-semibold text-gray-900">{distributor?.distributor_name ?? '—'}</p>
-            <p className="mt-0.5 font-mono text-[11.5px] text-gray-400">{distributor?.distributor_code}</p>
-            {distributor?.gst_number && (
+            <h2 className="mb-3 text-[13px] font-semibold text-gray-800">
+              {chemist ? 'Chemist (direct sale)' : 'Distributor'}
+            </h2>
+            <p className="text-[14px] font-semibold text-gray-900">
+              {distributor?.distributor_name ?? chemist?.chemist_name ?? '—'}
+            </p>
+            {distributor?.distributor_code && (
+              <p className="mt-0.5 font-mono text-[11.5px] text-gray-400">{distributor.distributor_code}</p>
+            )}
+            {(distributor?.gst_number ?? chemist?.gst_number) && (
               <p className="mt-2 text-[12.5px] text-gray-600">
-                GST <span className="font-mono">{distributor.gst_number}</span>
+                GST <span className="font-mono">{distributor?.gst_number ?? chemist?.gst_number}</span>
               </p>
             )}
-            {distributor?.drug_license_number && (
+            {(distributor?.drug_license_number ?? chemist?.drug_license_number) && (
               <p className="mt-0.5 text-[12.5px] text-gray-600">
-                DL <span className="font-mono">{distributor.drug_license_number}</span>
+                DL <span className="font-mono">{distributor?.drug_license_number ?? chemist?.drug_license_number}</span>
               </p>
             )}
-            {(distributor?.city || distributor?.state) && (
+            {(distributor?.city || distributor?.state || chemist?.city) && (
               <p className="mt-0.5 text-[12.5px] text-gray-600">
-                {[distributor?.city, distributor?.state].filter(Boolean).join(', ')}
+                {[distributor?.city ?? chemist?.city, distributor?.state].filter(Boolean).join(', ')}
               </p>
             )}
           </Card>
