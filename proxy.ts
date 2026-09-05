@@ -4,6 +4,13 @@ import { createServerClient } from '@supabase/ssr'
 // Routes that require a logged-in user
 const PROTECTED = ['/account', '/checkout', '/wishlist', '/admin']
 
+// The ERP (field force / billing / inventory) signs in at its own door and
+// against its own staff directory, so it never shares /login with storefront
+// customers. This is an optimistic edge gate only — lib/erp/auth.ts re-reads
+// erp_users on the server and RLS enforces the rest.
+const ERP_ROOT  = '/erp'
+const ERP_LOGIN = '/erp/login'
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -20,7 +27,11 @@ export async function proxy(req: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const needsErpAuth = pathname.startsWith(ERP_ROOT) && !pathname.startsWith(ERP_LOGIN)
+
   if (!supabaseUrl || !supabaseKey) {
+    if (needsErpAuth) return NextResponse.redirect(new URL(ERP_LOGIN, req.url))
+
     const needsAuth = PROTECTED.some(p => pathname.startsWith(p))
     if (needsAuth) {
       const loginUrl = new URL('/login', req.url)
@@ -60,6 +71,15 @@ export async function proxy(req: NextRequest) {
     if (user.app_metadata?.role !== 'admin') {
       return NextResponse.redirect(new URL('/?error=unauthorized', req.url))
     }
+  }
+
+  // ERP gate. Only "is anyone signed in?" is decided here: the staff record and
+  // role are read from erp_users server-side, because a JWT claim can go stale
+  // (deactivated overnight, role changed) while the cookie is still valid.
+  if (needsErpAuth && !user) {
+    const loginUrl = new URL(ERP_LOGIN, req.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return response
