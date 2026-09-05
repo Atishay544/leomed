@@ -49,7 +49,12 @@ export default async function NewSalesInvoicePage() {
             icon={Truck}
             title="Add a distributor or a chemist first"
             description="A sales invoice has to be raised against a distributor, or direct to a chemist."
-            action={<ButtonLink href="/erp/masters/distributors">Go to distributors</ButtonLink>}
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <ButtonLink href="/erp/masters/distributors">Go to distributors</ButtonLink>
+                <ButtonLink href="/erp/masters/chemists">Go to chemists</ButtonLink>
+              </div>
+            }
           />
         </Card>
       ) : (
