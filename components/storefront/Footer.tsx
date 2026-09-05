@@ -45,9 +45,9 @@ export default function Footer({ categories = [] }: { categories?: Category[] })
           </div>
         </div>
 
-        {/* Shop — dynamic categories from DB */}
+        {/* Catalogue — dynamic categories from DB */}
         <div>
-          <h3 className="text-white font-semibold mb-3 text-sm">Shop</h3>
+          <h3 className="text-white font-semibold mb-3 text-sm">Catalogue</h3>
           <ul className="space-y-2">
             <li>
               <Link href="/products" className="text-sm hover:text-white transition">All Products</Link>

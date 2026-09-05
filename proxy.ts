@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-// The storefront has no public accounts any more — the only login door is
-// the ERP's own (/erp/login), shared by ERP staff and storefront admins
-// (catalogue/content management, gated on erp_users.role = 'ADMIN').
-const ERP_ROOT  = '/erp'
-const ERP_LOGIN = '/erp/login'
-const STAFF_ROOTS = [ERP_ROOT, '/admin']
+// The storefront has no public accounts any more. Two staff doors share the
+// same underlying identity (erp_users): /erp/login for all field-force
+// staff, /admin/login as a second, admin-branded door onto the storefront
+// catalogue/content panel (gated on erp_users.role = 'ADMIN'). An ADMIN
+// account can also still use /erp/login — the doors are cosmetic, not a
+// separate account system.
+const ERP_ROOT    = '/erp'
+const ERP_LOGIN   = '/erp/login'
+const ADMIN_ROOT  = '/admin'
+const ADMIN_LOGIN = '/admin/login'
+
+function loginPathFor(pathname: string) {
+  return pathname.startsWith(ADMIN_ROOT) ? ADMIN_LOGIN : ERP_LOGIN
+}
+
+function needsStaffAuth(pathname: string) {
+  if (pathname.startsWith(ERP_LOGIN) || pathname.startsWith(ADMIN_LOGIN)) return false
+  return pathname.startsWith(ERP_ROOT) || pathname.startsWith(ADMIN_ROOT)
+}
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -25,14 +38,14 @@ export async function proxy(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   // This is a cheap edge gate only: "is anyone signed in at all?" The
-  // authoritative check — is this signed-in user active ERP staff, and do
-  // they hold the ADMIN role for /admin — happens server-side in
+  // authoritative check — is this signed-in user active staff, and do they
+  // hold the ADMIN role for /admin — happens server-side in
   // lib/erp/auth.ts / lib/admin-auth.ts, because a JWT claim can go stale
   // (deactivated overnight, role changed) while the cookie is still valid.
-  const needsStaffAuth = STAFF_ROOTS.some(root => pathname.startsWith(root)) && !pathname.startsWith(ERP_LOGIN)
+  const staffGate = needsStaffAuth(pathname)
 
   if (!supabaseUrl || !supabaseKey) {
-    if (needsStaffAuth) return NextResponse.redirect(new URL(ERP_LOGIN, req.url))
+    if (staffGate) return NextResponse.redirect(new URL(loginPathFor(pathname), req.url))
     return response
   }
 
@@ -53,8 +66,8 @@ export async function proxy(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user ?? null
 
-  if (needsStaffAuth && !user) {
-    const loginUrl = new URL(ERP_LOGIN, req.url)
+  if (staffGate && !user) {
+    const loginUrl = new URL(loginPathFor(pathname), req.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }

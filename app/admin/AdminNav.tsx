@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Package, Tag,
   Megaphone, MessageSquare, Image as ImageIcon,
-  Newspaper, Rocket, Info, ChevronDown,
+  Newspaper, Rocket, Info, Stethoscope, ChevronDown,
 } from 'lucide-react'
 
 const navGroups = [
@@ -41,6 +41,13 @@ const navGroups = [
     defaultOpen: false,
     items: [
       { href: '/admin/chat', label: 'Chat Support', icon: MessageSquare },
+    ],
+  },
+  {
+    label: 'ERP',
+    defaultOpen: false,
+    items: [
+      { href: '/erp/dashboard', label: 'Field Force / ERP', icon: Stethoscope },
     ],
   },
 ]
