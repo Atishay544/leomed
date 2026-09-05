@@ -419,7 +419,10 @@ export default function ChemistVisitForm() {
                   className={inputClass} placeholder="Anything else worth noting…" aria-label="Remarks" />
       </Section>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95
+      {/* bottom-20 on mobile: only MRs reach this form (visits.create), and
+          MRs always get ErpShell's fixed bottom quick-nav — bottom-0 here
+          would sit exactly behind it (z-30) and hide the button entirely. */}
+      <div className="fixed inset-x-0 bottom-20 z-20 border-t border-gray-200 bg-white/95
                       px-4 py-3 backdrop-blur lg:sticky lg:bottom-4 lg:rounded-xl lg:border">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <div className="min-w-0 flex-1 text-[12px] text-gray-500">
