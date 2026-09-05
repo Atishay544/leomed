@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 export const revalidate = 3600
 export const dynamicParams = true
@@ -185,7 +184,6 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                     {p.compare_price && <span className="text-xs text-gray-400 line-through">{formatPrice(p.compare_price)}</span>}
                   </div>
                 </Link>
-                <WishlistButton productId={p.id} size="sm" className="absolute top-2 right-2 shadow-sm" />
               </div>
             )
           })}

@@ -57,11 +57,20 @@ async function saveMaster<S extends z.ZodType>(
     const values = parsed.data as Record<string, unknown>
 
     if (id) {
-      const { error } = await db
+      const { error, count } = await db
         .from(cfg.table)
-        .update({ ...values, updated_by: session.id })
+        .update({ ...values, updated_by: session.id }, { count: 'exact' })
         .eq('id', id)
       if (error) return friendlyDbError(error, `Could not update the ${cfg.label}.`)
+      // Past the MR edit window, or someone else's record, RLS filters the
+      // row out rather than raising — 0 rows affected, reported by .update()
+      // as ordinary success unless checked here.
+      if (!count) {
+        return {
+          ok: false,
+          error: `Could not update this ${cfg.label} — it may be outside your edit window, or you may not have access to it.`,
+        }
+      }
     } else {
       const { error } = await db
         .from(cfg.table)
@@ -85,12 +94,18 @@ async function setMasterActive(
 
     // Deactivation, not deletion — visits and invoices must keep their subject
     // (spec §34).
-    const { error } = await db
+    const { error, count } = await db
       .from(cfg.table)
-      .update({ active, updated_by: session.id })
+      .update({ active, updated_by: session.id }, { count: 'exact' })
       .eq('id', id)
 
     if (error) return friendlyDbError(error, `Could not update the ${cfg.label}.`)
+    // RLS filtering out a row you can't touch is not an error — it's zero
+    // rows affected, which .update() alone reports as success. Checked
+    // explicitly so a blocked attempt is never shown as "saved".
+    if (!count) {
+      return { ok: false, error: `That ${cfg.label} could not be found, or you cannot change it.` }
+    }
     revalidatePath(cfg.path)
     return { ok: true }
   })
@@ -110,8 +125,28 @@ export async function saveDoctor(_prev: ActionState, formData: FormData) {
   return saveMaster(DOCTOR, DoctorSchema, formData)
 }
 
-export async function setDoctorActive(id: string, active: boolean) {
-  return setMasterActive(DOCTOR, id, active)
+/**
+ * Activating/deactivating a doctor is administrative, not a byproduct of
+ * "may create customers" — that capability lets an MR add new doctors, not
+ * retire a shared record other reps depend on. `masters.create_customer` is
+ * held by MR, so this checks ADMIN explicitly rather than reusing DOCTOR's
+ * capability, and calls the DB function that does the same check server-side
+ * (erp_doctors.active is no longer directly writable by non-admins at all).
+ */
+export async function setDoctorActive(id: string, active: boolean): Promise<ActionState> {
+  return runAction('Could not update the doctor.', async () => {
+    const session = await assertCapability('masters.create_customer')
+    if (session.role !== 'ADMIN') {
+      return { ok: false, error: 'Only an administrator can activate or deactivate a doctor.' }
+    }
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_set_doctor_active', { p_doctor: id, p_active: active })
+    if (error) return friendlyDbError(error, 'Could not update the doctor.')
+
+    revalidatePath(DOCTOR.path)
+    return { ok: true }
+  })
 }
 
 // ─── Chemists ───────────────────────────────────────────────────────────────
@@ -127,8 +162,22 @@ export async function saveChemist(_prev: ActionState, formData: FormData) {
   return saveMaster(CHEMIST, ChemistSchema, formData)
 }
 
-export async function setChemistActive(id: string, active: boolean) {
-  return setMasterActive(CHEMIST, id, active)
+/** Same reasoning as setDoctorActive: administrative, ADMIN-only, and routed
+ *  through the DB function now that active isn't in the direct grant. */
+export async function setChemistActive(id: string, active: boolean): Promise<ActionState> {
+  return runAction('Could not update the chemist.', async () => {
+    const session = await assertCapability('masters.create_customer')
+    if (session.role !== 'ADMIN') {
+      return { ok: false, error: 'Only an administrator can activate or deactivate a chemist.' }
+    }
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_set_chemist_active', { p_chemist: id, p_active: active })
+    if (error) return friendlyDbError(error, 'Could not update the chemist.')
+
+    revalidatePath(CHEMIST.path)
+    return { ok: true }
+  })
 }
 
 // ─── Distributors & suppliers (trade partners — accounting owns these) ──────
@@ -168,7 +217,11 @@ export async function setSupplierActive(id: string, active: boolean) {
 const PRODUCT: MasterConfig = {
   table: 'erp_products',
   // Admin only: an MR picking products must never be able to reprice them.
-  capability: 'masters.write',
+  // A dedicated capability, not the broader masters.write ACCOUNTANT also
+  // holds for distributors/suppliers — erp_products' RLS is admin-only, and
+  // sharing the capability let an accountant "successfully" submit an edit
+  // that RLS then silently dropped (pre-PR review finding).
+  capability: 'products.write',
   path: '/erp/masters/products',
   label: 'product',
 }
@@ -202,8 +255,12 @@ export async function saveBatch(_prev: ActionState, formData: FormData): Promise
       const editable = { ...parsed.data } as Record<string, unknown>
       delete editable.product_id
 
-      const { error } = await db.from('erp_product_batches').update(editable).eq('id', id)
+      const { error, count } = await db
+        .from('erp_product_batches')
+        .update(editable, { count: 'exact' })
+        .eq('id', id)
       if (error) return friendlyDbError(error, 'Could not update the batch.')
+      if (!count) return { ok: false, error: 'That batch could not be found.' }
     } else {
       const { error } = await db
         .from('erp_product_batches')

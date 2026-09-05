@@ -25,23 +25,4 @@ test.describe('Auth flow', () => {
     await page.goto('/account')
     await expect(page).toHaveURL(/login/)
   })
-
-  test('checkout redirect when not logged in', async ({ page }) => {
-    // Set up some cart items in localStorage first
-    await page.goto('/products')
-    const firstProduct = page.locator('a[href^="/products/"]').first()
-    const href = await firstProduct.getAttribute('href')
-    if (href) {
-      await page.goto(href)
-      const addBtn = page.locator('button', { hasText: /Add to Cart/i }).first()
-      if (await addBtn.isEnabled()) {
-        await addBtn.click()
-        await page.goto('/checkout')
-        // Should either show checkout or redirect to login
-        const url = page.url()
-        const hasCheckout = url.includes('/checkout') || url.includes('/login')
-        expect(hasCheckout).toBe(true)
-      }
-    }
-  })
 })

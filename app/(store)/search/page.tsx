@@ -5,7 +5,6 @@ import Image from 'next/image'
 import { formatPrice } from '@/lib/utils'
 import { Search } from 'lucide-react'
 import SearchInput from './SearchInput'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 interface Props { searchParams: Promise<{ q?: string }> }
 
@@ -119,7 +118,6 @@ export default async function SearchPage({ searchParams }: Props) {
                     <p className="text-sm font-medium line-clamp-2">{p.name}</p>
                     <p className="text-sm font-bold mt-0.5">{formatPrice(p.price)}</p>
                   </Link>
-                  <WishlistButton productId={p.id} size="sm" className="absolute top-2 right-2 shadow-sm" />
                 </div>
               )
             })}

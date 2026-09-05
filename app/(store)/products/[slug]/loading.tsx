@@ -34,9 +34,7 @@ export default function ProductDetailLoading() {
           </div>
           {/* Stock badge */}
           <div className="h-7 w-24 bg-gray-200 rounded-full" />
-          {/* Offers */}
-          <div className="h-12 bg-gray-100 rounded-xl" />
-          {/* Add to cart */}
+          {/* Variant selector */}
           <div className="h-14 bg-gray-200 rounded-xl" />
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-3">

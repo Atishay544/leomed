@@ -18,7 +18,15 @@ import type { ErpRole } from './types'
 export const CAPABILITIES = [
   // Master data
   'masters.read',            // see products, doctors, chemists, distributors
-  'masters.write',           // create/edit product, distributor, supplier masters
+  'masters.write',           // create/edit distributor & supplier masters (trade partners)
+  'products.write',          // create/edit the product master — ADMIN only, deliberately
+                              // separate from masters.write: erp_products' RLS is
+                              // erp_is_admin()-only, so this capability must never be
+                              // granted to ACCOUNTANT even though ACCOUNTANT holds
+                              // masters.write for distributors/suppliers. Conflating the
+                              // two previously let an accountant reach the product-edit
+                              // UI, submit successfully past this check, and have the
+                              // write silently dropped by RLS (found in pre-PR review).
   'masters.create_customer', // add a doctor or chemist (MRs do this in the field)
 
   // Field force
@@ -71,6 +79,11 @@ const MR_CAPABILITIES: readonly Capability[] = [
  * Purchases, sales, inventory and the trade partners behind them. Deliberately
  * without users.manage or targets.manage: accounting access must not imply
  * field-force administration (spec §5, §36).
+ *
+ * Deliberately without products.write, too: an accountant enters purchase
+ * rates on invoices but does not define the product master (spec §13,
+ * "only admins may define products") — erp_products' RLS enforces the same
+ * line, so this list must not add products.write without also changing that.
  */
 const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'masters.read',

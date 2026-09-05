@@ -7,7 +7,6 @@ import { formatPrice, MERCHANDISING_LABELS } from '@/lib/utils'
 import { AnimatedGrid, AnimatedItem } from './AnimatedSectionDynamic'
 import AnnouncementBar from '@/components/storefront/AnnouncementBar'
 import FeaturedCards from '@/components/storefront/FeaturedCards'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 const HeroCarousel = dynamic(() => import('./HeroCarousel'), { ssr: true })
 
@@ -366,12 +365,6 @@ function ProductCard({ product, priority = false }: {
         </div>
       </div>
       </Link>
-      {/* Wishlist toggle — outside Link so click doesn't navigate */}
-      <WishlistButton
-        productId={product.id}
-        size="sm"
-        className="absolute top-2.5 right-2.5 shadow-sm"
-      />
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 // Routes that require a logged-in user
-const PROTECTED = ['/account', '/checkout', '/wishlist', '/admin']
+const PROTECTED = ['/account', '/admin']
 
 // The ERP (field force / billing / inventory) signs in at its own door and
 // against its own staff directory, so it never shares /login with storefront

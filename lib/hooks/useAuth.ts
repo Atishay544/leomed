@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import { useCartStore } from '@/lib/store/cart'
 
 export function useAuth() {
   const supabase      = createClient()
@@ -11,8 +10,6 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
   // Prevent duplicate DB calls when both getUser + onAuthStateChange fire for the same user
   const roleResolvedRef = useRef<string | null>(null)
-  // Track active user ID to detect account switches and clear the shared cart
-  const activeUserIdRef = useRef<string | null>(null)
 
   async function resolveRole(u: User) {
     // Deduplicate: skip if already resolved for this user id
@@ -46,12 +43,6 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       const u = session?.user ?? null
-      // Only clear cart when switching FROM an existing user TO a different one (or to logged-out).
-      // Guard: activeUserIdRef.current === null means this is the initial mount — don't clear.
-      if (activeUserIdRef.current !== null && u?.id !== activeUserIdRef.current) {
-        useCartStore.getState().clearCart()
-      }
-      activeUserIdRef.current = u?.id ?? null
       setUser(u)
       if (u) resolveRole(u)
       else {
@@ -65,9 +56,7 @@ export function useAuth() {
 
   async function signOut() {
     await supabase.auth.signOut()
-    useCartStore.getState().clearCart()
     roleResolvedRef.current = null
-    activeUserIdRef.current = null
     setUser(null)
     setRole('customer')
   }

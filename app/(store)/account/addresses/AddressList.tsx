@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Trash2, PackageCheck } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import AddressForm from './AddressForm'
 
 interface Address {
@@ -17,28 +17,15 @@ interface Address {
   is_default: boolean
 }
 
-interface OrderAddress {
-  full_name: string
-  phone: string
-  line1: string
-  line2: string | null
-  city: string
-  state: string
-  pincode: string
-}
-
 interface Props {
   addresses: Address[]
-  orderAddresses: OrderAddress[]
   userId: string
 }
 
-export default function AddressList({ addresses, orderAddresses, userId }: Props) {
+export default function AddressList({ addresses, userId }: Props) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [savingIdx, setSavingIdx] = useState<number | null>(null)
-  const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set())
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this address?')) return
@@ -49,32 +36,11 @@ export default function AddressList({ addresses, orderAddresses, userId }: Props
     router.refresh()
   }
 
-  async function handleSaveOrderAddress(addr: OrderAddress, idx: number) {
-    setSavingIdx(idx)
-    const supabase = createClient()
-    const { error } = await supabase.from('addresses').insert({
-      user_id:   userId,
-      full_name: addr.full_name,
-      phone:     addr.phone,
-      line1:     addr.line1,
-      line2:     addr.line2 || null,
-      city:      addr.city,
-      state:     addr.state,
-      pincode:   addr.pincode,
-      is_default: addresses.length === 0 && idx === 0, // first save becomes default
-    })
-    setSavingIdx(null)
-    if (!error) {
-      setSavedIdxs(prev => new Set(prev).add(idx))
-      router.refresh()
-    }
-  }
-
   return (
     <div className="space-y-4">
 
       {/* ── Saved addresses ── */}
-      {addresses.length === 0 && !showForm && orderAddresses.length === 0 && (
+      {addresses.length === 0 && !showForm && (
         <p className="text-gray-500 text-sm py-6 text-center">No saved addresses yet.</p>
       )}
 
@@ -106,44 +72,6 @@ export default function AddressList({ addresses, orderAddresses, userId }: Props
           </button>
         </div>
       ))}
-
-      {/* ── Addresses from past orders ── */}
-      {orderAddresses.length > 0 && (
-        <div className="mt-2">
-          <div className="flex items-center gap-2 mb-3">
-            <PackageCheck size={15} className="text-gray-400" />
-            <p className="text-sm font-medium text-gray-500">From your recent orders</p>
-          </div>
-          <div className="space-y-3">
-            {orderAddresses.map((addr, idx) => (
-              <div key={idx}
-                className={`border border-dashed rounded-2xl p-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 transition
-                  ${savedIdxs.has(idx) ? 'border-green-300 bg-green-50/50' : 'border-gray-300 bg-gray-50/50'}`}>
-                <div className="space-y-0.5 text-sm">
-                  <p className="font-semibold text-base text-gray-800">{addr.full_name}</p>
-                  <p className="text-gray-600">{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}</p>
-                  <p className="text-gray-600">{addr.city}, {addr.state} — {addr.pincode}</p>
-                  <p className="text-gray-500">{addr.phone}</p>
-                </div>
-
-                {savedIdxs.has(idx) ? (
-                  <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium shrink-0">
-                    ✓ Saved
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handleSaveOrderAddress(addr, idx)}
-                    disabled={savingIdx === idx}
-                    className="flex items-center gap-1.5 text-sm font-medium text-black border border-gray-300 rounded-xl px-4 py-2 hover:bg-gray-100 transition disabled:opacity-40 shrink-0"
-                  >
-                    {savingIdx === idx ? 'Saving…' : '+ Save Address'}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Add new address form ── */}
       {showForm ? (

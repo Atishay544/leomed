@@ -112,6 +112,12 @@ export async function updateErpUser(_prev: ActionState, formData: FormData): Pro
       .maybeSingle()
 
     if (error) return friendlyDbError(error, 'Could not update the staff account.')
+    // .maybeSingle() returns null, not an error, when RLS filters the row
+    // out — which for erp_users means "not an admin", so this must not be
+    // read as success.
+    if (!updated) {
+      return { ok: false, error: 'That staff account could not be found, or you cannot change it.' }
+    }
 
     // Keep the JWT hint in step with the row that actually decides access.
     if (updated?.auth_user_id) {
@@ -132,8 +138,17 @@ export async function setErpUserActive(id: string, active: boolean): Promise<Act
     await assertCapability('users.manage')
 
     const db = await erpDb()
-    const { error } = await db.from('erp_users').update({ active }).eq('id', id)
+    const { error, count } = await db
+      .from('erp_users')
+      .update({ active }, { count: 'exact' })
+      .eq('id', id)
+
     if (error) return friendlyDbError(error, 'Could not update the staff account.')
+    // A row RLS filters out is 0 rows affected, not an error — checked
+    // explicitly so a blocked attempt is never reported as having worked.
+    if (!count) {
+      return { ok: false, error: 'That staff account could not be found, or you cannot change it.' }
+    }
 
     revalidatePath('/erp/users')
     return { ok: true }
@@ -161,11 +176,17 @@ export async function saveTarget(_prev: ActionState, formData: FormData): Promis
       period_end:   parsed.data.period_end,
     }
 
-    const { error } = id
-      ? await db.from('erp_targets').update(values).eq('id', id)
-      : await db.from('erp_targets').insert({ ...values, created_by: session.id })
-
-    if (error) return friendlyDbError(error, 'Could not save the target.')
+    if (id) {
+      const { error, count } = await db
+        .from('erp_targets')
+        .update(values, { count: 'exact' })
+        .eq('id', id)
+      if (error) return friendlyDbError(error, 'Could not save the target.')
+      if (!count) return { ok: false, error: 'That target could not be found.' }
+    } else {
+      const { error } = await db.from('erp_targets').insert({ ...values, created_by: session.id })
+      if (error) return friendlyDbError(error, 'Could not save the target.')
+    }
 
     revalidatePath('/erp/targets')
     return { ok: true }

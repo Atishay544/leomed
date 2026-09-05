@@ -23,10 +23,4 @@ test.describe('Homepage', () => {
     await searchLink.click()
     await expect(page).toHaveURL('/search')
   })
-
-  test('cart icon is visible in header', async ({ page }) => {
-    await page.goto('/')
-    const cartLink = page.locator('a[href="/cart"]').first()
-    await expect(cartLink).toBeVisible()
-  })
 })

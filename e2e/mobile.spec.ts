@@ -32,15 +32,6 @@ test.describe('Mobile layout', () => {
     if (href) {
       await page.goto(href)
       await expect(page.locator('h1')).toBeVisible()
-      // Add to cart button must be visible even on mobile
-      await expect(page.locator('button', { hasText: /Add to Cart|Out of Stock/i }).first()).toBeVisible()
     }
-  })
-
-  test('cart page works on mobile', async ({ page }) => {
-    await page.goto('/cart')
-    // Either empty state or cart items
-    const body = await page.content()
-    expect(body.length).toBeGreaterThan(100)
   })
 })

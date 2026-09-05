@@ -41,47 +41,20 @@ export async function POST(req: NextRequest) {
 
   if (existing) return NextResponse.json({ error: 'You have already reviewed this product.' }, { status: 409 })
 
-  // Check if user has purchased this product (order must be delivered or completed)
-  const { data: orderItem } = await admin
-    .from('order_items')
-    .select('id, orders!inner(user_id, status)')
-    .eq('product_id', product_id)
-    .eq('orders.user_id', user.id)
-    .in('orders.status', ['delivered', 'completed'])
-    .limit(1)
-    .maybeSingle()
-
-  const isVerifiedPurchase = !!orderItem
-
-  if (!isVerifiedPurchase) {
-    return NextResponse.json({ error: 'You can only review products you have purchased and received.' }, { status: 403 })
-  }
-
+  // Note: purchase verification used to gate this on a delivered order, but the
+  // storefront no longer has any purchase flow (cart/checkout/orders removed),
+  // so reviews are open to any signed-in user.
   const { error } = await admin.from('reviews').insert({
     product_id,
-    user_id:              user.id,
+    user_id:     user.id,
     rating,
-    comment:              comment.trim(),
-    is_approved:          false,
-    is_rejected:          false,
-    is_verified_purchase: true,
+    comment:     comment.trim(),
+    is_approved: false,
+    is_rejected: false,
   })
 
   if (error) {
-    // Handle missing column gracefully — insert without it
-    if (error.message.includes('is_verified_purchase')) {
-      const { error: e2 } = await admin.from('reviews').insert({
-        product_id,
-        user_id:     user.id,
-        rating,
-        comment:     comment.trim(),
-        is_approved: false,
-        is_rejected: false,
-      })
-      if (e2) return NextResponse.json({ error: e2.message }, { status: 400 })
-    } else {
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
   revalidateTag('reviews')

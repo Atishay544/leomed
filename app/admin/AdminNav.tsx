@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Package, ShoppingCart, Users, Tag, Ticket,
-  Megaphone, Star, MessageSquare, Image as ImageIcon, BadgePercent,
-  Truck, BarChart2, ChevronDown, Crown,
+  LayoutDashboard, Package, Users, Tag,
+  Megaphone, Star, MessageSquare, Image as ImageIcon,
+  ChevronDown,
 } from 'lucide-react'
 
 const navGroups = [
@@ -18,20 +18,11 @@ const navGroups = [
     ],
   },
   {
-    label: 'Commerce',
+    label: 'Catalog',
     defaultOpen: true,
     items: [
       { href: '/admin/products',   label: 'Products',    icon: Package },
-      { href: '/admin/orders',     label: 'Orders',      icon: ShoppingCart },
       { href: '/admin/categories', label: 'Categories',  icon: Tag },
-    ],
-  },
-  {
-    label: 'Delivery',
-    defaultOpen: true,
-    items: [
-      { href: '/admin/delivery',          label: 'Analytics', icon: BarChart2 },
-      { href: '/admin/delivery-partners', label: 'Carriers',  icon: Truck },
     ],
   },
   {
@@ -39,10 +30,7 @@ const navGroups = [
     defaultOpen: false,
     items: [
       { href: '/admin/banners',       label: 'Banners',       icon: ImageIcon },
-      { href: '/admin/offers',        label: 'Offers',        icon: BadgePercent },
-      { href: '/admin/coupons',       label: 'Coupons',       icon: Ticket },
       { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-      { href: '/admin/membership',    label: 'Care Plan',     icon: Crown },
     ],
   },
   {

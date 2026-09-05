@@ -45,17 +45,12 @@ test.describe('Admin dashboard (requires credentials)', () => {
   test('admin dashboard shows key metrics', async ({ page }) => {
     await page.goto('/admin/dashboard')
     // Look for stats cards
-    await expect(page.locator('text=/orders|revenue|customers|products/i').first()).toBeVisible()
+    await expect(page.locator('text=/customers|products|visitors/i').first()).toBeVisible()
   })
 
   test('admin products page loads', async ({ page }) => {
     await page.goto('/admin/products')
     await expect(page).toHaveURL('/admin/products')
     await expect(page.getByRole('link', { name: /Add Product|New Product/i })).toBeVisible()
-  })
-
-  test('admin orders page loads', async ({ page }) => {
-    await page.goto('/admin/orders')
-    await expect(page).toHaveURL('/admin/orders')
   })
 })

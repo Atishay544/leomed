@@ -673,3 +673,58 @@ Still **not** verified: nothing has been executed against PostgreSQL. Run
 `supabase/tests/erp_business_rules.sql` first — it now also covers the worked payment examples
 from the brief (₹1,00,000 paid 40k + 30k; ₹2,00,000 received 50k + 75k + 25k), overpayment
 refusal, discount arithmetic, and all four expiry gates.
+
+---
+
+## M. Pre-PR full review — 2026-09-05
+
+A line-by-line review against every item in the confirmed requirements (auth/RLS, field-force
+rules, field orders, MR editing, purchase/sales billing, payments, inventory, PostgREST embedded
+filters, Next.js server/client boundaries, boolean defaults, RLS per role, data integrity, UI,
+tests) found five CRITICAL and three HIGH issues, all in code, not merely theoretical. Full
+findings are in the review response; the short version:
+
+**Root cause, once:** several tables were given a *blanket* `update` grant (every column) to
+`authenticated`, paired with an RLS policy that had no `with check` at all, or one that only
+re-verified row ownership without restricting which columns an owner could change. Postgres RLS
+cannot compare OLD vs NEW values in a policy expression, so "edit your own row, but not its status
+or its identity" cannot be expressed as a `with check` alone — the fix already used elsewhere in
+this schema (batch quantities, invoice money columns, `erp_users`' role/active) is a
+**column-scoped grant**, applied here everywhere it was missing.
+
+Fixed in **`20260905000004_erp_rls_hardening.sql`** (additive, migration 11) plus application
+changes:
+
+- An MR who owned a field order (within the 24h window) could PATCH `erp_field_orders` directly
+  and set `status` to FULFILLED themselves — the one thing spec §3 reserves for ADMIN/MANAGER —
+  and could overwrite `estimated_value`, which is meant to be trigger-derived only.
+  `erp_set_field_order_status()` was also `SECURITY INVOKER` with no check of its own, reachable
+  directly via PostgREST regardless of the Next.js action's capability gate.
+- The same shape of gap existed on doctor/chemist visits (`doctor_status`/`doctor_id` editable
+  after the fact), visit products and field order items (no `with check` at all — a line could be
+  reassigned to a different visit/order), and follow-ups.
+- `erp_set_doctor_active`/`erp_set_chemist_active` (admin-only) were added because
+  `setDoctorActive`/`setChemistActive` gated on `masters.create_customer`, which MR also holds —
+  the UI hid the button from non-admins, but the server action didn't independently enforce it.
+- `erp_reconcile_invoice_payments()` was `SECURITY DEFINER` with no internal check, granted
+  broadly — any MR could call it directly and read every invoice number and payment total in the
+  company. Fixed with an internal `erp_can_read_billing()` check (and a `service_role` bypass so
+  the seed script's own use of it keeps working).
+- `masters.write` was one capability covering two different RLS answers: ACCOUNTANT holds it for
+  editing distributors (RLS agrees), but the Products page also gated on it while `erp_products`
+  RLS is admin-only — an accountant could "successfully" submit a product edit that the database
+  silently dropped. Split into `products.write` (admin-only) and left `masters.write` for trade
+  partners.
+- Six server actions (`setDoctorActive`, `setChemistActive`, `setDistributorActive`,
+  `setSupplierActive`, `setProductActive`, `setErpUserActive`, `saveMaster`'s update branch,
+  `saveTarget`'s update branch, `updateFollowupStatus`, `updateErpUser`) never checked whether
+  their `.update()` actually affected a row — RLS filtering out a row you can't touch is 0 rows
+  affected, not an error, and every one of them was reporting that as success.
+- The purchase/sales payment sync triggers only recomputed the invoice a payment moved *to* on
+  reassignment, leaving the one it moved *from* stale; fixed as defence in depth even though the
+  new column grant now prevents reassignment outright.
+
+10 new regression tests added to `supabase/tests/erp_business_rules.sql` reproducing each of the
+above before the fix and asserting the fixed behaviour after. `npm run build`, `tsc --noEmit` and
+`eslint` all clean post-fix. The migration is additive (11th file); nothing already applied needs
+to be rolled back.

@@ -1,12 +1,10 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { X, Package, Heart, MapPin, Bell, LogOut, User, ChevronRight, LayoutDashboard } from 'lucide-react'
+import { X, MapPin, Bell, LogOut, User, ChevronRight, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 
 const menuItems = [
-  { icon: Package,  label: 'My Orders',    href: '/account/orders' },
-  { icon: Heart,    label: 'Wishlist',      href: '/wishlist' },
   { icon: MapPin,   label: 'Addresses',     href: '/account/addresses' },
   { icon: Bell,     label: 'Notifications', href: '/account/notifications' },
   { icon: User,     label: 'Profile',       href: '/account' },

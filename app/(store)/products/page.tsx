@@ -7,7 +7,6 @@ import ProductFilters from './ProductFilters'
 import MobileFilterDrawer from './MobileFilterDrawer'
 import SortSelect from './SortSelect'
 import ProductSkeletonGrid from '@/components/ui/ProductSkeleton'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 export const revalidate = 30
 
@@ -186,7 +185,6 @@ function ProductCard({ product }: { product: any }) {
           )}
         </div>
       </Link>
-      <WishlistButton productId={product.id} size="sm" className="absolute top-2 right-2 shadow-sm" />
     </div>
   )
 }

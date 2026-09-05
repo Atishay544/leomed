@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatPrice } from '@/lib/utils'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 interface Product {
   id: string
@@ -54,7 +53,6 @@ export default function RecommendedProducts({ products }: { products: Product[] 
                   </div>
                 </div>
               </Link>
-              <WishlistButton productId={p.id} size="sm" className="absolute top-2 right-2 shadow-sm" />
             </div>
           )
         })}

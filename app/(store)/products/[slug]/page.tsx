@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { Suspense } from 'react'
-import { createPublicClient, createAdminClient } from '@/lib/supabase/admin'
+import { createPublicClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
@@ -11,7 +11,6 @@ import ProductActions, { type StoreSku } from './ProductActions'
 import ReviewsList from './ReviewsList'
 import ReviewForm from './ReviewForm'
 import RecommendedProducts from './RecommendedProducts'
-import WishlistButton from '@/components/storefront/WishlistButton'
 
 export const revalidate = 3600 // 1h — on-demand invalidation via revalidateTag handles updates
 export const dynamicParams = true
@@ -89,38 +88,6 @@ const getProductSkus = unstable_cache(
   },
   ['product-skus'],
   { revalidate: 3600, tags: ['products'] }
-)
-
-const getOffers = unstable_cache(
-  async () => {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return []
-    const supabase = createPublicClient()
-    const { data } = await supabase
-      .from('offers')
-      .select('id, title, description, type, upfront_pct, discount_pct, sort_order')
-      .eq('is_active', true)
-      .order('sort_order')
-    return data ?? []
-  },
-  ['offers-list'],
-  { revalidate: 3600, tags: ['offers'] }
-)
-
-// Monthly sold count (last 30 days) — cached 1h, no tags needed
-const getMonthlySold = unstable_cache(
-  async (productId: string) => {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return 0
-    const supabase = createAdminClient()
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-    const { count } = await supabase
-      .from('order_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('product_id', productId)
-      .gte('created_at', since)
-    return count ?? 0
-  },
-  ['product-monthly-sold'],
-  { revalidate: 3600 }
 )
 
 // ── Social proof display count ───────────────────────────────────────────────
@@ -282,11 +249,9 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product || product.is_active === false) notFound()
 
   // Only what's needed to render above-the-fold — fast parallel fetch
-  const [variants, skus, offers, monthlySold] = await Promise.all([
+  const [variants, skus] = await Promise.all([
     getProductVariants(product.id),
     getProductSkus(product.id),
-    getOffers(),
-    getMonthlySold(product.id),
   ])
 
   const discount = product.compare_price
@@ -432,12 +397,9 @@ export default async function ProductDetailPage({ params }: Props) {
             </Link>
           )}
 
-          <div className="flex items-start gap-3">
-            <h1 className="text-2xl lg:text-3xl font-bold leading-snug text-gray-900 flex-1">
-              {product.name}
-            </h1>
-            <WishlistButton productId={product.id} />
-          </div>
+          <h1 className="text-2xl lg:text-3xl font-bold leading-snug text-gray-900">
+            {product.name}
+          </h1>
 
           {/* Price block */}
           <div>
@@ -486,12 +448,11 @@ export default async function ProductDetailPage({ params }: Props) {
             )
           })()}
 
-          {/* Variants + Offers + Add to Cart — unified client block for shared state */}
+          {/* Variant availability — informational, no purchase action */}
           <ProductActions
             product={{ id: product.id, name: product.name, price: product.price, image: images[0] ?? null, stock: product.stock }}
             variants={variants}
             skus={skus}
-            initialOffers={offers}
             initialSelection={initialSelection}
           />
 

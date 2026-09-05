@@ -32,8 +32,6 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
   const { data: customers, count } = await query
 
-  const customerIds = customers?.map(c => c.id) ?? []
-
   // Fetch emails from Supabase Auth
   const emailMap = new Map<string, string>()
   try {
@@ -42,29 +40,6 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       if (u.email) emailMap.set(u.id, u.email)
     }
   } catch { /* auth admin may not be available in all envs */ }
-
-  // Fetch most-recent order + items per customer
-  const orderMap = new Map<string, { count: number; items: string[] }>()
-  if (customerIds.length > 0) {
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('id, user_id, order_items(quantity, snapshot, products(name))')
-      .in('user_id', customerIds)
-      .order('created_at', { ascending: false })
-      .limit(customerIds.length * 6)
-
-    for (const o of orders ?? []) {
-      if (!orderMap.has(o.user_id)) {
-        const items = ((o as any).order_items ?? []).map((i: any) => {
-          const name = i.products?.name ?? i.snapshot?.name ?? 'Product'
-          return `${name} ×${i.quantity}`
-        })
-        orderMap.set(o.user_id, { count: 1, items })
-      } else {
-        orderMap.get(o.user_id)!.count++
-      }
-    }
-  }
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
 
@@ -102,14 +77,11 @@ export default async function CustomersPage({ searchParams }: PageProps) {
               <tr>
                 <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Customer</th>
                 <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Contact</th>
-                <th className="text-right px-4 py-3 text-xs text-gray-500 font-medium">Orders</th>
-                <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Last Purchase</th>
                 <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium">Joined</th>
               </tr>
             </thead>
             <tbody>
               {customers?.map(customer => {
-                const od    = orderMap.get(customer.id)
                 const email = emailMap.get(customer.id) ?? ''
                 return (
                   <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -131,19 +103,6 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                       )}
                       {!email && !customer.phone && <span className="text-gray-300 text-xs">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700 font-medium">
-                      {od?.count ?? 0}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs max-w-xs">
-                      {od?.items?.length ? (
-                        <span className="block truncate">
-                          {od.items.slice(0, 2).join(', ')}
-                          {od.items.length > 2 && <span className="text-gray-400"> +{od.items.length - 2} more</span>}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                       {new Date(customer.created_at).toLocaleDateString('en-IN')}
                     </td>
@@ -152,7 +111,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
               })}
               {(!customers || customers.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-gray-400">No customers found.</td>
+                  <td colSpan={3} className="py-12 text-center text-gray-400">No customers found.</td>
                 </tr>
               )}
             </tbody>
@@ -182,7 +141,6 @@ export default async function CustomersPage({ searchParams }: PageProps) {
           </div>
         )}
         {customers?.map(customer => {
-          const od    = orderMap.get(customer.id)
           const email = emailMap.get(customer.id) ?? ''
           return (
             <div key={customer.id} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -205,16 +163,6 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                     <a href={`tel:${customer.phone}`} className="text-gray-500">{customer.phone}</a>
                   </p>
                 )}
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs text-gray-500">Orders</span>
-                  <span className="text-sm font-semibold text-gray-800">{od?.count ?? 0}</span>
-                </div>
-                {od?.items?.length ? (
-                  <p className="text-xs text-gray-400 truncate">
-                    {od.items.slice(0, 2).join(', ')}
-                    {od.items.length > 2 && ` +${od.items.length - 2} more`}
-                  </p>
-                ) : null}
               </div>
             </div>
           )

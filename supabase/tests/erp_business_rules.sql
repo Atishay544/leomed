@@ -445,12 +445,42 @@ begin
   assert v_failed, 'Inventory history must not be deletable';
 end $$;
 
--- The cached quantity agrees with the ledger.
+-- The cached quantity agrees with the ledger. Run as staff: the function now
+-- checks its own authorization (pre-PR hardening), so the bare test
+-- connection — neither `authenticated` nor `service_role` — must impersonate
+-- someone the function actually accepts.
 do $$
 declare v_bad integer;
 begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
   select count(*) into v_bad from public.erp_reconcile_batch_quantities();
+
+  reset role;
   assert v_bad = 0, format('%s batches disagree with the ledger', v_bad);
+end $$;
+
+-- An MR CAN also run this one: it summarizes batch quantities, which RLS
+-- already lets every active staff member read directly from
+-- erp_product_batches, so the function adds no new exposure. Only the
+-- invoice-payment check below is billing-only.
+do $$
+declare v_failed boolean := false;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    perform public.erp_reconcile_batch_quantities();
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert not v_failed, 'An MR should be able to run the stock reconciliation check — it reads nothing they cannot already see';
 end $$;
 
 -- ============================================================================
@@ -1056,12 +1086,307 @@ begin
     format('5 x 75 plus 12%% GST should be 420, got %s', v_result->>'grand_total');
 end $$;
 
--- Invoice caches agree with their payment histories.
+-- Invoice caches agree with their payment histories. Run as staff, since the
+-- function now checks its own authorization (pre-PR hardening).
 do $$
 declare v_bad integer;
 begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
   select count(*) into v_bad from public.erp_reconcile_invoice_payments();
+
+  reset role;
   assert v_bad = 0, format('%s invoices disagree with their payment history', v_bad);
+end $$;
+
+-- Unlike the stock check, this one is real financial data. An MR must not
+-- be able to run it — it would otherwise leak every invoice number and
+-- payment total in the company, which RLS elsewhere goes out of its way to
+-- keep from them (spec §5, §36).
+do $$
+declare v_failed boolean := false;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    perform public.erp_reconcile_invoice_payments();
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'An MR must not be able to read company-wide invoice payment data';
+end $$;
+
+-- ============================================================================
+-- 9. RLS HARDENING REGRESSION TESTS (pre-PR review findings)
+--
+-- Each of these reproduces a gap the review found and this branch fixed:
+-- a blanket column grant plus a missing or incomplete WITH CHECK let an
+-- owning MR change a column direct-table access was never meant to expose.
+-- ============================================================================
+
+-- An MR must not be able to set their own field order's status directly —
+-- neither via a raw PATCH nor via the RPC that used to trust RLS alone.
+-- Spec §3/§26: only admin/manager may move a field order through its
+-- fulfilment statuses.
+do $$
+declare v_order uuid; v_failed boolean := false; v_status public.erp_field_order_status;
+begin
+  select id into v_order from public.erp_field_orders where order_number = 'FO/TEST/00001';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  -- Direct table PATCH.
+  begin
+    update public.erp_field_orders set status = 'FULFILLED' where id = v_order;
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  select status into v_status from public.erp_field_orders where id = v_order;
+  assert v_status <> 'FULFILLED',
+    'An MR must not be able to change a field order''s status via direct UPDATE';
+
+  -- The RPC an admin would legitimately use for this.
+  v_failed := false;
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    perform public.erp_set_field_order_status(v_order, 'FULFILLED', null);
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'An MR must not be able to change a field order''s status via the RPC either';
+
+  -- An admin still can, through the same RPC. Impersonated explicitly: the
+  -- function's internal check reads auth.uid(), which is null on the bare
+  -- test connection, so calling it unscoped would fail for the wrong reason.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  perform public.erp_set_field_order_status(v_order, 'FULFILLED', null);
+
+  reset role;
+  select status into v_status from public.erp_field_orders where id = v_order;
+  assert v_status = 'FULFILLED', 'An admin must still be able to set field order status';
+end $$;
+
+-- estimated_value is derived from line items and must not be settable by a
+-- direct UPDATE, by anyone — it is meant to be as fixed as a generated
+-- column. Run as `authenticated` (admin): the column is absent from the
+-- grant entirely, so even an admin cannot write it directly — only the
+-- item-sync trigger may. A superuser test connection would bypass the grant
+-- and prove nothing, so this must be role-scoped like the others.
+do $$
+declare v_order uuid; v_before numeric; v_after numeric; v_failed boolean := false;
+begin
+  select id, estimated_value into v_order, v_before
+    from public.erp_field_orders where order_number = 'FO/TEST/00001';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  begin
+    update public.erp_field_orders set estimated_value = 999999 where id = v_order;
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+
+  select estimated_value into v_after from public.erp_field_orders where id = v_order;
+  assert v_failed and v_after = v_before,
+    format('estimated_value must not be directly writable by anyone — was %s, attempted overwrite to 999999, now %s',
+           v_before, v_after);
+end $$;
+
+-- An MR must not be able to reassign a field order to a different MR, doctor
+-- or chemist via direct UPDATE — only the columns a correction plausibly
+-- needs (book number, date, remarks) are in the grant.
+do $$
+declare v_order uuid; v_failed boolean := false;
+begin
+  select id into v_order from public.erp_field_orders where order_number = 'FO/TEST/00001';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    update public.erp_field_orders set mr_id = pg_temp.id_of('mr2') where id = v_order;
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'An MR must not be able to reassign a field order to another MR';
+end $$;
+
+-- A field order item's product/order cannot be reassigned; quantity/rate can.
+do $$
+declare v_item uuid; v_order uuid; v_other_order uuid; v_failed boolean := false;
+begin
+  select id, field_order_id into v_item, v_order
+    from public.erp_field_order_items where field_order_id = (
+      select id from public.erp_field_orders where order_number = 'FO/TEST/00001'
+    ) limit 1;
+
+  select id into v_other_order from public.erp_field_orders where order_number = 'FO/TEST/00002';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    update public.erp_field_order_items set field_order_id = v_other_order where id = v_item;
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'A field order line must not be reassignable to a different order';
+end $$;
+
+-- A doctor's active flag is administrative — an MR who created the doctor
+-- must not be able to flip it, neither directly nor through the action's
+-- underlying RPC.
+do $$
+declare v_doctor uuid; v_failed boolean := false; v_active boolean;
+begin
+  insert into public.erp_doctors (doctor_name, city, created_by)
+  values ('Dr. Hardening Test', 'Indore', pg_temp.id_of('mr1'))
+  returning id into v_doctor;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    update public.erp_doctors set active = false where id = v_doctor;
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  select active into v_active from public.erp_doctors where id = v_doctor;
+  assert v_active, 'An MR must not be able to deactivate a doctor via direct UPDATE, even one they created';
+
+  v_failed := false;
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  begin
+    perform public.erp_set_doctor_active(v_doctor, false);
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'An MR must not be able to deactivate a doctor via erp_set_doctor_active either';
+
+  -- An admin still can, impersonated explicitly for the same reason as above.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  perform public.erp_set_doctor_active(v_doctor, false);
+
+  reset role;
+  select active into v_active from public.erp_doctors where id = v_doctor;
+  assert not v_active, 'An admin must still be able to deactivate a doctor';
+end $$;
+
+-- Reassigning a payment to a different invoice must not be possible. Run as
+-- `authenticated` (an admin) — the column grant, not RLS, is what blocks
+-- this, and a superuser test connection would bypass a grant check entirely,
+-- proving nothing.
+do $$
+declare
+  v_payment  uuid;
+  v_inv_a    uuid;
+  v_inv_b    uuid;
+  v_failed   boolean := false;
+begin
+  select id into v_inv_a from public.erp_purchase_invoices where invoice_number = 'SUP/001';
+
+  insert into public.erp_purchase_invoices (invoice_number, supplier_id, invoice_date, created_by)
+  values ('SUP/002', pg_temp.id_of('supplier'), current_date, pg_temp.id_of('admin'))
+  returning id into v_inv_b;
+  update public.erp_purchase_invoices set grand_total = 50000 where id = v_inv_b;
+
+  select id into v_payment from public.erp_purchase_payments
+   where purchase_invoice_id = v_inv_a limit 1;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  begin
+    update public.erp_purchase_payments set purchase_invoice_id = v_inv_b where id = v_payment;
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'A payment must not be reassignable to a different invoice, even by an admin, via direct UPDATE';
+end $$;
+
+-- The product/accountant capability split: RLS must still refuse an
+-- accountant's product edit even though the application now uses a
+-- dedicated capability to stop them reaching the form in the first place —
+-- this proves the database itself, not just the UI, draws the line.
+do $$
+declare v_auth_acct2 uuid; v_acct2 uuid; v_failed boolean := false; v_name text;
+begin
+  select id into v_acct2 from public.erp_users where email = 'test-acct@leomed.test';
+
+  if v_acct2 is null then
+    v_auth_acct2 := gen_random_uuid();
+    insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
+                            email_confirmed_at, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', v_auth_acct2, 'authenticated', 'authenticated',
+            'test-acct@leomed.test', '', now(), now(), now());
+
+    insert into public.erp_users (auth_user_id, name, email, role)
+    values (v_auth_acct2, 'Test Accountant', 'test-acct@leomed.test', 'ACCOUNTANT')
+    returning id into v_acct2;
+  else
+    select auth_user_id into v_auth_acct2 from public.erp_users where id = v_acct2;
+  end if;
+
+  select product_name into v_name from public.erp_products where id = pg_temp.id_of('product');
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_auth_acct2, 'role', 'authenticated')::text, true);
+
+  begin
+    update public.erp_products set product_name = 'Tampered by accountant' where id = pg_temp.id_of('product');
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+
+  assert (
+    v_failed
+    or (select product_name from public.erp_products where id = pg_temp.id_of('product')) = v_name
+  ), 'An accountant must not be able to edit the product master, whether refused outright or filtered by RLS';
 end $$;
 
 -- ============================================================================

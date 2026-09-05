@@ -4,9 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { ShoppingCart, Heart, Search, User, Menu, X, ChevronDown, Crown } from 'lucide-react'
+import { Search, User, Menu, X, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useCartStore } from '@/lib/store/cart'
 import { useAuth } from '@/lib/hooks/useAuth'
 import ProfileDrawer from './ProfileDrawer'
 
@@ -14,7 +13,6 @@ import ProfileDrawer from './ProfileDrawer'
 const VISIBLE_LIMIT = 4
 
 export default function Header({ categories }: { categories: any[] }) {
-  const itemCount = useCartStore(s => s.itemCount())
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -22,11 +20,8 @@ export default function Header({ categories }: { categories: any[] }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { setMounted(true) }, [])
 
   // Close "More" dropdown on outside click
   useEffect(() => {
@@ -193,43 +188,6 @@ export default function Header({ categories }: { categories: any[] }) {
             >
               <Search size={20} />
             </button>
-
-            {/* Care Plan — attention-grabbing shake to draw the eye */}
-            <Link href="/care-plan" aria-label="Care Plan" className="hidden sm:block">
-              <motion.div
-                animate={{ rotate: [0, -10, 10, -10, 10, -6, 6, 0] }}
-                transition={{ duration: 0.7, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
-                className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full pl-2.5 pr-3 py-1.5 text-xs font-bold hover:bg-emerald-100 transition-colors"
-              >
-                <Crown size={14} />
-                Care Plan
-              </motion.div>
-            </Link>
-
-            {/* Wishlist */}
-            <Link href="/wishlist" aria-label="Wishlist"
-              className="hidden sm:flex p-2 min-w-11 min-h-11 items-center justify-center text-muted-fg hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all duration-200">
-              <Heart size={20} />
-            </Link>
-
-            {/* Cart */}
-            <Link href="/cart" aria-label={`Shopping cart${mounted && itemCount > 0 ? `, ${itemCount} item${itemCount > 1 ? 's' : ''}` : ''}`}
-              className="relative p-2 min-w-11 min-h-11 flex items-center justify-center text-muted-fg hover:text-primary hover:bg-secondary rounded-xl transition-all duration-200">
-              <ShoppingCart size={20} />
-              <AnimatePresence>
-                {mounted && itemCount > 0 && (
-                  <motion.span
-                    key="cart-badge"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute top-0.5 right-0.5 bg-emerald-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold leading-none"
-                  >
-                    {itemCount > 9 ? '9+' : itemCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
 
             {/* Profile (desktop only — on mobile it lives inside the hamburger menu) */}
             <button

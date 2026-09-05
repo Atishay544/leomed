@@ -4,10 +4,7 @@ type Category = { id: string; name: string; slug: string }
 
 const staticLinks = {
   Account: [
-    { label: 'My Orders', href: '/account/orders' },
-    { label: 'Wishlist', href: '/wishlist' },
     { label: 'My Profile', href: '/account' },
-    { label: 'Care Plan', href: '/care-plan' },
   ],
   Support: [
     { label: 'Contact Us', href: '/contact' },

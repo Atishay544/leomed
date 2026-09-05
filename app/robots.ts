@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
-  const disallow = ['/account', '/account/', '/admin', '/admin/', '/checkout', '/api/', '/auth/']
+  const disallow = ['/account', '/account/', '/admin', '/admin/', '/api/', '/auth/']
   return {
     rules: [
       // Standard crawlers
