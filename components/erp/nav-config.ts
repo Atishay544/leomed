@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Stethoscope, Store, UserRound, Users, Package, Boxes,
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
-  Factory, BarChart3, Target, Settings, ScrollText, type LucideIcon,
+  Factory, BarChart3, Target, Settings, ScrollText, Globe, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -75,9 +75,14 @@ const ALL_GROUPS: ErpNavGroup[] = [
   {
     label: 'Administration',
     items: [
-      { href: '/erp/users',    label: 'Staff',      icon: Users,      capability: 'users.manage' },
-      { href: '/erp/audit',    label: 'Audit Log',  icon: ScrollText, capability: 'users.manage' },
-      { href: '/erp/settings', label: 'Settings',   icon: Settings,   capability: 'settings.manage' },
+      { href: '/erp/users',       label: 'Staff',            icon: Users,      capability: 'users.manage' },
+      { href: '/erp/audit',       label: 'Audit Log',        icon: ScrollText, capability: 'users.manage' },
+      { href: '/erp/settings',    label: 'Settings',         icon: Settings,   capability: 'settings.manage' },
+      // Storefront admin (catalogue, banners, announcements, news, launches,
+      // about) is a separate app section under /admin — same ADMIN-only
+      // staff identity, no capability of its own to gate on, so this reuses
+      // settings.manage (ADMIN-exclusive) purely as a role check.
+      { href: '/admin/dashboard', label: 'Storefront Admin', icon: Globe,      capability: 'settings.manage' },
     ],
   },
 ]
