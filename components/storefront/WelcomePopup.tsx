@@ -1,17 +1,9 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
-import { X, Gift, Copy, Check } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, Bell, Check } from 'lucide-react'
 
-const POPUP_KEY   = 'lf_popup_seen'
-const COUPON_CODE = 'WELCOME10'
-const DELAY_MS    = 90_000   // 1.5 minutes
-const OFFER_TIMER = 600      // 10-minute countdown on the offer itself (seconds)
-
-function formatTime(s: number) {
-  const m = Math.floor(s / 60).toString().padStart(2, '0')
-  const sec = (s % 60).toString().padStart(2, '0')
-  return `${m}:${sec}`
-}
+const POPUP_KEY = 'lf_popup_seen'
+const DELAY_MS  = 90_000   // 1.5 minutes
 
 export default function WelcomePopup() {
   const [visible, setVisible]       = useState(false)
@@ -20,9 +12,6 @@ export default function WelcomePopup() {
   const [error, setError]           = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone]             = useState(false)
-  const [copied, setCopied]         = useState(false)
-  const [timer, setTimer]           = useState(OFFER_TIMER)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Show popup after delay (once per browser, not per session)
   useEffect(() => {
@@ -32,22 +21,6 @@ export default function WelcomePopup() {
     const show = setTimeout(() => setVisible(true), DELAY_MS)
     return () => clearTimeout(show)
   }, [])
-
-  // Countdown when popup is visible
-  useEffect(() => {
-    if (!visible || done) return
-    timerRef.current = setInterval(() => {
-      setTimer(t => {
-        if (t <= 1) {
-          dismiss()
-          return 0
-        }
-        return t - 1
-      })
-    }, 1000)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, done])
 
   function dismiss() {
     localStorage.setItem(POPUP_KEY, '1')
@@ -81,21 +54,12 @@ export default function WelcomePopup() {
       } else {
         setDone(true)
         localStorage.setItem(POPUP_KEY, '1')
-        if (timerRef.current) clearInterval(timerRef.current)
       }
     } catch {
       setError('Network error. Please try again.')
     } finally {
       setSubmitting(false)
     }
-  }
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(COUPON_CODE)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { /* silent */ }
   }
 
   if (!visible) return null
@@ -105,12 +69,12 @@ export default function WelcomePopup() {
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300">
 
         {/* Top gradient bar */}
-        <div className="h-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500" />
 
         {/* Close button */}
         <button
           onClick={dismiss}
-          aria-label="Close offer"
+          aria-label="Close"
           className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition"
         >
           <X size={18} />
@@ -121,21 +85,15 @@ export default function WelcomePopup() {
             <>
               {/* Header */}
               <div className="flex items-center gap-2 mb-1">
-                <Gift size={20} className="text-amber-500 shrink-0" />
-                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Exclusive Welcome Offer</p>
+                <Bell size={20} className="text-emerald-500 shrink-0" />
+                <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Stay Updated</p>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 leading-tight mb-1">
-                Get 10% off your first order
+                New products & launches
               </h2>
               <p className="text-sm text-gray-500 mb-4">
-                Enter your email or phone to claim your discount code.
+                Enter your email or phone to hear about new products and upcoming launches from Leomed Pharma.
               </p>
-
-              {/* Countdown */}
-              <div className="flex items-center justify-center gap-2 mb-4 bg-amber-50 border border-amber-200 rounded-xl py-2 px-3">
-                <span className="text-xs text-amber-700">Offer expires in</span>
-                <span className="font-mono font-bold text-amber-700 text-sm tabular-nums">{formatTime(timer)}</span>
-              </div>
 
               {/* Toggle email / phone */}
               <div className="flex gap-2 mb-3">
@@ -173,7 +131,7 @@ export default function WelcomePopup() {
                   disabled={submitting}
                   className="w-full bg-black text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 disabled:opacity-60 transition"
                 >
-                  {submitting ? 'Claiming…' : 'Claim My 10% Discount →'}
+                  {submitting ? 'Subscribing…' : 'Keep Me Posted →'}
                 </button>
               </form>
 
@@ -183,24 +141,13 @@ export default function WelcomePopup() {
             </>
           ) : (
             /* Success state */
-            <>
-              <div className="text-center py-2">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Check size={24} className="text-green-600" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">Your code is ready!</h2>
-                <p className="text-sm text-gray-500 mb-4">Use this at checkout to get 10% off your order.</p>
-
-                <button
-                  onClick={copyCode}
-                  className="inline-flex items-center gap-2 bg-black text-white px-6 py-2.5 rounded-xl font-mono font-bold text-lg hover:bg-gray-800 transition"
-                >
-                  {COUPON_CODE}
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-                <p className="text-xs text-gray-400 mt-2">{copied ? 'Copied!' : 'Tap to copy'}</p>
+            <div className="text-center py-2">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Check size={24} className="text-green-600" />
               </div>
-            </>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">You&apos;re subscribed!</h2>
+              <p className="text-sm text-gray-500">We&apos;ll keep you posted on new products and launches.</p>
+            </div>
           )}
         </div>
       </div>
