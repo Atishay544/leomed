@@ -68,6 +68,17 @@ export const CAPABILITIES = [
   'leave.apply',
   'leave.read.own',
   'leave.manage',        // approve/reject/cancel/create on anyone's behalf
+
+  // HR: payroll & salary — deliberately ADMIN-only, held by no other role
+  // below (see ACCOUNTANT_CAPABILITIES' note on why billing access does not
+  // imply payroll access).
+  'payroll.manage',      // salary structures, generate/finalize/reopen payroll
+  'payroll.read.own',    // an employee's own payslips — never another's
+
+  // HR: expenses
+  'expenses.submit',
+  'expenses.read.own',
+  'expenses.manage',     // approve/reject/mark paid, read every employee's
 ] as const
 
 export type Capability = (typeof CAPABILITIES)[number]
@@ -91,6 +102,9 @@ const MR_CAPABILITIES: readonly Capability[] = [
   'attendance.read.own',
   'leave.apply',
   'leave.read.own',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
 ]
 
 /**
@@ -122,6 +136,9 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'attendance.read.own',
   'leave.apply',
   'leave.read.own',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
 ]
 
 /** Reads the whole field force and the money, changes only order status. */
@@ -142,6 +159,9 @@ const MANAGER_CAPABILITIES: readonly Capability[] = [
   'attendance.read.all',
   'leave.apply',
   'leave.read.own',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
 ]
 
 /**

@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import {
-  ATTENDANCE_STATUSES, DISCUSSION_TYPES, ERP_ROLES, FIELD_ORDER_STATUSES,
-  FOLLOWUP_PRIORITIES, FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES,
-  PAYMENT_METHODS, TARGET_TYPES, VISIT_PURPOSES,
+  ATTENDANCE_STATUSES, DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES,
+  FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES, FOLLOWUP_STATUSES,
+  LEAVE_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, PAYROLL_ITEM_TYPES,
+  TARGET_TYPES, VISIT_PURPOSES,
 } from './types'
 
 /**
@@ -515,6 +516,51 @@ export const AdminCreateLeaveSchema = z.object({
   path: ['to_date'],
 })
 
+// ─── HR: salary, payroll, expenses ──────────────────────────────────────────
+
+export const EmployeeSalarySchema = z.object({
+  employee_id:         uuid,
+  fixed_salary:        money,
+  basic_salary:        money,
+  gross_salary:        money,
+  allowances:          money,
+  standard_deductions: money,
+  effective_from:      dateString,
+})
+
+export const PayrollGenerateSchema = z.object({
+  period_year:  z.coerce.number().int().min(2000).max(2200),
+  period_month: z.coerce.number().int().min(1).max(12),
+})
+
+export const PayrollItemSchema = z.object({
+  record_id: uuid,
+  item_type: z.enum(PAYROLL_ITEM_TYPES),
+  label:     requiredText('Label', 100),
+  amount:    z.coerce.number().positive('Enter an amount above zero').max(99_999_999),
+})
+
+export const PayrollReopenSchema = z.object({
+  period_id: uuid,
+  reason:    requiredText('Reason', 500),
+})
+
+export const ExpenseSchema = z.object({
+  expense_date: dateString,
+  category:     z.enum(EXPENSE_CATEGORIES),
+  vendor_name:  optionalText(150),
+  amount:       z.coerce.number().positive('Enter an amount above zero').max(99_999_999),
+  description:  optionalText(1000),
+  receipt_url:  z.union([z.string().url(), z.literal('')]).optional(),
+  payment_mode: z.enum(PAYMENT_METHODS),
+})
+
+export const ExpenseReviewSchema = z.object({
+  expense_id: uuid,
+  status:     z.enum(['APPROVED', 'REJECTED', 'PAID']),
+  notes:      optionalText(500),
+})
+
 // ─── Inferred input types ───────────────────────────────────────────────────
 
 export type ErpLoginInput           = z.infer<typeof ErpLoginSchema>
@@ -544,3 +590,9 @@ export type LeaveTypeInput            = z.infer<typeof LeaveTypeSchema>
 export type LeaveApplicationInput     = z.infer<typeof LeaveApplicationSchema>
 export type LeaveReviewInput          = z.infer<typeof LeaveReviewSchema>
 export type AdminCreateLeaveInput     = z.infer<typeof AdminCreateLeaveSchema>
+export type EmployeeSalaryInput       = z.infer<typeof EmployeeSalarySchema>
+export type PayrollGenerateInput      = z.infer<typeof PayrollGenerateSchema>
+export type PayrollItemInput          = z.infer<typeof PayrollItemSchema>
+export type PayrollReopenInput        = z.infer<typeof PayrollReopenSchema>
+export type ExpenseInput              = z.infer<typeof ExpenseSchema>
+export type ExpenseReviewInput        = z.infer<typeof ExpenseReviewSchema>

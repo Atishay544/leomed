@@ -498,3 +498,105 @@ export interface ErpLeaveRequest {
   created_at: string
   updated_at: string
 }
+
+// ─── HR: salary, payroll, expenses ──────────────────────────────────────────
+
+export const PAYROLL_STATUSES = ['DRAFT', 'CALCULATED', 'UNDER_REVIEW', 'FINALIZED', 'PAID'] as const
+export type PayrollStatus = (typeof PAYROLL_STATUSES)[number]
+
+export const PAYROLL_ITEM_TYPES = ['INCENTIVE', 'OTHER_EARNING', 'DEDUCTION'] as const
+export type PayrollItemType = (typeof PAYROLL_ITEM_TYPES)[number]
+
+export const EXPENSE_CATEGORIES = [
+  'TRAVEL', 'FUEL', 'OFFICE', 'MARKETING', 'PROMOTIONAL', 'DOCTOR_MEETING',
+  'SAMPLES', 'EVENTS', 'LOGISTICS', 'MISCELLANEOUS', 'OTHER',
+] as const
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
+export const EXPENSE_STATUSES = ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'PAID'] as const
+export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number]
+
+export interface ErpEmployeeSalary {
+  employee_id: string
+  fixed_salary: number
+  basic_salary: number
+  gross_salary: number
+  allowances: number
+  standard_deductions: number
+  effective_from: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpPayrollPeriod {
+  id: string
+  period_year: number
+  period_month: number
+  status: PayrollStatus
+  finalized_at: string | null
+  finalized_by: string | null
+  reopened_at: string | null
+  reopened_by: string | null
+  reopen_reason: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpPayrollRecord {
+  id: string
+  payroll_period_id: string
+  employee_id: string
+  employee_name: string
+  designation: string | null
+  department: string | null
+  working_days: number
+  present_days: number
+  half_days: number
+  paid_leave_days: number
+  unpaid_leave_days: number
+  absent_days: number
+  holiday_days: number
+  week_off_days: number
+  payable_days: number
+  fixed_salary: number
+  basic_salary: number
+  gross_salary: number
+  allowances: number
+  standard_deductions: number
+  incentives: number
+  other_earnings: number
+  deductions: number
+  net_salary: number
+  remarks: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpPayrollItem {
+  id: string
+  payroll_record_id: string
+  item_type: PayrollItemType
+  label: string
+  amount: number
+  created_by: string | null
+  created_at: string
+}
+
+export interface ErpExpense {
+  id: string
+  expense_date: string
+  category: ExpenseCategory
+  employee_id: string
+  vendor_name: string | null
+  amount: number
+  description: string | null
+  receipt_url: string | null
+  payment_mode: PaymentMethod
+  status: ExpenseStatus
+  approved_by: string | null
+  approved_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}

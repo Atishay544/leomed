@@ -1,7 +1,7 @@
 import type {
-  AttendanceStatus, DiscussionType, DoctorStatus, FieldOrderStatus, FollowupPriority,
-  FollowupStatus, InventoryTxnType, LeaveStatus, PaymentMethod, PaymentStatus,
-  TargetType, VisitPurpose,
+  AttendanceStatus, DiscussionType, DoctorStatus, ExpenseCategory, ExpenseStatus,
+  FieldOrderStatus, FollowupPriority, FollowupStatus, InventoryTxnType, LeaveStatus,
+  PaymentMethod, PaymentStatus, PayrollStatus, TargetType, VisitPurpose,
 } from './types'
 
 // ─── Formatting (Indian conventions — ₹, lakh/crore grouping, dd Mmm yyyy) ──
@@ -223,4 +223,50 @@ export const LEAVE_STATUS_STYLES: Record<LeaveStatus, string> = {
   APPROVED:  'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
   CANCELLED: 'bg-gray-100 text-gray-600 ring-gray-500/20',
+}
+
+export const PAYROLL_STATUS_LABELS: Record<PayrollStatus, string> = {
+  DRAFT:         'Draft',
+  CALCULATED:    'Calculated',
+  UNDER_REVIEW:  'Under review',
+  FINALIZED:     'Finalized',
+  PAID:          'Paid',
+}
+
+export const PAYROLL_STATUS_STYLES: Record<PayrollStatus, string> = {
+  DRAFT:        'bg-gray-100 text-gray-600 ring-gray-500/20',
+  CALCULATED:   'bg-blue-50 text-blue-700 ring-blue-600/20',
+  UNDER_REVIEW: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  FINALIZED:    'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  PAID:         'bg-violet-50 text-violet-700 ring-violet-600/20',
+}
+
+export const EXPENSE_STATUS_LABELS: Record<ExpenseStatus, string> = {
+  DRAFT:     'Draft',
+  SUBMITTED: 'Submitted',
+  APPROVED:  'Approved',
+  REJECTED:  'Rejected',
+  PAID:      'Paid',
+}
+
+export const EXPENSE_STATUS_STYLES: Record<ExpenseStatus, string> = {
+  DRAFT:     'bg-gray-100 text-gray-600 ring-gray-500/20',
+  SUBMITTED: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  APPROVED:  'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
+  PAID:      'bg-violet-50 text-violet-700 ring-violet-600/20',
+}
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  TRAVEL:         'Travel',
+  FUEL:           'Fuel',
+  OFFICE:         'Office',
+  MARKETING:      'Marketing',
+  PROMOTIONAL:    'Promotional activity',
+  DOCTOR_MEETING: 'Doctor meeting',
+  SAMPLES:        'Samples',
+  EVENTS:         'Events',
+  LOGISTICS:      'Logistics',
+  MISCELLANEOUS:  'Miscellaneous',
+  OTHER:          'Other',
 }

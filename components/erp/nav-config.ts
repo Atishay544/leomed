@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Stethoscope, Store, UserRound, Users, Package, Boxes,
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
   Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
-  CalendarDays, SlidersHorizontal, type LucideIcon,
+  CalendarDays, SlidersHorizontal, IndianRupee, Wallet, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -43,6 +43,14 @@ const ALL_GROUPS: ErpNavGroup[] = [
       {
         href: '/erp/leave', label: 'My Leave', icon: CalendarDays,
         capability: 'leave.apply', excludeRoles: ['ADMIN'],
+      },
+      {
+        href: '/erp/my-payroll', label: 'My Payroll', icon: IndianRupee,
+        capability: 'payroll.read.own', excludeRoles: ['ADMIN'],
+      },
+      {
+        href: '/erp/expenses', label: 'My Expenses', icon: Wallet,
+        capability: 'expenses.submit', excludeRoles: ['ADMIN'],
       },
     ],
   },
@@ -92,6 +100,9 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/attendance/admin', label: 'Attendance',       icon: Fingerprint,        capability: 'attendance.read.all' },
       { href: '/erp/leave/admin',      label: 'Leave Requests',   icon: CalendarDays,       capability: 'leave.manage' },
       { href: '/erp/attendance/rules', label: 'Attendance Rules', icon: SlidersHorizontal,  capability: 'attendance.manage' },
+      { href: '/erp/payroll',          label: 'Payroll',          icon: IndianRupee,        capability: 'payroll.manage' },
+      { href: '/erp/payroll/salaries', label: 'Salaries',         icon: Wallet,             capability: 'payroll.manage' },
+      { href: '/erp/expenses/admin',   label: 'Expenses',         icon: Receipt,            capability: 'expenses.manage' },
     ],
   },
   {
