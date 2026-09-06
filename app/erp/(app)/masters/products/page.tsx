@@ -1,10 +1,12 @@
+import Link from 'next/link'
 import { Package } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listProducts, listStorefrontProductOptions, PAGE_SIZE } from '@/lib/erp/data/masters'
+import { getStockTotalsForProducts } from '@/lib/erp/data/inventory'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveProduct, setProductActive } from '@/lib/erp/actions/masters'
 import { can } from '@/lib/erp/permissions'
-import { money } from '@/lib/erp/format'
+import { money, qty } from '@/lib/erp/format'
 import { productFieldsWithStorefrontLink } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
@@ -28,6 +30,9 @@ export default async function ProductsPage({ searchParams }: Props) {
     listStorefrontProductOptions(),
   ])
   const productFields = productFieldsWithStorefrontLink(storefrontOptions)
+  // One grouped query for exactly this page's products — never a per-row
+  // batch fetch (spec §41).
+  const stockTotals = await getStockTotalsForProducts(rows.map(p => p.id))
 
   // MRs select products but never define or reprice them (spec §13). A
   // dedicated capability — not the broader masters.write ACCOUNTANT also
@@ -80,6 +85,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                   <Th align="right">Distributor</Th>
                   <Th align="right">Retailer</Th>
                   <Th align="right">GST</Th>
+                  <Th align="right">Stock</Th>
                   {canWrite && <Th align="right">Actions</Th>}
                 </tr>
               </thead>
@@ -104,6 +110,25 @@ export default async function ProductsPage({ searchParams }: Props) {
                     <Td align="right" className="tabular-nums font-medium text-gray-900">{money(p.distributor_price)}</Td>
                     <Td align="right" className="tabular-nums">{money(p.retailer_price)}</Td>
                     <Td align="right" className="tabular-nums">{p.gst_rate}%</Td>
+                    <Td align="right" className="tabular-nums">
+                      {(() => {
+                        const stock = stockTotals.get(p.id)
+                        return (
+                          <Link
+                            href={`/erp/masters/batches?product=${p.id}`}
+                            className="font-medium text-emerald-700 hover:underline"
+                            title="View batch-wise breakdown"
+                          >
+                            {qty(stock?.total_quantity ?? 0)} {p.unit}
+                          </Link>
+                        )
+                      })()}
+                      {(stockTotals.get(p.id)?.batch_count ?? 0) > 0 && (
+                        <p className="mt-0.5 text-[10.5px] text-gray-400">
+                          {stockTotals.get(p.id)?.batch_count} batch{(stockTotals.get(p.id)?.batch_count ?? 0) === 1 ? '' : 'es'}
+                        </p>
+                      )}
+                    </Td>
                     {canWrite && (
                       <Td align="right">
                         <div className="flex items-center justify-end gap-2">

@@ -169,6 +169,35 @@ export async function getLowStockProducts(limit = 20): Promise<LowStockRow[]> {
     .slice(0, limit)
 }
 
+export interface ProductStockTotal {
+  product_id: string
+  batch_count: number
+  total_quantity: number
+  total_value: number
+  earliest_expiry: string | null
+}
+
+/** Total stock for a set of products, aggregated across every batch —
+ *  "how many of product ABC do we have, full stop" — alongside the existing
+ *  batch-level detail at /erp/masters/batches?product=. One grouped query
+ *  for exactly the products being displayed, not a client-side sum over
+ *  every batch row (spec §41). */
+export async function getStockTotalsForProducts(productIds: string[]): Promise<Map<string, ProductStockTotal>> {
+  const map = new Map<string, ProductStockTotal>()
+  if (productIds.length === 0) return map
+
+  const db = await erpDb()
+  const { data } = await db
+    .from('erp_product_stock_totals')
+    .select('*')
+    .in('product_id', productIds)
+
+  for (const row of (data ?? []) as ProductStockTotal[]) {
+    map.set(row.product_id, row)
+  }
+  return map
+}
+
 /** Batches where the cached quantity disagrees with the ledger. An empty
  *  result is the expected, healthy state. */
 export async function getReconciliationIssues() {
