@@ -329,11 +329,12 @@ export const SalesItemSchema = z.object({
 })
 
 export const SalesInvoiceSchema = z.object({
-  // Exactly one buyer — a sale is either to a distributor or direct to a
-  // chemist, never both, never neither. The database re-checks this too
-  // (erp_sales_invoice_buyer_xor).
+  // Exactly one buyer — a sale is to a distributor, direct to a chemist, or
+  // direct to a doctor, never more than one, never none. The database
+  // re-checks this too (erp_sales_invoice_buyer_xor).
   distributor_id: optionalUuid,
   chemist_id:     optionalUuid,
+  doctor_id:      optionalUuid,
   invoice_date:   dateString,
   is_interstate:  z.coerce.boolean().default(false),
   initial_payment:   money.default(0),
@@ -344,8 +345,8 @@ export const SalesInvoiceSchema = z.object({
   // batch. The database re-checks the role and refuses without a reason.
   expired_sale_reason: optionalText(500),
   items:          z.array(SalesItemSchema).min(1, 'Add at least one product line'),
-}).refine(data => !!data.distributor_id !== !!data.chemist_id, {
-  message: 'Choose either a distributor or a chemist to bill.',
+}).refine(data => [data.distributor_id, data.chemist_id, data.doctor_id].filter(Boolean).length === 1, {
+  message: 'Choose exactly one of a distributor, a chemist or a doctor to bill.',
   path: ['distributor_id'],
 })
 

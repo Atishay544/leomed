@@ -24,6 +24,7 @@ export async function GET(
 
   const distributor = invoice.erp_distributors
   const chemist = invoice.erp_chemists
+  const doctor = invoice.erp_doctors
 
   const data: InvoicePdfData = {
     invoiceNumber: invoice.invoice_number,
@@ -46,6 +47,15 @@ export async function GET(
           drugLicense: chemist.drug_license_number,
           city: chemist.city,
           phone: chemist.phone,
+        }
+      : doctor
+      ? {
+          label: 'Doctor (direct sale)',
+          name: doctor.doctor_name,
+          gstNumber: null,
+          drugLicense: null,
+          city: doctor.city,
+          phone: doctor.phone,
         }
       : {
           label: 'Distributor',

@@ -292,9 +292,10 @@ export interface PurchaseInvoice {
 export interface SalesInvoice {
   id: string
   invoice_number: string
-  /** Exactly one of these two is set — see erp_sales_invoice_buyer_xor. */
+  /** Exactly one of these three is set — see erp_sales_invoice_buyer_xor. */
   distributor_id: string | null
   chemist_id: string | null
+  doctor_id: string | null
   invoice_date: string
   subtotal: number
   discount: number

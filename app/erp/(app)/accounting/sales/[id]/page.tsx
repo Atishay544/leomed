@@ -37,6 +37,7 @@ interface InvoiceDetail {
   }[] | null
   distributor_id: string | null
   chemist_id: string | null
+  doctor_id: string | null
   erp_distributors: {
     distributor_name: string; distributor_code: string; gst_number: string | null
     city: string | null; state: string | null; phone: string | null
@@ -46,6 +47,10 @@ interface InvoiceDetail {
     chemist_name: string; gst_number: string | null
     city: string | null; phone: string | null
     drug_license_number: string | null
+  } | null
+  erp_doctors: {
+    doctor_name: string; clinic_name: string | null
+    city: string | null; phone: string | null
   } | null
   erp_sales_invoice_items: {
     id: string; quantity: number; free_quantity: number; sale_rate: number
@@ -69,6 +74,7 @@ export default async function SalesInvoiceDetailPage({
 
   const distributor = invoice.erp_distributors
   const chemist = invoice.erp_chemists
+  const doctor = invoice.erp_doctors
   const tax = gstSplit(Number(invoice.tax), invoice.is_interstate)
 
   const receipts: PaymentEntry[] = (invoice.erp_sales_receipts ?? [])
@@ -108,7 +114,8 @@ export default async function SalesInvoiceDetailPage({
                 <div>
                   <h1 className="font-mono text-lg font-bold text-gray-900">{invoice.invoice_number}</h1>
                   <p className="mt-0.5 text-[12.5px] text-gray-500">
-                    {formatDate(invoice.invoice_date)} · {distributor?.distributor_name ?? chemist?.chemist_name ?? 'Unknown'}
+                    {formatDate(invoice.invoice_date)} ·{' '}
+                    {distributor?.distributor_name ?? chemist?.chemist_name ?? doctor?.doctor_name ?? 'Unknown'}
                   </p>
                 </div>
               </div>
@@ -214,13 +221,16 @@ export default async function SalesInvoiceDetailPage({
         <div className="space-y-4">
           <Card>
             <h2 className="mb-3 text-[13px] font-semibold text-gray-800">
-              {chemist ? 'Chemist (direct sale)' : 'Distributor'}
+              {chemist ? 'Chemist (direct sale)' : doctor ? 'Doctor (direct sale)' : 'Distributor'}
             </h2>
             <p className="text-[14px] font-semibold text-gray-900">
-              {distributor?.distributor_name ?? chemist?.chemist_name ?? '—'}
+              {distributor?.distributor_name ?? chemist?.chemist_name ?? doctor?.doctor_name ?? '—'}
             </p>
             {distributor?.distributor_code && (
               <p className="mt-0.5 font-mono text-[11.5px] text-gray-400">{distributor.distributor_code}</p>
+            )}
+            {doctor?.clinic_name && (
+              <p className="mt-0.5 text-[12.5px] text-gray-600">{doctor.clinic_name}</p>
             )}
             {(distributor?.gst_number ?? chemist?.gst_number) && (
               <p className="mt-2 text-[12.5px] text-gray-600">
@@ -232,9 +242,14 @@ export default async function SalesInvoiceDetailPage({
                 DL <span className="font-mono">{distributor?.drug_license_number ?? chemist?.drug_license_number}</span>
               </p>
             )}
-            {(distributor?.city || distributor?.state || chemist?.city) && (
+            {(distributor?.city || distributor?.state || chemist?.city || doctor?.city) && (
               <p className="mt-0.5 text-[12.5px] text-gray-600">
-                {[distributor?.city ?? chemist?.city, distributor?.state].filter(Boolean).join(', ')}
+                {[distributor?.city ?? chemist?.city ?? doctor?.city, distributor?.state].filter(Boolean).join(', ')}
+              </p>
+            )}
+            {(distributor?.phone ?? chemist?.phone ?? doctor?.phone) && (
+              <p className="mt-0.5 text-[12.5px] text-gray-600">
+                {distributor?.phone ?? chemist?.phone ?? doctor?.phone}
               </p>
             )}
           </Card>

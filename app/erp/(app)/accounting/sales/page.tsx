@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Plus, ShoppingCart } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listSalesInvoices } from '@/lib/erp/data/billing'
-import { listDistributors, listChemists } from '@/lib/erp/data/masters'
+import { listDistributors, listChemists, listDoctors } from '@/lib/erp/data/masters'
 import { PAGE_SIZE, parsePage } from '@/lib/erp/data/query'
 import { can } from '@/lib/erp/permissions'
 import { formatDate, money, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES } from '@/lib/erp/format'
@@ -17,7 +17,7 @@ export const metadata = { title: 'Sales' }
 interface Props {
   searchParams: Promise<{
     page?: string; q?: string; from?: string; to?: string
-    distributor?: string; chemist?: string; payment?: string
+    distributor?: string; chemist?: string; doctor?: string; payment?: string
   }>
 }
 
@@ -26,24 +26,26 @@ export default async function SalesPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const [{ rows, total, pageCount }, distributors, chemists] = await Promise.all([
+  const [{ rows, total, pageCount }, distributors, chemists, doctors] = await Promise.all([
     listSalesInvoices({
       page, q: params.q, from: params.from, to: params.to,
-      partyId: params.distributor, chemistId: params.chemist, paymentStatus: params.payment,
+      partyId: params.distributor, chemistId: params.chemist, doctorId: params.doctor,
+      paymentStatus: params.payment,
     }),
     listDistributors({ page: 1 }),
     listChemists({ page: 1 }),
+    listDoctors({ page: 1 }),
   ])
 
   const canWrite = can(session.role, 'billing.sales.write')
-  const hasFilters = !!(params.from || params.to || params.distributor || params.chemist || params.payment)
+  const hasFilters = !!(params.from || params.to || params.distributor || params.chemist || params.doctor || params.payment)
   const pageTotal = rows.reduce((sum, i) => sum + Number(i.grand_total ?? 0), 0)
 
   return (
     <>
       <PageHeader
         title="Sales"
-        description="Leomed's own invoices to distributors or direct to chemists. Saving one deducts stock from the batches sold."
+        description="Leomed's own invoices to distributors or direct to chemists and doctors. Saving one deducts stock from the batches sold."
         action={canWrite && (
           <ButtonLink href="/erp/accounting/sales/new">
             <Plus size={15} /> New sales invoice
@@ -77,6 +79,11 @@ export default async function SalesPage({ searchParams }: Props) {
             allLabel="All chemists"
           />
           <FilterSelect
+            name="doctor" label="Doctor" defaultValue={params.doctor}
+            options={doctors.rows.map(d => ({ value: d.id, label: d.doctor_name }))}
+            allLabel="All doctors"
+          />
+          <FilterSelect
             name="payment" label="Payment" defaultValue={params.payment}
             options={PAYMENT_STATUSES.map(s => ({ value: s, label: PAYMENT_STATUS_LABELS[s] }))}
           />
@@ -88,7 +95,7 @@ export default async function SalesPage({ searchParams }: Props) {
             title={hasFilters || params.q ? 'No sales match' : 'No sales invoices yet'}
             description={
               canWrite
-                ? 'Raise your first invoice to a distributor or chemist.'
+                ? 'Raise your first invoice to a distributor, chemist or doctor.'
                 : 'Sales invoices raised by accounting will appear here.'
             }
             action={canWrite && (
@@ -126,9 +133,12 @@ export default async function SalesPage({ searchParams }: Props) {
                       <Td>{formatDate(inv.invoice_date)}</Td>
                       <Td>
                         <span className="font-medium text-gray-900">
-                          {inv.erp_distributors?.distributor_name ?? inv.erp_chemists?.chemist_name ?? '—'}
+                          {inv.erp_distributors?.distributor_name
+                            ?? inv.erp_chemists?.chemist_name
+                            ?? inv.erp_doctors?.doctor_name
+                            ?? '—'}
                         </span>
-                        {inv.chemist_id && (
+                        {(inv.chemist_id || inv.doctor_id) && (
                           <Badge className="ml-1.5 bg-blue-50 text-blue-700 ring-blue-600/20">Direct</Badge>
                         )}
                       </Td>

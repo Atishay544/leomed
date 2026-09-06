@@ -5,12 +5,8 @@ import { gstSplit } from './invoice-math'
 
 /**
  * Sales invoice PDF — the printable bill handed to (or emailed to) a
- * distributor or chemist. Same pdfkit approach as the payslip: one
- * structured page, no headless browser.
- *
- * Deliberately sales-invoice only: doctors are never billed in this ERP —
- * they receive visits and samples, never an invoice (spec's own field-force
- * model). A "sale to a doctor" is not a state this system has.
+ * distributor, chemist or doctor (direct sale). Same pdfkit approach as the
+ * payslip: one structured page, no headless browser.
  */
 
 export interface InvoicePdfCompany {
@@ -21,7 +17,7 @@ export interface InvoicePdfCompany {
 }
 
 export interface InvoicePdfParty {
-  label: 'Distributor' | 'Chemist (direct sale)'
+  label: 'Distributor' | 'Chemist (direct sale)' | 'Doctor (direct sale)'
   name: string
   code?: string | null
   gstNumber: string | null

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft, Truck } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
-import { listDistributors, listChemists } from '@/lib/erp/data/masters'
+import { listDistributors, listChemists, listDoctors } from '@/lib/erp/data/masters'
 import { getErpSettings } from '@/lib/erp/data/settings'
 import SalesInvoiceForm from '@/components/erp/billing/SalesInvoiceForm'
 import { ButtonLink, Card, EmptyState, ErrorState } from '@/components/erp/ui'
@@ -11,9 +11,10 @@ export const metadata = { title: 'New Sales Invoice' }
 export default async function NewSalesInvoicePage() {
   const session = await requireCapability('billing.sales.write')
 
-  const [{ rows: distributors }, { rows: chemists }, settings] = await Promise.all([
+  const [{ rows: distributors }, { rows: chemists }, { rows: doctors }, settings] = await Promise.all([
     listDistributors({ page: 1 }),
     listChemists({ page: 1 }),
+    listDoctors({ page: 1 }),
     getErpSettings(),
   ])
 
@@ -43,16 +44,17 @@ export default async function NewSalesInvoicePage() {
         </div>
       )}
 
-      {distributors.length === 0 && chemists.length === 0 ? (
+      {distributors.length === 0 && chemists.length === 0 && doctors.length === 0 ? (
         <Card padded={false}>
           <EmptyState
             icon={Truck}
-            title="Add a distributor or a chemist first"
-            description="A sales invoice has to be raised against a distributor, or direct to a chemist."
+            title="Add a distributor, chemist or doctor first"
+            description="A sales invoice has to be raised against a distributor, or direct to a chemist or doctor."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <ButtonLink href="/erp/masters/distributors">Go to distributors</ButtonLink>
                 <ButtonLink href="/erp/masters/chemists">Go to chemists</ButtonLink>
+                <ButtonLink href="/erp/masters/doctors">Go to doctors</ButtonLink>
               </div>
             }
           />
@@ -63,6 +65,7 @@ export default async function NewSalesInvoicePage() {
             id: d.id, distributor_name: d.distributor_name, distributor_code: d.distributor_code,
           }))}
           chemists={chemists.map(c => ({ id: c.id, chemist_name: c.chemist_name }))}
+          doctors={doctors.map(d => ({ id: d.id, doctor_name: d.doctor_name }))}
           isAdmin={session.role === 'ADMIN'}
           allowExpiredSale={settings.allow_expired_sale}
         />

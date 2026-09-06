@@ -521,6 +521,31 @@ begin
   assert v_failed, 'A duplicate sales invoice number must be rejected';
 end $$;
 
+-- A sales invoice bills exactly one of distributor / chemist / doctor.
+do $$
+declare v_failed boolean := false;
+begin
+  insert into public.erp_sales_invoices (invoice_number, doctor_id, invoice_date, created_by)
+  values ('INV/TEST/DOCTOR', pg_temp.id_of('doctor'), current_date, pg_temp.id_of('admin'));
+
+  begin
+    insert into public.erp_sales_invoices (invoice_number, distributor_id, doctor_id, invoice_date, created_by)
+    values ('INV/TEST/BOTH', pg_temp.id_of('distributor'), pg_temp.id_of('doctor'), current_date, pg_temp.id_of('admin'));
+  exception when check_violation then
+    v_failed := true;
+  end;
+  assert v_failed, 'A sales invoice must not bill both a distributor and a doctor at once';
+
+  v_failed := false;
+  begin
+    insert into public.erp_sales_invoices (invoice_number, invoice_date, created_by)
+    values ('INV/TEST/NEITHER', current_date, pg_temp.id_of('admin'));
+  exception when check_violation then
+    v_failed := true;
+  end;
+  assert v_failed, 'A sales invoice must bill someone — distributor, chemist or doctor';
+end $$;
+
 -- ── Q6: payment history is the source of truth ──
 -- Worked through with the exact figures from the brief: a ₹2,00,000 invoice
 -- settled by receipts of 50,000 / 75,000 / 25,000 must read

@@ -11,7 +11,7 @@ import { daysUntil, formatDate, isoDate, money, PAYMENT_METHOD_LABELS, qty } fro
 import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/erp/types'
 
 /**
- * Raise a sales invoice to a distributor, or direct to a chemist → stock out.
+ * Raise a sales invoice to a distributor, or direct to a chemist or doctor → stock out.
  *
  * This is actual Leomed revenue, unrelated to the field orders MRs collect
  * (spec §29). Every line needs a batch, and batches are offered
@@ -24,7 +24,8 @@ import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/erp/types'
 
 interface DistributorOption { id: string; distributor_name: string; distributor_code: string }
 interface ChemistOption { id: string; chemist_name: string }
-type BuyerType = 'DISTRIBUTOR' | 'CHEMIST'
+interface DoctorOption { id: string; doctor_name: string }
+type BuyerType = 'DISTRIBUTOR' | 'CHEMIST' | 'DOCTOR'
 
 interface BatchOption {
   id: string
@@ -59,10 +60,11 @@ const inputClass =
   'focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none sm:text-[13px]'
 
 export default function SalesInvoiceForm({
-  distributors, chemists, isAdmin, allowExpiredSale,
+  distributors, chemists, doctors, isAdmin, allowExpiredSale,
 }: {
   distributors: DistributorOption[]
   chemists: ChemistOption[]
+  doctors: DoctorOption[]
   /** Only an administrator may authorise selling an expired batch (Q9). */
   isAdmin: boolean
   /** The business-level switch in Settings. Off by default. */
@@ -72,6 +74,7 @@ export default function SalesInvoiceForm({
   const [buyerType, setBuyerType] = useState<BuyerType>('DISTRIBUTOR')
   const [distributorId, setDistributorId] = useState('')
   const [chemistId, setChemistId] = useState('')
+  const [doctorId, setDoctorId] = useState('')
   const [invoiceDate, setInvoiceDate] = useState(isoDate())
   const [isInterstate, setIsInterstate] = useState(false)
   const [initialPayment, setInitialPayment] = useState(0)
@@ -103,6 +106,7 @@ export default function SalesInvoiceForm({
     setBuyerType('DISTRIBUTOR')
     setDistributorId('')
     setChemistId('')
+    setDoctorId('')
     setInvoiceDate(isoDate())
     setIsInterstate(false)
     setInitialPayment(0)
@@ -151,6 +155,7 @@ export default function SalesInvoiceForm({
 
     if (buyerType === 'DISTRIBUTOR' && !distributorId) return setError('Choose the distributor this invoice is for.')
     if (buyerType === 'CHEMIST' && !chemistId)         return setError('Choose the chemist this invoice is for.')
+    if (buyerType === 'DOCTOR' && !doctorId)           return setError('Choose the doctor this invoice is for.')
     if (lines.length === 0) return setError('Add at least one product line.')
 
     const noBatch = lines.findIndex(l => !l.batch_id)
@@ -191,6 +196,7 @@ export default function SalesInvoiceForm({
     const payload = {
       distributor_id: buyerType === 'DISTRIBUTOR' ? distributorId : undefined,
       chemist_id:     buyerType === 'CHEMIST'     ? chemistId     : undefined,
+      doctor_id:      buyerType === 'DOCTOR'      ? doctorId      : undefined,
       invoice_date: invoiceDate,
       is_interstate: isInterstate,
       initial_payment: initialPayment,
@@ -281,8 +287,8 @@ export default function SalesInvoiceForm({
             <label className="mb-1 block text-[12px] font-medium text-gray-700">
               Bill to <span className="text-red-500">*</span>
             </label>
-            <div className="mb-2 flex gap-2">
-              {(['DISTRIBUTOR', 'CHEMIST'] as BuyerType[]).map(t => (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {(['DISTRIBUTOR', 'CHEMIST', 'DOCTOR'] as BuyerType[]).map(t => (
                 <button
                   key={t}
                   type="button"
@@ -293,7 +299,7 @@ export default function SalesInvoiceForm({
                       : 'border-gray-300 text-gray-600 hover:border-gray-400'
                   }`}
                 >
-                  {t === 'DISTRIBUTOR' ? 'Distributor' : 'Chemist (direct sale)'}
+                  {t === 'DISTRIBUTOR' ? 'Distributor' : t === 'CHEMIST' ? 'Chemist (direct sale)' : 'Doctor (direct sale)'}
                 </button>
               ))}
             </div>
@@ -305,12 +311,20 @@ export default function SalesInvoiceForm({
                   <option key={d.id} value={d.id}>{d.distributor_name} ({d.distributor_code})</option>
                 ))}
               </select>
-            ) : (
+            ) : buyerType === 'CHEMIST' ? (
               <select id="chemist" value={chemistId}
                       onChange={e => setChemistId(e.target.value)} className={inputClass}>
                 <option value="">Choose a chemist…</option>
                 {chemists.map(c => (
                   <option key={c.id} value={c.id}>{c.chemist_name}</option>
+                ))}
+              </select>
+            ) : (
+              <select id="doctor" value={doctorId}
+                      onChange={e => setDoctorId(e.target.value)} className={inputClass}>
+                <option value="">Choose a doctor…</option>
+                {doctors.map(d => (
+                  <option key={d.id} value={d.id}>{d.doctor_name}</option>
                 ))}
               </select>
             )}
