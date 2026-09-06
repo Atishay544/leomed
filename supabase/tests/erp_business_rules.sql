@@ -1390,6 +1390,496 @@ begin
 end $$;
 
 -- ============================================================================
+-- 10. HR: ATTENDANCE, LEAVE, PAYROLL & EXPENSES
+--
+-- The most important business rule in this module, tested directly: an MR's
+-- attendance is gated by check-in/out + GPS + doctor/chemist visit counts;
+-- every other non-admin employee is gated by check-in/out + GPS ONLY, never
+-- visits; an admin needs no attendance record at all.
+-- ============================================================================
+
+do $$
+declare
+  v_acct      uuid;
+  v_auth_acct uuid;
+begin
+  select id, auth_user_id into v_acct, v_auth_acct
+    from public.erp_users where email = 'test-acct@leomed.test';
+  insert into t_ids values ('hr_acct', v_acct), ('auth_hr_acct', v_auth_acct)
+    on conflict (label) do nothing;
+
+  -- Deterministic regardless of which real calendar weekday the suite runs
+  -- on: these three must never accidentally land on their own week-off day
+  -- while today's check-in/out tests run.
+  update public.erp_users set week_off_days = '{}'
+   where id in (pg_temp.id_of('mr1'), pg_temp.id_of('mr2'), v_acct);
+end $$;
+
+-- ── Admin needs no attendance record at all ──
+do $$
+declare v_failed boolean := false; v_message text;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  begin
+    perform public.erp_attendance_check_in(null, null, null);
+  exception when others then
+    v_failed := true;
+    get stacked diagnostics v_message = message_text;
+  end;
+
+  reset role;
+  assert v_failed and v_message ilike '%do not require attendance%',
+    'An administrator must be refused at check-in, not silently recorded';
+end $$;
+
+-- ── Duplicate check-in prevented ──
+do $$
+declare v_failed boolean := false;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  perform public.erp_attendance_check_in(22.71, 75.85, 12);
+
+  begin
+    perform public.erp_attendance_check_in(22.71, 75.85, 12);
+  exception when others then
+    v_failed := true;
+  end;
+
+  reset role;
+  assert v_failed, 'A second check-in on the same day must be rejected';
+end $$;
+
+-- ── Checked in, not out yet: an exception for review, not a guess ──
+do $$
+declare v_att uuid; v_status public.erp_attendance_status; v_remarks text;
+begin
+  select id, attendance_status, remarks into v_att, v_status, v_remarks
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr1') and date = current_date;
+
+  assert v_status = 'PENDING_REVIEW' and v_remarks ilike '%Missing check-out%',
+    format('An open check-in with no check-out must be PENDING_REVIEW, got %s / %s', v_status, v_remarks);
+end $$;
+
+-- ── Individual MR target overrides the global default ──
+do $$
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  insert into public.erp_mr_attendance_targets (mr_id, required_doctor_visits, required_chemist_visits)
+  values (pg_temp.id_of('mr1'), 1, 0);
+
+  reset role;
+end $$;
+
+-- Backdate mr1's check-in by 9 hours (the public API only ever stamps
+-- now(), by design — this is test setup, not something the app exposes) and
+-- complete the day. mr1 already has one doctor visit today from fixtures,
+-- which now exactly meets their overridden target.
+do $$
+declare v_status public.erp_attendance_status; v_doc int; v_req_doc int;
+begin
+  update public.erp_attendance set check_in_time = check_in_time - interval '9 hours'
+   where employee_id = pg_temp.id_of('mr1') and date = current_date;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+  perform public.erp_attendance_check_out(22.71, 75.85, 12);
+  reset role;
+
+  select attendance_status, doctor_visit_count, required_doctor_visits
+    into v_status, v_doc, v_req_doc
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr1') and date = current_date;
+
+  assert v_status = 'PRESENT' and v_doc >= v_req_doc,
+    format('mr1 met their overridden target (%s/%s doctor visits) and worked a full day — expected PRESENT, got %s', v_doc, v_req_doc, v_status);
+end $$;
+
+-- ── MR below the (global default) target: an exception, never an automatic
+-- absence — a doctor may simply have been unavailable ──
+do $$
+declare v_status public.erp_attendance_status; v_remarks text;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr2'), 'role', 'authenticated')::text, true);
+  perform public.erp_attendance_check_in(22.71, 75.85, 12);
+  reset role;
+
+  update public.erp_attendance set check_in_time = check_in_time - interval '9 hours'
+   where employee_id = pg_temp.id_of('mr2') and date = current_date;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr2'), 'role', 'authenticated')::text, true);
+  perform public.erp_attendance_check_out(22.71, 75.85, 12);
+  reset role;
+
+  select attendance_status, remarks into v_status, v_remarks
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr2') and date = current_date;
+
+  assert v_status = 'PRESENT_WITH_EXCEPTION' and v_remarks ilike '%below target%',
+    format('mr2 worked a full day but is short of the global visit target — expected PRESENT_WITH_EXCEPTION, got %s', v_status);
+end $$;
+
+-- ── A non-MR employee is NEVER evaluated against a visit target — the most
+-- important rule in this module ──
+do $$
+declare v_status public.erp_attendance_status; v_req_doc int; v_req_chem int;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_hr_acct'), 'role', 'authenticated')::text, true);
+  perform public.erp_attendance_check_in(22.71, 75.85, 12);
+  reset role;
+
+  update public.erp_attendance set check_in_time = check_in_time - interval '9 hours'
+   where employee_id = pg_temp.id_of('hr_acct') and date = current_date;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_hr_acct'), 'role', 'authenticated')::text, true);
+  perform public.erp_attendance_check_out(22.71, 75.85, 12);
+  reset role;
+
+  select attendance_status, required_doctor_visits, required_chemist_visits
+    into v_status, v_req_doc, v_req_chem
+    from public.erp_attendance where employee_id = pg_temp.id_of('hr_acct') and date = current_date;
+
+  assert v_status = 'PRESENT' and v_req_doc is null and v_req_chem is null,
+    format('An accountant with zero visits and a full day must be PRESENT with no visit requirement recorded, got %s (req %s/%s)', v_status, v_req_doc, v_req_chem);
+end $$;
+
+-- ── No check-in, no leave, no holiday, not a week-off → ABSENT ──
+do $$
+declare v_date date; v_status public.erp_attendance_status;
+begin
+  v_date := case when extract(dow from current_date - 10) = 0 then current_date - 11 else current_date - 10 end;
+
+  perform public.erp_process_daily_attendance(v_date);
+
+  select attendance_status into v_status
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr2') and date = v_date;
+
+  assert v_status = 'ABSENT', format('No check-in and no excuse must be ABSENT, got %s', v_status);
+end $$;
+
+-- ── Holiday takes precedence ──
+do $$
+declare v_date date := current_date + 60; v_status public.erp_attendance_status;
+begin
+  insert into public.erp_holidays (holiday_date, name, created_by)
+  values (v_date, 'Test Holiday', pg_temp.id_of('admin'));
+
+  perform public.erp_process_daily_attendance(v_date);
+
+  select attendance_status into v_status
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr1') and date = v_date;
+
+  assert v_status = 'HOLIDAY', format('A configured holiday must read HOLIDAY, got %s', v_status);
+end $$;
+
+-- ── Weekly off, for an employee with no override (the company default) ──
+do $$
+declare
+  v_office  uuid;
+  v_auth    uuid := gen_random_uuid();
+  v_sunday  date := (date_trunc('week', current_date) - interval '1 day')::date;
+  v_status  public.erp_attendance_status;
+begin
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
+                          email_confirmed_at, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', v_auth, 'authenticated', 'authenticated',
+          'test-office@leomed.test', '', now(), now(), now());
+
+  insert into public.erp_users (auth_user_id, name, email, role)
+  values (v_auth, 'Test Office Employee', 'test-office@leomed.test', 'VIEWER')
+  returning id into v_office;
+
+  perform public.erp_process_daily_attendance(v_sunday);
+
+  select attendance_status into v_status
+    from public.erp_attendance where employee_id = v_office and date = v_sunday;
+
+  assert v_status = 'WEEK_OFF', format('Sunday with the company default week-off must read WEEK_OFF, got %s', v_status);
+end $$;
+
+-- ── Admin manual correction: ABSENT → PRESENT with a reason, and it sticks
+-- through the next automatic run ──
+do $$
+declare
+  v_date date;
+  v_att   uuid;
+  v_status public.erp_attendance_status;
+  v_failed boolean := false;
+begin
+  v_date := case when extract(dow from current_date - 10) = 0 then current_date - 11 else current_date - 10 end;
+  select id into v_att from public.erp_attendance where employee_id = pg_temp.id_of('mr2') and date = v_date;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+  begin
+    perform public.erp_admin_correct_attendance(v_att, 'PRESENT', null, null, 'Trying to self-approve');
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+  assert v_failed, 'A non-admin must not be able to correct attendance';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  v_failed := false;
+  begin
+    perform public.erp_admin_correct_attendance(v_att, 'PRESENT', null, null, '');
+  exception when others then
+    v_failed := true;
+  end;
+  assert v_failed, 'A correction with no reason must be rejected';
+
+  perform public.erp_admin_correct_attendance(v_att, 'PRESENT', null, null,
+    'Forgot to check in. Confirmed field work with the distributor.');
+  reset role;
+
+  select attendance_status into v_status from public.erp_attendance where id = v_att;
+  assert v_status = 'PRESENT', format('Admin correction ABSENT -> PRESENT did not take, got %s', v_status);
+
+  -- The automatic job must never silently revert a human decision.
+  perform public.erp_process_daily_attendance(v_date);
+  select attendance_status into v_status from public.erp_attendance where id = v_att;
+  assert v_status = 'PRESENT', 'A manually-corrected day must survive the next automatic recalculation';
+end $$;
+
+-- ── Leave: apply, approve, sync to attendance, no self-approval, RLS scoping ──
+do $$
+declare
+  v_leave_type uuid;
+  v_leave      uuid;
+  v_from       date := current_date + 90;
+  v_to         date := current_date + 91;
+  v_failed     boolean := false;
+  v_status     public.erp_attendance_status;
+begin
+  select id into v_leave_type from public.erp_leave_types where name = 'Casual Leave';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr2'), 'role', 'authenticated')::text, true);
+
+  insert into public.erp_leave_requests (employee_id, leave_type_id, from_date, to_date, reason)
+  values (pg_temp.id_of('mr2'), v_leave_type, v_from, v_to, 'Family function')
+  returning id into v_leave;
+
+  -- An employee must never approve their own leave.
+  begin
+    perform public.erp_review_leave_request(v_leave, 'APPROVED', null);
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+  assert v_failed, 'An employee must not be able to approve their own leave request';
+
+  -- mr1 must not see mr2's leave request at all.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+  assert (select count(*) from public.erp_leave_requests where id = v_leave) = 0,
+    'An employee must not see another employee''s leave request';
+  reset role;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  perform public.erp_review_leave_request(v_leave, 'APPROVED', 'Approved — noted');
+  reset role;
+
+  select attendance_status into v_status
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr2') and date = v_from;
+  assert v_status = 'LEAVE', format('Approving leave must stamp the covered dates LEAVE, got %s', v_status);
+
+  select attendance_status into v_status
+    from public.erp_attendance where employee_id = pg_temp.id_of('mr2') and date = v_to;
+  assert v_status = 'LEAVE', 'Both days of a two-day approved leave must read LEAVE';
+end $$;
+
+-- Self-service cancel of one's own still-pending request.
+do $$
+declare v_leave_type uuid; v_leave uuid; v_status public.erp_leave_status;
+begin
+  select id into v_leave_type from public.erp_leave_types where name = 'Sick Leave';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+
+  insert into public.erp_leave_requests (employee_id, leave_type_id, from_date, to_date)
+  values (pg_temp.id_of('mr1'), v_leave_type, current_date + 100, current_date + 100)
+  returning id into v_leave;
+
+  update public.erp_leave_requests set status = 'CANCELLED' where id = v_leave;
+  reset role;
+
+  select status into v_status from public.erp_leave_requests where id = v_leave;
+  assert v_status = 'CANCELLED', 'An employee must be able to cancel their own still-pending leave request';
+end $$;
+
+-- ── Payroll: calculation, incentives, finalization lock, historical
+-- snapshot immutability ──
+do $$
+declare
+  v_period_id  uuid;
+  v_record_id  uuid;
+  v_days       int;
+  v_net_before numeric;
+  v_net_after  numeric;
+  v_status     public.erp_payroll_status;
+  v_failed     boolean := false;
+  v_fixed_snap numeric;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  insert into public.erp_employee_salary (employee_id, fixed_salary, basic_salary, gross_salary)
+  values (pg_temp.id_of('mr1'), 30000, 15000, 30000)
+  on conflict (employee_id) do update set fixed_salary = 30000;
+
+  perform public.erp_generate_payroll_period(extract(year from current_date)::int, extract(month from current_date)::int);
+  reset role;
+
+  select id into v_period_id from public.erp_payroll_periods
+   where period_year = extract(year from current_date)::int and period_month = extract(month from current_date)::int;
+  select id, working_days, net_salary into v_record_id, v_days, v_net_before
+    from public.erp_payroll_records where payroll_period_id = v_period_id and employee_id = pg_temp.id_of('mr1');
+
+  -- mr1 has exactly one PRESENT day in this calendar month within this test
+  -- run (today), so the prorated fixed salary is fixed_salary/days_in_month * 1.
+  assert v_net_before = round(30000::numeric / v_days, 2),
+    format('Prorated net salary before incentives: expected %s, got %s', round(30000::numeric / v_days, 2), v_net_before);
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  perform public.erp_add_payroll_item(v_record_id, 'INCENTIVE', 'Sales incentive', 5000);
+  reset role;
+
+  select net_salary into v_net_after from public.erp_payroll_records where id = v_record_id;
+  assert v_net_after = v_net_before + 5000,
+    format('An incentive must add straight to net salary without touching the fixed salary: expected %s, got %s', v_net_before + 5000, v_net_after);
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  perform public.erp_finalize_payroll(v_period_id);
+
+  -- A finalized payroll must refuse further items.
+  begin
+    perform public.erp_add_payroll_item(v_record_id, 'DEDUCTION', 'Late fine', 100);
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+  assert v_failed, 'A finalized payroll must reject new incentive/deduction items until reopened';
+
+  select status into v_status from public.erp_payroll_periods where id = v_period_id;
+  assert v_status = 'FINALIZED', format('Expected FINALIZED, got %s', v_status);
+
+  -- Reopening requires a reason.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  v_failed := false;
+  begin
+    perform public.erp_reopen_payroll(v_period_id, '');
+  exception when others then
+    v_failed := true;
+  end;
+  assert v_failed, 'Reopening a finalized payroll without a reason must be rejected';
+
+  perform public.erp_reopen_payroll(v_period_id, 'Recording a late incentive');
+  perform public.erp_finalize_payroll(v_period_id);
+  perform public.erp_mark_payroll_paid(v_period_id);
+  reset role;
+
+  select status into v_status from public.erp_payroll_periods where id = v_period_id;
+  assert v_status = 'PAID', format('Expected PAID, got %s', v_status);
+
+  -- Historical snapshot: a later salary change must not rewrite this payslip.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  update public.erp_employee_salary set fixed_salary = 99999 where employee_id = pg_temp.id_of('mr1');
+
+  v_failed := false;
+  begin
+    perform public.erp_generate_payroll_period(extract(year from current_date)::int, extract(month from current_date)::int);
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+  assert v_failed, 'Regenerating a PAID payroll period must be refused, not silently overwritten';
+
+  select fixed_salary into v_fixed_snap from public.erp_payroll_records where id = v_record_id;
+  assert v_fixed_snap = 30000,
+    format('A finalized/paid payslip must keep the salary that was in effect when it was calculated, got %s', v_fixed_snap);
+end $$;
+
+-- ── Expenses: submit, no self-approval, RLS scoping, admin sees all ──
+do $$
+declare
+  v_expense uuid;
+  v_failed  boolean := false;
+  v_status  public.erp_expense_status;
+  v_seen_by_admin int;
+  v_seen_by_mr1   int;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr2'), 'role', 'authenticated')::text, true);
+
+  insert into public.erp_expenses (expense_date, category, employee_id, amount, description, payment_mode)
+  values (current_date, 'TRAVEL', pg_temp.id_of('mr2'), 850, 'Auto fare to distributor visit', 'CASH')
+  returning id into v_expense;
+
+  begin
+    perform public.erp_review_expense(v_expense, 'APPROVED', null);
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+  assert v_failed, 'An employee must not be able to approve their own expense';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_mr1'), 'role', 'authenticated')::text, true);
+  select count(*) into v_seen_by_mr1 from public.erp_expenses where id = v_expense;
+  reset role;
+  assert v_seen_by_mr1 = 0, 'An employee must not see another employee''s expense';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  select count(*) into v_seen_by_admin from public.erp_expenses where id = v_expense;
+  perform public.erp_review_expense(v_expense, 'APPROVED', 'Reasonable, approved');
+  reset role;
+
+  assert v_seen_by_admin = 1, 'An admin must see every employee''s expenses';
+
+  select status into v_status from public.erp_expenses where id = v_expense;
+  assert v_status = 'APPROVED', format('Expected APPROVED, got %s', v_status);
+end $$;
+
+-- ============================================================================
 
 do $$ begin raise notice 'All ERP business-rule tests passed.'; end $$;
 

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, ArrowLeft, ShoppingCart } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Printer, ShoppingCart } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { getSalesInvoice } from '@/lib/erp/data/billing'
 import { can } from '@/lib/erp/permissions'
@@ -108,13 +108,23 @@ export default async function SalesInvoiceDetailPage({
                 <div>
                   <h1 className="font-mono text-lg font-bold text-gray-900">{invoice.invoice_number}</h1>
                   <p className="mt-0.5 text-[12.5px] text-gray-500">
-                    {formatDate(invoice.invoice_date)} · {distributor?.distributor_name ?? 'Unknown distributor'}
+                    {formatDate(invoice.invoice_date)} · {distributor?.distributor_name ?? chemist?.chemist_name ?? 'Unknown'}
                   </p>
                 </div>
               </div>
-              <Badge className={PAYMENT_STATUS_STYLES[invoice.payment_status]}>
-                {PAYMENT_STATUS_LABELS[invoice.payment_status]}
-              </Badge>
+              <div className="flex shrink-0 items-center gap-2">
+                <a
+                  href={`/api/erp/sales-invoice/${invoice.id}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5
+                             text-[12px] font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  <Printer size={13} /> Print / Download
+                </a>
+                <Badge className={PAYMENT_STATUS_STYLES[invoice.payment_status]}>
+                  {PAYMENT_STATUS_LABELS[invoice.payment_status]}
+                </Badge>
+              </div>
             </div>
 
             {/* Q9: selling expired stock is an exception that must stay visible

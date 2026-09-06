@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { AlertTriangle, Check, Loader2, ShoppingCart, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Printer, ShoppingCart, Trash2 } from 'lucide-react'
 import ProductPicker from '../visits/ProductPicker'
 import { lookupBatchesForSale, type ProductOption } from '@/lib/erp/actions/lookup'
 import { saveSalesInvoice } from '@/lib/erp/actions/billing'
@@ -231,6 +231,16 @@ export default function SalesInvoiceForm({
           {money(Number(saved.grand_total ?? 0))}
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          {typeof saved.invoice_id === 'string' && (
+            <a
+              href={`/api/erp/sales-invoice/${saved.invoice_id}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white
+                         px-4 py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <Printer size={14} /> Print / Download bill
+            </a>
+          )}
           <button
             type="button"
             onClick={() => router.push('/erp/accounting/sales')}

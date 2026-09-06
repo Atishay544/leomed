@@ -38,6 +38,17 @@ const ERP_ROUTES = [
   '/erp/users',
   '/erp/audit',
   '/erp/settings',
+  '/erp/attendance',
+  '/erp/attendance/admin',
+  '/erp/attendance/rules',
+  '/erp/leave',
+  '/erp/leave/admin',
+  '/erp/hr',
+  '/erp/my-payroll',
+  '/erp/payroll',
+  '/erp/payroll/salaries',
+  '/erp/expenses',
+  '/erp/expenses/admin',
 ]
 
 test.describe('ERP access control', () => {
