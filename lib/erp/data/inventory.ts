@@ -173,7 +173,10 @@ export interface ProductStockTotal {
   product_id: string
   batch_count: number
   total_quantity: number
+  /** Landing/cost value — quantity × purchase_rate. */
   total_value: number
+  /** Retail-ceiling value — quantity × MRP. */
+  total_mrp_value: number
   earliest_expiry: string | null
 }
 
@@ -196,6 +199,21 @@ export async function getStockTotalsForProducts(productIds: string[]): Promise<M
     map.set(row.product_id, row)
   }
   return map
+}
+
+export interface StockValuationSummary {
+  product_count: number
+  total_landing_value: number
+  total_mrp_value: number
+}
+
+/** Company-wide stock valuation — landing cost and MRP — for the
+ *  admin-only valuation screen. One aggregate query, not a sum over every
+ *  product's row (spec §41). */
+export async function getStockValuationSummary(): Promise<StockValuationSummary> {
+  const db = await erpDb()
+  const { data } = await db.rpc('erp_stock_valuation_summary')
+  return (data ?? { product_count: 0, total_landing_value: 0, total_mrp_value: 0 }) as StockValuationSummary
 }
 
 /** Batches where the cached quantity disagrees with the ledger. An empty

@@ -48,6 +48,11 @@ export const CAPABILITIES = [
   // Stock
   'inventory.read',
   'inventory.adjust',
+  // Landing cost and MRP valuation of stock on hand — deliberately
+  // ADMIN-only (granted to no other role below): it reveals purchase
+  // pricing and margin, unlike inventory.read's plain quantities, which
+  // accountants and managers already need for day-to-day billing.
+  'inventory.valuation',
 
   // Administration
   'users.manage',

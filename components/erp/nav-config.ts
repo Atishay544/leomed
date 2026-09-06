@@ -75,8 +75,9 @@ const ALL_GROUPS: ErpNavGroup[] = [
   {
     label: 'Products',
     items: [
-      { href: '/erp/masters/products', label: 'Product Master', icon: Package, capability: 'masters.read' },
-      { href: '/erp/masters/batches',  label: 'Batches',        icon: Boxes,   capability: 'inventory.read' },
+      { href: '/erp/masters/products',            label: 'Product Master', icon: Package,     capability: 'masters.read' },
+      { href: '/erp/masters/batches',              label: 'Batches',        icon: Boxes,       capability: 'inventory.read' },
+      { href: '/erp/masters/products/valuation',   label: 'Stock Valuation', icon: IndianRupee, capability: 'inventory.valuation' },
     ],
   },
   {
