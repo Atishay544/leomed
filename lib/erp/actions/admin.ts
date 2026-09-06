@@ -65,13 +65,15 @@ export async function createErpUser(_prev: ActionState, formData: FormData): Pro
     // Through the caller's session, so RLS re-checks that they are an admin.
     const db = await erpDb()
     const { error: rowError } = await db.from('erp_users').insert({
-      auth_user_id: created.user.id,
-      name:      profile.name,
-      email:     profile.email,
-      phone:     profile.phone ?? null,
-      role:      profile.role,
-      mr_code:   profile.mr_code ?? null,
-      territory: profile.territory ?? null,
+      auth_user_id:  created.user.id,
+      name:          profile.name,
+      email:         profile.email,
+      phone:         profile.phone ?? null,
+      role:          profile.role,
+      mr_code:       profile.mr_code ?? null,
+      territory:     profile.territory ?? null,
+      department:    profile.department ?? null,
+      employee_code: profile.employee_code ?? null,
     })
 
     if (rowError) {
@@ -100,12 +102,14 @@ export async function updateErpUser(_prev: ActionState, formData: FormData): Pro
     const { data: updated, error } = await db
       .from('erp_users')
       .update({
-        name:      parsed.data.name,
-        phone:     parsed.data.phone ?? null,
-        role:      parsed.data.role,
-        mr_code:   parsed.data.mr_code ?? null,
-        territory: parsed.data.territory ?? null,
-        active:    parsed.data.active,
+        name:          parsed.data.name,
+        phone:         parsed.data.phone ?? null,
+        role:          parsed.data.role,
+        mr_code:       parsed.data.mr_code ?? null,
+        territory:     parsed.data.territory ?? null,
+        department:    parsed.data.department ?? null,
+        employee_code: parsed.data.employee_code ?? null,
+        active:        parsed.data.active,
       })
       .eq('id', id)
       .select('auth_user_id')

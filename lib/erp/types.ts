@@ -78,6 +78,9 @@ export interface ErpUser {
   territory: string | null
   reports_to: string | null
   active: boolean
+  department: string | null
+  employee_code: string | null
+  week_off_days: number[] | null
   created_at: string
   updated_at: string
 }
@@ -398,4 +401,100 @@ export interface ErpSession {
   role: ErpRole
   mrCode: string | null
   territory: string | null
+}
+
+// ─── HR: attendance + leave ─────────────────────────────────────────────────
+
+export const ATTENDANCE_STATUSES = [
+  'PRESENT', 'PRESENT_WITH_EXCEPTION', 'ABSENT', 'HALF_DAY',
+  'LEAVE', 'HOLIDAY', 'WEEK_OFF', 'PENDING_REVIEW',
+] as const
+export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
+
+export const ATTENDANCE_SOURCES = ['MOBILE_APP', 'WEB', 'ADMIN_MANUAL', 'SYSTEM_AUTO'] as const
+export type AttendanceSource = (typeof ATTENDANCE_SOURCES)[number]
+
+export const LEAVE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const
+export type LeaveStatus = (typeof LEAVE_STATUSES)[number]
+
+export interface ErpAttendance {
+  id: string
+  employee_id: string
+  date: string
+  check_in_time: string | null
+  check_out_time: string | null
+  check_in_latitude: number | null
+  check_in_longitude: number | null
+  check_in_accuracy: number | null
+  check_out_latitude: number | null
+  check_out_longitude: number | null
+  check_out_accuracy: number | null
+  total_working_minutes: number | null
+  doctor_visit_count: number
+  chemist_visit_count: number
+  required_doctor_visits: number | null
+  required_chemist_visits: number | null
+  attendance_status: AttendanceStatus
+  remarks: string | null
+  source: AttendanceSource
+  is_manual_override: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpAttendanceRules {
+  id: 1
+  work_start_time: string
+  grace_period_minutes: number
+  min_full_day_minutes: number
+  min_half_day_minutes: number
+  late_threshold_minutes: number
+  early_checkout_threshold_minutes: number
+  gps_required: boolean
+  min_gps_accuracy_meters: number
+  default_mr_doctor_visits: number
+  default_mr_chemist_visits: number
+  default_week_off_days: number[]
+  updated_at: string
+}
+
+export interface ErpMrAttendanceTarget {
+  mr_id: string
+  required_doctor_visits: number
+  required_chemist_visits: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpHoliday {
+  id: string
+  holiday_date: string
+  name: string
+  created_by: string | null
+  created_at: string
+}
+
+export interface ErpLeaveType {
+  id: string
+  name: string
+  is_paid: boolean
+  active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface ErpLeaveRequest {
+  id: string
+  employee_id: string
+  leave_type_id: string
+  from_date: string
+  to_date: string
+  reason: string | null
+  status: LeaveStatus
+  admin_remarks: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
 }

@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Stethoscope, Store, UserRound, Users, Package, Boxes,
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
-  Factory, BarChart3, Target, Settings, ScrollText, Globe, type LucideIcon,
+  Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
+  CalendarDays, SlidersHorizontal, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -17,6 +18,11 @@ export interface ErpNavItem {
   label: string
   icon: LucideIcon
   capability: Capability
+  /** ADMIN structurally holds every capability (see ADMIN_CAPABILITIES in
+   *  permissions.ts) but must never see attendance/leave self-service —
+   *  admins don't clock in. This filters an item out for specific roles even
+   *  though their capability check alone would pass. */
+  excludeRoles?: ErpRole[]
 }
 
 export interface ErpNavGroup {
@@ -30,6 +36,14 @@ const ALL_GROUPS: ErpNavGroup[] = [
     items: [
       { href: '/erp/dashboard', label: 'Dashboard', icon: LayoutDashboard, capability: 'reports.read.all' },
       { href: '/erp/mr',        label: 'My Day',    icon: ClipboardList,   capability: 'visits.read.own' },
+      {
+        href: '/erp/attendance', label: 'My Attendance', icon: Fingerprint,
+        capability: 'attendance.checkin', excludeRoles: ['ADMIN'],
+      },
+      {
+        href: '/erp/leave', label: 'My Leave', icon: CalendarDays,
+        capability: 'leave.apply', excludeRoles: ['ADMIN'],
+      },
     ],
   },
   {
@@ -73,6 +87,14 @@ const ALL_GROUPS: ErpNavGroup[] = [
     ],
   },
   {
+    label: 'HR',
+    items: [
+      { href: '/erp/attendance/admin', label: 'Attendance',       icon: Fingerprint,        capability: 'attendance.read.all' },
+      { href: '/erp/leave/admin',      label: 'Leave Requests',   icon: CalendarDays,       capability: 'leave.manage' },
+      { href: '/erp/attendance/rules', label: 'Attendance Rules', icon: SlidersHorizontal,  capability: 'attendance.manage' },
+    ],
+  },
+  {
     label: 'Administration',
     items: [
       { href: '/erp/users',       label: 'Staff',            icon: Users,      capability: 'users.manage' },
@@ -89,7 +111,10 @@ const ALL_GROUPS: ErpNavGroup[] = [
 
 export function navGroupsFor(role: ErpRole): ErpNavGroup[] {
   return ALL_GROUPS
-    .map(group => ({ ...group, items: group.items.filter(i => can(role, i.capability)) }))
+    .map(group => ({
+      ...group,
+      items: group.items.filter(i => can(role, i.capability) && !i.excludeRoles?.includes(role)),
+    }))
     .filter(group => group.items.length > 0)
 }
 

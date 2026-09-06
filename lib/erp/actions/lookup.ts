@@ -188,3 +188,34 @@ export async function lookupAllBatches(productId: string) {
 
   return data ?? []
 }
+
+export interface EmployeeOption {
+  id: string
+  name: string
+  role: string
+  mr_code: string | null
+  employee_code: string | null
+  department: string | null
+}
+
+/** Typeahead for the admin "create leave on someone's behalf" screen — the
+ *  company can have 1000+ employees, so this is a search, never a full list
+ *  shipped to the browser (spec §41). */
+export async function lookupEmployees(term: string): Promise<EmployeeOption[]> {
+  await assertCapability('leave.manage')
+  const db = await erpDb()
+
+  let query = db
+    .from('erp_users')
+    .select('id, name, role, mr_code, employee_code, department')
+    .eq('active', true)
+    .neq('role', 'ADMIN')
+    .order('name')
+    .limit(15)
+
+  const q = safeSearch(term)
+  if (q) query = query.or(ilikeAny(['name', 'mr_code', 'employee_code'], q))
+
+  const { data } = await query
+  return (data ?? []) as EmployeeOption[]
+}

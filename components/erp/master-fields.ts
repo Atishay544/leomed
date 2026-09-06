@@ -126,3 +126,27 @@ export const BATCH_FIELDS: FieldSpec[] = [
   { name: 'purchase_rate',      label: 'Purchase rate (₹)', type: 'number', step: '0.01', min: '0' },
   { name: 'sale_rate',          label: 'Sale rate (₹)', type: 'number', step: '0.01', min: '0' },
 ]
+
+// ─── HR: attendance & leave ─────────────────────────────────────────────────
+
+export const HOLIDAY_FIELDS: FieldSpec[] = [
+  { name: 'holiday_date', label: 'Date',          type: 'date', required: true },
+  { name: 'name',         label: 'Holiday name',  required: true },
+]
+
+/** Per-MR visit-target override. The MR list can only be known at request
+ *  time, so this is a function like productFieldsWithStorefrontLink(). */
+export function mrTargetFields(mrOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    { name: 'mr_id', label: 'MR', type: 'select', options: mrOptions, required: true, span: 2 },
+    { name: 'required_doctor_visits',  label: 'Doctor visits required per day',  type: 'number', min: '0', required: true },
+    { name: 'required_chemist_visits', label: 'Chemist visits required per day', type: 'number', min: '0', required: true },
+  ]
+}
+
+export const LEAVE_TYPE_FIELDS: FieldSpec[] = [
+  { name: 'name',       label: 'Leave type name', required: true, span: 2 },
+  { name: 'is_paid',    label: 'Paid leave',      type: 'checkbox' },
+  { name: 'active',     label: 'Active',          type: 'checkbox' },
+  { name: 'sort_order', label: 'Display order',   type: 'number', min: '0' },
+]

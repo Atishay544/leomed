@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import {
-  DISCUSSION_TYPES, ERP_ROLES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
-  FOLLOWUP_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, TARGET_TYPES,
-  VISIT_PURPOSES,
+  ATTENDANCE_STATUSES, DISCUSSION_TYPES, ERP_ROLES, FIELD_ORDER_STATUSES,
+  FOLLOWUP_PRIORITIES, FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES,
+  PAYMENT_METHODS, TARGET_TYPES, VISIT_PURPOSES,
 } from './types'
 
 /**
@@ -56,12 +56,14 @@ export const ErpLoginSchema = z.object({
 // ─── Staff ──────────────────────────────────────────────────────────────────
 
 export const ErpUserSchema = z.object({
-  name:      requiredText('Name', 100),
-  email:     z.email('Enter a valid email address'),
+  name:          requiredText('Name', 100),
+  email:         z.email('Enter a valid email address'),
   phone,
-  role:      z.enum(ERP_ROLES),
-  mr_code:   optionalText(20),
-  territory: optionalText(100),
+  role:          z.enum(ERP_ROLES),
+  mr_code:       optionalText(20),
+  territory:     optionalText(100),
+  department:    optionalText(100),
+  employee_code: optionalText(30),
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
   // silently do nothing. The edit form always renders the checkbox.
@@ -72,12 +74,14 @@ export const ErpUserSchema = z.object({
 })
 
 export const ErpUserCreateSchema = z.object({
-  name:      requiredText('Name', 100),
-  email:     z.email('Enter a valid email address'),
+  name:          requiredText('Name', 100),
+  email:         z.email('Enter a valid email address'),
   phone,
-  role:      z.enum(ERP_ROLES),
-  mr_code:   optionalText(20),
-  territory: optionalText(100),
+  role:          z.enum(ERP_ROLES),
+  mr_code:       optionalText(20),
+  territory:     optionalText(100),
+  department:    optionalText(100),
+  employee_code: optionalText(30),
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
   message: 'An MR code is required for medical representatives',
@@ -423,6 +427,94 @@ export const SettingsSchema = z.object({
   financial_year_start_month: z.coerce.number().int().min(1).max(12),
 })
 
+// ─── HR: attendance ─────────────────────────────────────────────────────────
+// GPS is deliberately optional here, unlike the mandatory GPS on visit forms —
+// this spec is explicit that a missing/poor fix must become a reviewable
+// exception, never a block on checking in or out.
+
+const gpsCoord = z.union([z.coerce.number(), z.literal('')]).transform(v => (v === '' ? undefined : v)).optional()
+
+export const AttendanceCheckSchema = z.object({
+  latitude:  gpsCoord,
+  longitude: gpsCoord,
+  accuracy:  gpsCoord,
+})
+
+export const AttendanceCorrectionSchema = z.object({
+  attendance_id:   uuid,
+  status:          z.enum(ATTENDANCE_STATUSES).optional(),
+  check_in_time:   optionalText(40),  // datetime-local string, converted at the call site
+  check_out_time:  optionalText(40),
+  reason:          requiredText('Reason', 500),
+})
+
+export const AttendanceRulesSchema = z.object({
+  work_start_time:                  z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Enter a valid time'),
+  grace_period_minutes:             z.coerce.number().int().min(0).max(180),
+  min_full_day_minutes:             z.coerce.number().int().min(1).max(1440),
+  min_half_day_minutes:             z.coerce.number().int().min(1).max(1440),
+  late_threshold_minutes:           z.coerce.number().int().min(0).max(180),
+  early_checkout_threshold_minutes: z.coerce.number().int().min(0).max(180),
+  gps_required:                     z.coerce.boolean().default(false),
+  min_gps_accuracy_meters:          z.coerce.number().positive().max(10_000),
+  default_mr_doctor_visits:         nonNegativeInt,
+  default_mr_chemist_visits:        nonNegativeInt,
+}).refine(v => v.min_half_day_minutes < v.min_full_day_minutes, {
+  message: 'The half-day minimum must be less than the full-day minimum',
+  path: ['min_half_day_minutes'],
+})
+
+export const MrAttendanceTargetSchema = z.object({
+  mr_id:                    uuid,
+  required_doctor_visits:   nonNegativeInt,
+  required_chemist_visits:  nonNegativeInt,
+})
+
+export const HolidaySchema = z.object({
+  holiday_date: dateString,
+  name:         requiredText('Holiday name', 150),
+})
+
+// ─── HR: leave ──────────────────────────────────────────────────────────────
+
+export const LeaveTypeSchema = z.object({
+  name:       requiredText('Leave type name', 60),
+  // false, not true: an unchecked checkbox is simply absent from FormData, so
+  // defaulting to true would make unchecking either box silently do nothing
+  // (same footgun ErpUserSchema.active avoids for the same reason).
+  is_paid:    z.coerce.boolean().default(false),
+  active:     z.coerce.boolean().default(false),
+  sort_order: z.coerce.number().int().default(0),
+})
+
+export const LeaveApplicationSchema = z.object({
+  leave_type_id: uuid,
+  from_date:     dateString,
+  to_date:       dateString,
+  reason:        optionalText(500),
+}).refine(v => v.to_date >= v.from_date, {
+  message: 'The end date must be on or after the start date',
+  path: ['to_date'],
+})
+
+export const LeaveReviewSchema = z.object({
+  leave_id:      uuid,
+  status:        z.enum(['APPROVED', 'REJECTED', 'CANCELLED']),
+  admin_remarks: optionalText(500),
+})
+
+export const AdminCreateLeaveSchema = z.object({
+  employee_id:   uuid,
+  leave_type_id: uuid,
+  from_date:     dateString,
+  to_date:       dateString,
+  reason:        optionalText(500),
+  status:        z.enum(LEAVE_STATUSES).default('APPROVED'),
+}).refine(v => v.to_date >= v.from_date, {
+  message: 'The end date must be on or after the start date',
+  path: ['to_date'],
+})
+
 // ─── Inferred input types ───────────────────────────────────────────────────
 
 export type ErpLoginInput           = z.infer<typeof ErpLoginSchema>
@@ -443,3 +535,12 @@ export type TargetInput             = z.infer<typeof TargetSchema>
 export type SettingsInput           = z.infer<typeof SettingsSchema>
 export type PurchasePaymentInput    = z.infer<typeof PurchasePaymentSchema>
 export type SalesReceiptInput       = z.infer<typeof SalesReceiptSchema>
+export type AttendanceCheckInput      = z.infer<typeof AttendanceCheckSchema>
+export type AttendanceCorrectionInput = z.infer<typeof AttendanceCorrectionSchema>
+export type AttendanceRulesInput      = z.infer<typeof AttendanceRulesSchema>
+export type MrAttendanceTargetInput   = z.infer<typeof MrAttendanceTargetSchema>
+export type HolidayInput              = z.infer<typeof HolidaySchema>
+export type LeaveTypeInput            = z.infer<typeof LeaveTypeSchema>
+export type LeaveApplicationInput     = z.infer<typeof LeaveApplicationSchema>
+export type LeaveReviewInput          = z.infer<typeof LeaveReviewSchema>
+export type AdminCreateLeaveInput     = z.infer<typeof AdminCreateLeaveSchema>

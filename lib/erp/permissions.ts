@@ -54,6 +54,20 @@ export const CAPABILITIES = [
   'targets.manage',
   'reports.read.all',
   'settings.manage',
+
+  // HR: attendance — every non-admin employee checks in; ADMIN deliberately
+  // never holds 'attendance.checkin' in spirit (enforced in the RPCs and in
+  // nav-config's excludeRoles, since ADMIN structurally inherits every
+  // capability below — see the note on ADMIN_CAPABILITIES).
+  'attendance.checkin',
+  'attendance.read.own',
+  'attendance.read.all',
+  'attendance.manage',   // rules, holidays, MR visit-target overrides, corrections
+
+  // HR: leave
+  'leave.apply',
+  'leave.read.own',
+  'leave.manage',        // approve/reject/cancel/create on anyone's behalf
 ] as const
 
 export type Capability = (typeof CAPABILITIES)[number]
@@ -73,6 +87,10 @@ const MR_CAPABILITIES: readonly Capability[] = [
   'orders.create',
   'orders.read.own',
   'followups.manage',
+  'attendance.checkin',
+  'attendance.read.own',
+  'leave.apply',
+  'leave.read.own',
 ]
 
 /**
@@ -100,6 +118,10 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'billing.sales.write',
   'inventory.read',
   'inventory.adjust',
+  'attendance.checkin',
+  'attendance.read.own',
+  'leave.apply',
+  'leave.read.own',
 ]
 
 /** Reads the whole field force and the money, changes only order status. */
@@ -115,6 +137,11 @@ const MANAGER_CAPABILITIES: readonly Capability[] = [
   'billing.sales.read',
   'inventory.read',
   'reports.read.all',
+  'attendance.checkin',
+  'attendance.read.own',
+  'attendance.read.all',
+  'leave.apply',
+  'leave.read.own',
 ]
 
 /**

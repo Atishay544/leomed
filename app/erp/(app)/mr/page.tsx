@@ -4,9 +4,11 @@ import {
 } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { getMrDayStats, listFollowups } from '@/lib/erp/data/visits'
+import { getMyAttendanceToday } from '@/lib/erp/data/attendance'
 import { formatDate, isoDate, money } from '@/lib/erp/format'
 import { Badge, Card, EmptyState, StatCard } from '@/components/erp/ui'
 import { FOLLOWUP_PRIORITY_STYLES } from '@/lib/erp/format'
+import AttendanceWidget from '@/components/erp/attendance/AttendanceWidget'
 
 export const metadata = { title: 'My Day' }
 
@@ -19,9 +21,10 @@ export default async function MrHomePage() {
   const session = await requireCapability('visits.read.own')
   const today = isoDate()
 
-  const [stats, followups] = await Promise.all([
+  const [stats, followups, todayAttendance] = await Promise.all([
     getMrDayStats(session.id, today),
     listFollowups({ mrId: session.id, status: 'PENDING', upTo: today, page: 1 }),
+    getMyAttendanceToday(session.id),
   ])
 
   const firstName = session.name.split(/\s+/)[0]
@@ -37,6 +40,10 @@ export default async function MrHomePage() {
           {session.mrCode && <> · {session.mrCode}</>}
           {session.territory && <> · {session.territory}</>}
         </p>
+      </div>
+
+      <div className="mb-6">
+        <AttendanceWidget initial={todayAttendance} compact />
       </div>
 
       {/* Quick actions come first: the most common reason to open this app is
