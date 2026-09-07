@@ -21,6 +21,15 @@ set local client_min_messages to warning;
 
 create temporary table t_ids (label text primary key, id uuid) on commit drop;
 
+-- The tests below deliberately SET LOCAL ROLE authenticated to exercise RLS
+-- as each simulated user would see it (spec §36 — "prove the database
+-- enforces this, not just the app"). Once that switch happens, Postgres
+-- checks privileges as that role for real, even for objects this same
+-- session created a moment earlier while still connected as the owner —
+-- so pg_temp.id_of() needs an explicit grant to keep reading its own
+-- lookup table after the switch.
+grant select on t_ids to authenticated;
+
 do $$
 declare
   v_auth_admin uuid := gen_random_uuid();
@@ -77,6 +86,17 @@ begin
                                           mrp, purchase_rate, sale_rate, created_by)
   values (v_product, 'TEST-B1', current_date + 400, 100, 50, 75, v_admin)
   returning id into v_batch;
+
+  -- erp_save_sales_invoice() now resolves every rate server-side via the
+  -- pricing engine (section 11) instead of trusting the item's sale_rate —
+  -- so this fixture product needs a real default rule to be sellable at
+  -- all. 25% margin off MRP 100 = 75, matching every sale_rate literally
+  -- written throughout the sections below, so none of those figures need
+  -- to change.
+  insert into public.erp_pricing_rules (product_id, customer_type, calculation_basis, calculation_method, percentage, status, version, created_by)
+  values (v_product, 'DISTRIBUTOR', 'MRP', 'MARGIN', 25, 'ACTIVE', 1, v_admin),
+         (v_product, 'CHEMIST',     'MRP', 'MARGIN', 25, 'ACTIVE', 1, v_admin),
+         (v_product, 'DOCTOR',      'MRP', 'MARGIN', 25, 'ACTIVE', 1, v_admin);
 
   insert into t_ids values
     ('auth_admin', v_auth_admin), ('auth_mr1', v_auth_mr1), ('auth_mr2', v_auth_mr2),
@@ -1917,6 +1937,7 @@ end $$;
 -- a second product to prove negotiated pricing doesn't leak across
 -- products, and a second chemist to prove it doesn't leak across customers.
 create temporary table t_pricing_ids (label text primary key, id uuid) on commit drop;
+grant select on t_pricing_ids to authenticated;
 
 do $$
 declare
