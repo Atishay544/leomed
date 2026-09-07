@@ -7,6 +7,11 @@
 -- valuations come from one place, never computed twice.
 -- ============================================================================
 
+-- CREATE OR REPLACE VIEW may only APPEND output columns, never insert one
+-- ahead of an existing column — Postgres matches the old and new column
+-- lists positionally and errors ("cannot change name of view column") if a
+-- name shifts. total_mrp_value must therefore come after earliest_expiry
+-- (the last column in the 20260906000006 version), not before it.
 create or replace view public.erp_product_stock_totals
 with (security_invoker = true)
 as
@@ -15,8 +20,8 @@ select
   count(*) filter (where current_quantity > 0)         as batch_count,
   coalesce(sum(current_quantity), 0)                   as total_quantity,
   coalesce(sum(current_quantity * purchase_rate), 0)    as total_value,
-  coalesce(sum(current_quantity * mrp), 0)              as total_mrp_value,
-  min(expiry_date) filter (where current_quantity > 0)  as earliest_expiry
+  min(expiry_date) filter (where current_quantity > 0)  as earliest_expiry,
+  coalesce(sum(current_quantity * mrp), 0)              as total_mrp_value
 from public.erp_product_batches
 group by product_id;
 
