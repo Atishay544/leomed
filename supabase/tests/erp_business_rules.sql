@@ -1905,6 +1905,470 @@ begin
 end $$;
 
 -- ============================================================================
+-- 11. PRICING ENGINE — MARGINS, NEGOTIATED PRICING & SCHEMES
+--     (Master pricing-engine spec: default/negotiated/scheme priority,
+--     PTR-basis distributor margin, historical immutability, RBAC, overlap
+--     prevention.)
+-- ============================================================================
+
+-- Fixtures: a dedicated priced product (the shared 'product' fixture was
+-- created before this engine existed and has zero retailer/distributor
+-- price, which is not a useful base for margin arithmetic), its own batch,
+-- a second product to prove negotiated pricing doesn't leak across
+-- products, and a second chemist to prove it doesn't leak across customers.
+create temporary table t_pricing_ids (label text primary key, id uuid) on commit drop;
+
+do $$
+declare
+  v_product1 uuid; v_product2 uuid; v_batch1 uuid;
+  v_chemist2 uuid;
+begin
+  insert into public.erp_products (product_name, generic_name, unit, mrp, purchase_rate,
+                                   sale_rate, gst_rate, min_stock_level, created_by)
+  values ('Pricetest 500', 'Pricetestol', 'BOX', 500, 200, 400, 12, 10, pg_temp.id_of('admin'))
+  returning id into v_product1;
+
+  insert into public.erp_products (product_name, generic_name, unit, mrp, purchase_rate,
+                                   sale_rate, gst_rate, min_stock_level, created_by)
+  values ('Pricetest 200', 'Pricetestol Two', 'BOX', 200, 80, 160, 12, 10, pg_temp.id_of('admin'))
+  returning id into v_product2;
+
+  insert into public.erp_product_batches (product_id, batch_number, expiry_date,
+                                          mrp, purchase_rate, sale_rate, created_by)
+  values (v_product1, 'PRICE-B1', current_date + 400, 500, 200, 400, pg_temp.id_of('admin'))
+  returning id into v_batch1;
+
+  insert into public.erp_inventory_transactions
+    (product_id, batch_id, transaction_type, reference_type, quantity, unit_rate,
+     transaction_date, remarks, created_by)
+  values (v_product1, v_batch1, 'OPENING', 'OPENING', 1000, 200, current_date,
+          'Pricing-test opening stock', pg_temp.id_of('admin'));
+
+  insert into public.erp_chemists (chemist_name, owner_name, city, created_by)
+  values ('Test Medical Store Two', 'Test Owner Two', 'Indore', pg_temp.id_of('admin'))
+  returning id into v_chemist2;
+
+  -- Default rules, exactly what erp_set_product_default_price()/saveProduct()
+  -- would create: chemist margin off MRP, distributor margin off PTR (not
+  -- MRP — this is the bug the pricing-engine migration fixed).
+  insert into public.erp_pricing_rules (product_id, customer_type, calculation_basis, calculation_method, percentage, status, version, created_by)
+  values (v_product1, 'CHEMIST',     'MRP', 'MARGIN', 20, 'ACTIVE', 1, pg_temp.id_of('admin')),
+         (v_product1, 'DISTRIBUTOR', 'PTR', 'MARGIN', 10, 'ACTIVE', 1, pg_temp.id_of('admin')),
+         (v_product1, 'DOCTOR',      'MRP', 'MARGIN', 15, 'ACTIVE', 1, pg_temp.id_of('admin')),
+         (v_product2, 'CHEMIST',     'MRP', 'MARGIN', 25, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+  insert into t_pricing_ids values
+    ('product1', v_product1), ('product2', v_product2), ('batch1', v_batch1), ('chemist2', v_chemist2);
+end $$;
+
+create or replace function pg_temp.pid_of(p_label text) returns uuid
+language sql stable as $$ select id from t_pricing_ids where label = p_label $$;
+
+-- Test 1: default retailer (chemist) margin is a percentage of MRP.
+-- 500 * (1 - 20/100) = 400.
+do $$
+declare v_price jsonb;
+begin
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product1'), 'CHEMIST', null, pg_temp.id_of('chemist'), null, current_date);
+
+  assert (v_price->>'source') = 'DEFAULT', format('Expected DEFAULT, got %s', v_price->>'source');
+  assert (v_price->>'selling_rate')::numeric = 400,
+    format('Default chemist rate should be 400 (20%% off MRP 500), got %s', v_price->>'selling_rate');
+end $$;
+
+-- Test 2 (CRITICAL): default distributor margin is a percentage of PTR
+-- (the retailer default price, 400), NOT of MRP. 400 * (1 - 10/100) = 360.
+-- If this were wrongly computed off MRP it would read 450, not 360.
+do $$
+declare v_price jsonb;
+begin
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product1'), 'DISTRIBUTOR', pg_temp.id_of('distributor'), null, null, current_date);
+
+  assert (v_price->>'selling_rate')::numeric = 360,
+    format('Distributor rate should be 360 (10%% off PTR 400), got %s', v_price->>'selling_rate');
+  assert (v_price->>'selling_rate')::numeric <> 450,
+    'Distributor margin must never be computed as a percentage of MRP';
+end $$;
+
+-- Test 3: a negotiated rule overrides the default for its own customer only.
+-- 500 * (1 - 30/100) = 350 for the negotiated chemist; the second chemist,
+-- with no negotiated rule of their own, still gets the 400 default.
+do $$
+declare v_price jsonb;
+begin
+  insert into public.erp_pricing_rules
+    (product_id, chemist_id, customer_type, calculation_basis, calculation_method, percentage, status, version, created_by)
+  values (pg_temp.pid_of('product1'), pg_temp.id_of('chemist'), 'CHEMIST', 'MRP', 'MARGIN', 30, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product1'), 'CHEMIST', null, pg_temp.id_of('chemist'), null, current_date);
+  assert (v_price->>'source') = 'NEGOTIATED', format('Expected NEGOTIATED, got %s', v_price->>'source');
+  assert (v_price->>'selling_rate')::numeric = 350,
+    format('Negotiated chemist rate should be 350, got %s', v_price->>'selling_rate');
+
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product1'), 'CHEMIST', null, pg_temp.pid_of('chemist2'), null, current_date);
+  assert (v_price->>'source') = 'DEFAULT', 'A different chemist with no negotiated rule must still get the default';
+  assert (v_price->>'selling_rate')::numeric = 400,
+    format('The untouched chemist should still see 400, got %s', v_price->>'selling_rate');
+end $$;
+
+-- Test 4: a negotiated rule is scoped to its own product too — the same
+-- chemist's negotiated 350 on product1 must not leak onto product2.
+do $$
+declare v_price jsonb;
+begin
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product2'), 'CHEMIST', null, pg_temp.id_of('chemist'), null, current_date);
+  assert (v_price->>'source') = 'DEFAULT',
+    'A negotiated rule on one product must not apply to a different product for the same customer';
+  assert (v_price->>'selling_rate')::numeric = 150,
+    format('product2''s own default (25%% off MRP 200 = 150) should apply, got %s', v_price->>'selling_rate');
+end $$;
+
+-- Test 5: an expired negotiated rule must not apply — falls back to default.
+do $$
+declare v_price jsonb;
+begin
+  insert into public.erp_pricing_rules
+    (product_id, doctor_id, customer_type, calculation_basis, calculation_method, percentage,
+     effective_from, effective_to, status, version, created_by)
+  values (pg_temp.pid_of('product1'), pg_temp.id_of('doctor'), 'DOCTOR', 'MRP', 'MARGIN', 40,
+          current_date - 60, current_date - 30, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product1'), 'DOCTOR', null, null, pg_temp.id_of('doctor'), current_date);
+  assert (v_price->>'source') = 'DEFAULT', 'An expired negotiated rule must not be selected';
+  assert (v_price->>'selling_rate')::numeric = 425,
+    format('Should fall back to the 15%% default doctor rate (425), got %s', v_price->>'selling_rate');
+end $$;
+
+-- Test 6: a future-dated negotiated rule must not apply early.
+do $$
+declare v_price jsonb;
+begin
+  insert into public.erp_pricing_rules
+    (product_id, doctor_id, customer_type, calculation_basis, calculation_method, percentage,
+     effective_from, status, version, created_by)
+  values (pg_temp.pid_of('product1'), pg_temp.id_of('doctor'), 'DOCTOR', 'MRP', 'MARGIN', 5,
+          current_date + 30, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+  v_price := public.erp_resolve_selling_price(
+    pg_temp.pid_of('product1'), 'DOCTOR', null, null, pg_temp.id_of('doctor'), current_date);
+  assert (v_price->>'source') = 'DEFAULT', 'A not-yet-effective negotiated rule must not apply today';
+  assert (v_price->>'selling_rate')::numeric = 425,
+    format('Should still be the 15%% default doctor rate (425), got %s', v_price->>'selling_rate');
+end $$;
+
+-- Test 7 & 8: historical invoice immutability — raising an invoice snapshots
+-- the rate, margin and rule/version actually applied; a later change to the
+-- default margin, or to the product's GST rate, must never rewrite it.
+do $$
+declare
+  v_result   jsonb;
+  v_invoice  uuid;
+  v_item     record;
+  v_rule_id  uuid;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  v_result := public.erp_save_sales_invoice(jsonb_build_object(
+    'chemist_id',   pg_temp.pid_of('chemist2'),
+    'invoice_date', current_date,
+    'items', jsonb_build_array(jsonb_build_object(
+      'product_id', pg_temp.pid_of('product1'),
+      'batch_id',   pg_temp.pid_of('batch1'),
+      'quantity',   10,
+      'gst_rate',   12
+    ))
+  ));
+  reset role;
+
+  v_invoice := (v_result->>'invoice_id')::uuid;
+  select * into v_item from public.erp_sales_invoice_items where sales_invoice_id = v_invoice;
+
+  assert v_item.sale_rate = 400, format('Chemist2 should be billed the 400 default, got %s', v_item.sale_rate);
+  assert v_item.margin_amount = 100, format('Margin should be MRP 500 - rate 400 = 100, got %s', v_item.margin_amount);
+  assert v_item.gst_rate = 12, format('GST on the line should be 12, got %s', v_item.gst_rate);
+  v_rule_id := v_item.pricing_rule_id;
+  assert v_rule_id is not null, 'The invoice line must snapshot which pricing rule produced its rate';
+
+  -- Change the default margin AND the product's GST rate after the fact.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  perform public.erp_set_product_default_price(pg_temp.pid_of('product1'), 'CHEMIST', 'MRP', 'MARGIN', 50);
+  update public.erp_products set gst_rate = 18 where id = pg_temp.pid_of('product1');
+  reset role;
+
+  select * into v_item from public.erp_sales_invoice_items where sales_invoice_id = v_invoice;
+  assert v_item.sale_rate = 400, 'A historical invoice line must keep its original rate after the default margin changes';
+  assert v_item.margin_amount = 100, 'A historical invoice line must keep its original margin after the default margin changes';
+  assert v_item.gst_rate = 12, 'A historical invoice line must keep its original GST%% after the product''s GST rate changes';
+  assert v_item.pricing_rule_id = v_rule_id, 'A historical invoice line must keep pointing at the exact rule version it was billed under';
+
+  assert (select status from public.erp_pricing_rules where id = v_rule_id) = 'INACTIVE',
+    'The superseded default rule must be retired (INACTIVE), never deleted — the old invoice still points to it';
+end $$;
+
+-- Test 9: Buy-X-Get-Y free quantity — floor(paid/buy) * free, at several
+-- paid-quantity levels, company-wide for CHEMIST on product2.
+do $$
+declare v_free jsonb;
+begin
+  insert into public.erp_schemes
+    (scheme_name, scheme_type, product_id, customer_type, buy_quantity, free_quantity,
+     effective_from, status, version, created_by)
+  values ('Buy 10 Get 2 — product2 chemists', 'FREE_QUANTITY', pg_temp.pid_of('product2'), 'CHEMIST',
+          10, 2, current_date, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+  v_free := public.erp_resolve_free_quantity(pg_temp.pid_of('product2'), 'CHEMIST', null, pg_temp.id_of('chemist'), null, 9, current_date);
+  assert (v_free->>'free_quantity')::integer = 0, format('9 paid should earn 0 free, got %s', v_free->>'free_quantity');
+
+  v_free := public.erp_resolve_free_quantity(pg_temp.pid_of('product2'), 'CHEMIST', null, pg_temp.id_of('chemist'), null, 20, current_date);
+  assert (v_free->>'free_quantity')::integer = 4, format('20 paid should earn floor(20/10)*2=4 free, got %s', v_free->>'free_quantity');
+
+  v_free := public.erp_resolve_free_quantity(pg_temp.pid_of('product2'), 'CHEMIST', null, pg_temp.id_of('chemist'), null, 25, current_date);
+  assert (v_free->>'free_quantity')::integer = 4, format('25 paid should earn floor(25/10)*2=4 free, got %s', v_free->>'free_quantity');
+end $$;
+
+-- Test 10: negotiated margin and a free-quantity scheme are independent
+-- axes and both apply together on the same invoice line (never stacked
+-- against each other, but never mutually exclusive either).
+do $$
+declare
+  v_result  jsonb;
+  v_invoice uuid;
+  v_item    record;
+  v_batch2  uuid;
+begin
+  -- Give chemist2 their own negotiated rate on product2 (200 * (1-10/100) = 180)...
+  insert into public.erp_pricing_rules
+    (product_id, chemist_id, customer_type, calculation_basis, calculation_method, percentage, status, version, created_by)
+  values (pg_temp.pid_of('product2'), pg_temp.pid_of('chemist2'), 'CHEMIST', 'MRP', 'MARGIN', 10, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+  -- ...on top of some stock to sell it from.
+  insert into public.erp_product_batches (product_id, batch_number, expiry_date, mrp, purchase_rate, sale_rate, created_by)
+  values (pg_temp.pid_of('product2'), 'PRICE-B2', current_date + 400, 200, 80, 160, pg_temp.id_of('admin'))
+  returning id into v_batch2;
+
+  insert into public.erp_inventory_transactions
+    (product_id, batch_id, transaction_type, reference_type, quantity, unit_rate, transaction_date, remarks, created_by)
+  values (pg_temp.pid_of('product2'), v_batch2, 'OPENING', 'OPENING', 100, 80, current_date, 'product2 stock', pg_temp.id_of('admin'));
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  v_result := public.erp_save_sales_invoice(jsonb_build_object(
+    'chemist_id',   pg_temp.pid_of('chemist2'),
+    'invoice_date', current_date,
+    'items', jsonb_build_array(jsonb_build_object(
+      'product_id', pg_temp.pid_of('product2'),
+      'batch_id',   v_batch2,
+      'quantity',   20,
+      'gst_rate',   12
+    ))
+  ));
+  reset role;
+
+  v_invoice := (v_result->>'invoice_id')::uuid;
+  select * into v_item from public.erp_sales_invoice_items where sales_invoice_id = v_invoice;
+
+  assert v_item.sale_rate = 180, format('Negotiated rate (10%% off MRP 200) should still apply, got %s', v_item.sale_rate);
+  assert v_item.quantity = 20, 'Paid quantity must stay exactly what was ordered';
+  assert v_item.free_quantity = 4, format('The Buy 10 Get 2 scheme should still add 4 free units on top, got %s', v_item.free_quantity);
+  assert v_item.pricing_rule_id is not null and v_item.margin_scheme_id is null,
+    'This line is priced by a negotiated RULE, not a margin scheme — margin_scheme_id must stay null';
+  assert v_item.free_scheme_id is not null, 'The free units must be traced back to the scheme that granted them';
+end $$;
+
+-- Test 11: stock validation must count paid + free quantity together —
+-- an oversell hiding behind free units must still be refused.
+do $$
+declare v_batch uuid; v_failed boolean := false; v_before integer;
+begin
+  select id into v_batch from public.erp_product_batches where batch_number = 'PRICE-B2';
+  select current_quantity into v_before from public.erp_product_batches where id = v_batch;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  begin
+    -- Ask for the entire remaining stock as the PAID quantity — the same
+    -- Buy 10 Get 2 scheme still adds free units on top, which must push the
+    -- true requirement (paid + free) past what the batch actually holds.
+    perform public.erp_save_sales_invoice(jsonb_build_object(
+      'chemist_id',   pg_temp.pid_of('chemist2'),
+      'invoice_date', current_date,
+      'items', jsonb_build_array(jsonb_build_object(
+        'product_id', pg_temp.pid_of('product2'),
+        'batch_id',   v_batch,
+        'quantity',   v_before,
+        'gst_rate',   12
+      ))
+    ));
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+
+  assert v_failed, 'Selling the entire remaining stock as "paid" while a scheme also grants free units on top must be refused';
+  assert (select current_quantity from public.erp_product_batches where id = v_batch) = v_before,
+    'A refused oversell must leave stock exactly where it was';
+end $$;
+
+-- Test 12: RBAC — an accountant gets a rupee figure to bill, never the
+-- margin percentage, pricing_rule_id, scheme name or landing cost. This
+-- must hold at the function layer itself, not merely in what the UI shows.
+do $$
+declare
+  v_auth_acct uuid; v_acct uuid;
+  v_explain   jsonb;
+  v_direct    integer;
+begin
+  select id into v_acct from public.erp_users where email = 'test-pricing-acct@leomed.test';
+  if v_acct is null then
+    v_auth_acct := gen_random_uuid();
+    insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
+                            email_confirmed_at, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', v_auth_acct, 'authenticated', 'authenticated',
+            'test-pricing-acct@leomed.test', '', now(), now(), now());
+    insert into public.erp_users (auth_user_id, name, email, role)
+    values (v_auth_acct, 'Test Pricing Accountant', 'test-pricing-acct@leomed.test', 'ACCOUNTANT')
+    returning id into v_acct;
+  else
+    select auth_user_id into v_auth_acct from public.erp_users where id = v_acct;
+  end if;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_auth_acct, 'role', 'authenticated')::text, true);
+
+  v_explain := public.erp_explain_price(
+    pg_temp.pid_of('product1'), 'CHEMIST', null, pg_temp.pid_of('chemist2'), null, current_date, 0);
+
+  select count(*) into v_direct from public.erp_pricing_rules where product_id = pg_temp.pid_of('product1');
+  reset role;
+
+  assert v_explain ? 'selling_rate' and v_explain ? 'mrp' and v_explain ? 'gst_rate',
+    'An accountant must still get the rupee figures needed to bill';
+  assert not (v_explain ? 'percentage'),        'An accountant must never see the margin percentage';
+  assert not (v_explain ? 'pricing_rule_id'),   'An accountant must never see which pricing rule was used';
+  assert not (v_explain ? 'calculation_basis'), 'An accountant must never see the calculation basis';
+  assert not (v_explain ? 'scheme_name'),       'An accountant must never see the scheme name';
+  assert not (v_explain ? 'source'),            'An accountant must never see whether it was DEFAULT/NEGOTIATED/SCHEME';
+
+  assert v_direct = 0,
+    'An accountant querying erp_pricing_rules directly must see nothing — RLS enforces this at the table, not just the resolver';
+
+  -- The same question from an admin gets the full explanation.
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+  v_explain := public.erp_explain_price(
+    pg_temp.pid_of('product1'), 'CHEMIST', null, pg_temp.pid_of('chemist2'), null, current_date, 0);
+  reset role;
+
+  assert v_explain ? 'percentage' and v_explain ? 'pricing_rule_id' and v_explain ? 'source',
+    'An administrator must see the full pricing explanation';
+end $$;
+
+-- Test 13: a client-submitted sale_rate is completely ignored — the server
+-- always recomputes and bills the resolved rate, never what was posted.
+do $$
+declare v_result jsonb; v_invoice uuid; v_rate numeric;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', pg_temp.id_of('auth_admin'), 'role', 'authenticated')::text, true);
+
+  v_result := public.erp_save_sales_invoice(jsonb_build_object(
+    'chemist_id',   pg_temp.pid_of('chemist2'),
+    'invoice_date', current_date,
+    'items', jsonb_build_array(jsonb_build_object(
+      'product_id', pg_temp.pid_of('product1'),
+      'batch_id',   pg_temp.pid_of('batch1'),
+      'quantity',   1,
+      'sale_rate',  1,
+      'gst_rate',   12
+    ))
+  ));
+  reset role;
+
+  v_invoice := (v_result->>'invoice_id')::uuid;
+  select sale_rate into v_rate from public.erp_sales_invoice_items where sales_invoice_id = v_invoice;
+  -- product1's default chemist margin was changed to 50% in tests 7/8
+  -- (500 * (1 - 50/100) = 250) — that change is real and expected to stick;
+  -- what this test proves is that the forged "1" never reaches the invoice.
+  assert v_rate = 250, format('A forged sale_rate of 1 must be ignored and the resolved 250 billed instead, got %s', v_rate);
+end $$;
+
+-- Test 14: overlapping ACTIVE rules/schemes for the same scope are refused,
+-- not silently resolved by picking one — the admin must retire the old one
+-- first (spec — "never silently choose one").
+do $$
+declare v_failed boolean := false;
+begin
+  begin
+    insert into public.erp_pricing_rules (product_id, customer_type, calculation_basis, calculation_method, percentage, status, version, created_by)
+    values (pg_temp.pid_of('product1'), 'CHEMIST', 'MRP', 'MARGIN', 99, 'ACTIVE', 2, pg_temp.id_of('admin'));
+  exception when others then
+    v_failed := true;
+  end;
+  assert v_failed, 'A second ACTIVE default chemist rule for the same product must be refused while one is already active';
+
+  v_failed := false;
+  begin
+    insert into public.erp_schemes (scheme_name, scheme_type, product_id, customer_type, calculation_basis, calculation_method, percentage, effective_from, status, version, created_by)
+    values ('Conflicting margin scheme', 'PERCENTAGE_MARGIN', pg_temp.pid_of('product1'), 'CHEMIST', 'MRP', 'MARGIN', 5, current_date, 'ACTIVE', 1, pg_temp.id_of('admin'));
+
+    insert into public.erp_schemes (scheme_name, scheme_type, product_id, customer_type, calculation_basis, calculation_method, percentage, effective_from, status, version, created_by)
+    values ('Second conflicting margin scheme', 'PERCENTAGE_MARGIN', pg_temp.pid_of('product1'), 'CHEMIST', 'MRP', 'MARGIN', 8, current_date, 'ACTIVE', 1, pg_temp.id_of('admin'));
+  exception when others then
+    v_failed := true;
+  end;
+  assert v_failed, 'Two company-wide ACTIVE percentage-margin schemes for the same product and customer type, with overlapping dates, must be refused';
+end $$;
+
+-- Test 15: only an administrator may set default prices or manage schemes —
+-- an accountant is refused even though they can raise invoices.
+do $$
+declare v_acct uuid; v_auth_acct uuid; v_failed boolean := false;
+begin
+  select id, auth_user_id into v_acct, v_auth_acct from public.erp_users where email = 'test-pricing-acct@leomed.test';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_auth_acct, 'role', 'authenticated')::text, true);
+
+  begin
+    perform public.erp_set_product_default_price(pg_temp.pid_of('product1'), 'CHEMIST', 'MRP', 'MARGIN', 1);
+  exception when others then
+    v_failed := true;
+  end;
+  assert v_failed, 'An accountant must not be able to change a product''s default pricing rule';
+
+  v_failed := false;
+  begin
+    perform public.erp_save_scheme(jsonb_build_object(
+      'scheme_name', 'Accountant scheme', 'scheme_type', 'FREE_QUANTITY',
+      'product_id', pg_temp.pid_of('product1'), 'buy_quantity', 1, 'free_quantity', 1,
+      'effective_from', current_date, 'status', 'ACTIVE'
+    ));
+  exception when others then
+    v_failed := true;
+  end;
+  reset role;
+  assert v_failed, 'An accountant must not be able to create or activate a scheme';
+end $$;
+
+-- ============================================================================
 
 do $$ begin raise notice 'All ERP business-rule tests passed.'; end $$;
 

@@ -218,6 +218,11 @@ export interface BatchListParams {
   /** 'in-stock' | 'expiring' | 'expired' | 'all' */
   filter?: string
   expiryWarningDays?: number
+  /** Landing cost (purchase_rate) is only ever fetched when the caller has
+   *  already checked inventory.valuation — never sent over the wire to a
+   *  role that shouldn't see it, not just hidden in the rendered table
+   *  (spec §30, §45: "if frontend hides field -> secure" is false). */
+  includeCost?: boolean
 }
 
 export async function listBatches(params: BatchListParams = {}): Promise<PageResult<BatchWithProduct>> {
@@ -229,7 +234,8 @@ export async function listBatches(params: BatchListParams = {}): Promise<PageRes
   let query = db
     .from('erp_product_batches')
     .select(
-      'id, product_id, batch_number, manufacturing_date, expiry_date, mrp, purchase_rate, ' +
+      'id, product_id, batch_number, manufacturing_date, expiry_date, mrp, ' +
+      (params.includeCost ? 'purchase_rate, ' : '') +
       'sale_rate, opening_quantity, current_quantity, created_at, updated_at, ' +
       'erp_products!inner(product_name, product_code, unit, gst_rate)',
       { count: 'exact' },

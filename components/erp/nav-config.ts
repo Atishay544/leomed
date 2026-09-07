@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Stethoscope, Store, UserRound, Users, Package, Boxes,
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
   Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
-  CalendarDays, SlidersHorizontal, IndianRupee, Wallet, type LucideIcon,
+  CalendarDays, SlidersHorizontal, IndianRupee, Wallet, Tag, Gift, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -78,6 +78,8 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/masters/products',            label: 'Product Master', icon: Package,     capability: 'masters.read' },
       { href: '/erp/masters/batches',              label: 'Batches',        icon: Boxes,       capability: 'inventory.read' },
       { href: '/erp/masters/products/valuation',   label: 'Stock Valuation', icon: IndianRupee, capability: 'inventory.valuation' },
+      { href: '/erp/pricing/negotiated',           label: 'Negotiated Pricing', icon: Tag,     capability: 'pricing.manage' },
+      { href: '/erp/pricing/schemes',              label: 'Schemes',        icon: Gift,        capability: 'pricing.manage' },
     ],
   },
   {

@@ -219,3 +219,41 @@ export async function lookupEmployees(term: string): Promise<EmployeeOption[]> {
   const { data } = await query
   return (data ?? []) as EmployeeOption[]
 }
+
+export interface BillingCustomerOption {
+  id: string
+  name: string
+}
+
+/** Typeahead for negotiated-pricing and scheme-targeting screens — a
+ *  distributor, chemist or doctor search scoped to the chosen customer type,
+ *  never the full table (spec §41). */
+export async function lookupBillingCustomers(
+  customerType: 'DISTRIBUTOR' | 'CHEMIST' | 'DOCTOR',
+  term: string,
+): Promise<BillingCustomerOption[]> {
+  await assertCapability('pricing.manage')
+  const db = await erpDb()
+
+  if (customerType === 'DISTRIBUTOR') {
+    let query = db.from('erp_distributors').select('id, distributor_name').eq('active', true).order('distributor_name').limit(15)
+    const q = safeSearch(term)
+    if (q) query = query.ilike('distributor_name', `%${q}%`)
+    const { data } = await query
+    return (data ?? []).map(d => ({ id: (d as { id: string }).id, name: (d as { distributor_name: string }).distributor_name }))
+  }
+
+  if (customerType === 'CHEMIST') {
+    let query = db.from('erp_chemists').select('id, chemist_name').eq('active', true).order('chemist_name').limit(15)
+    const q = safeSearch(term)
+    if (q) query = query.ilike('chemist_name', `%${q}%`)
+    const { data } = await query
+    return (data ?? []).map(c => ({ id: (c as { id: string }).id, name: (c as { chemist_name: string }).chemist_name }))
+  }
+
+  let query = db.from('erp_doctors').select('id, doctor_name').eq('active', true).order('doctor_name').limit(15)
+  const q = safeSearch(term)
+  if (q) query = query.ilike('doctor_name', `%${q}%`)
+  const { data } = await query
+  return (data ?? []).map(d => ({ id: (d as { id: string }).id, name: (d as { doctor_name: string }).doctor_name }))
+}

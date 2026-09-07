@@ -54,6 +54,13 @@ export const CAPABILITIES = [
   // accountants and managers already need for day-to-day billing.
   'inventory.valuation',
 
+  // Negotiated pricing and schemes — ADMIN-only. An accountant raises sales
+  // invoices (billing.sales.write) and sees the resulting selling rate, but
+  // never the margin %, pricing-rule detail or scheme configuration behind
+  // it (spec §30) — that distinction is enforced by which capability this
+  // is, not by hiding a field in a component.
+  'pricing.manage',
+
   // Administration
   'users.manage',
   'targets.manage',

@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import {
-  ATTENDANCE_STATUSES, DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES,
-  FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES, FOLLOWUP_STATUSES,
-  LEAVE_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, PAYROLL_ITEM_TYPES,
-  TARGET_TYPES, VISIT_PURPOSES,
+  ATTENDANCE_STATUSES, BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS,
+  DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
+  FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, PAYROLL_ITEM_TYPES,
+  SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
 } from './types'
 
 /**
@@ -562,6 +562,82 @@ export const ExpenseReviewSchema = z.object({
   notes:      optionalText(500),
 })
 
+// ─── Pricing engine: negotiated pricing, schemes ────────────────────────────
+// Admin-only (pricing.manage) — see lib/erp/permissions.ts.
+
+const oneOfThreeCustomers = (v: { distributor_id?: string; chemist_id?: string; doctor_id?: string }) =>
+  [v.distributor_id, v.chemist_id, v.doctor_id].filter(Boolean).length
+
+export const PricingRuleSchema = z.object({
+  // At most one set = a negotiated rule for that one customer; none set = a
+  // product default for the whole customer_type.
+  distributor_id: optionalUuid,
+  chemist_id:     optionalUuid,
+  doctor_id:      optionalUuid,
+  customer_type:      z.enum(BILLING_CUSTOMER_TYPES),
+  product_id:         uuid,
+  calculation_basis:  z.enum(CALCULATION_BASES),
+  calculation_method: z.enum(CALCULATION_METHODS),
+  percentage:    z.union([z.coerce.number().min(0).max(100), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  fixed_amount:  z.union([money, z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  effective_from: dateString,
+  effective_to:   optionalDate,
+  notes:          optionalText(500),
+}).refine(v => oneOfThreeCustomers(v) <= 1, {
+  message: 'A pricing rule can target at most one specific customer',
+  path: ['distributor_id'],
+}).refine(v => v.calculation_method === 'FIXED_PRICE' ? v.fixed_amount != null : v.percentage != null, {
+  message: 'Enter a percentage, or switch to Fixed Price and enter a fixed amount',
+  path: ['percentage'],
+}).refine(v => !v.effective_to || v.effective_to >= v.effective_from, {
+  message: 'The end date must be on or after the start date',
+  path: ['effective_to'],
+})
+
+const SchemeCustomerRef = z.object({
+  distributor_id: optionalUuid,
+  chemist_id:     optionalUuid,
+  doctor_id:      optionalUuid,
+}).refine(v => oneOfThreeCustomers(v) === 1, { message: 'Each target must be exactly one customer' })
+
+export const SchemeSchema = z.object({
+  scheme_name:   requiredText('Scheme name', 150),
+  scheme_type:   z.enum(SCHEME_TYPES),
+  product_id:    uuid,
+  // Empty = applies across every customer type for this product.
+  customer_type: z.union([z.enum(BILLING_CUSTOMER_TYPES), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+
+  calculation_basis:  z.union([z.enum(CALCULATION_BASES), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  calculation_method: z.union([z.enum(CALCULATION_METHODS), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  percentage:    z.union([z.coerce.number().min(0).max(100), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+
+  buy_quantity:  z.union([positiveInt, z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  free_quantity: z.union([positiveInt, z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+
+  effective_from: dateString,
+  effective_to:   optionalDate,
+  priority:       z.coerce.number().int().min(0).max(9999).default(100),
+  status:         z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'CANCELLED']).default('DRAFT'),
+  notes:          optionalText(500),
+  // Empty = a company-wide scheme for the chosen customer_type; non-empty =
+  // targeted to exactly these customers only.
+  customers:      z.array(SchemeCustomerRef).default([]),
+}).refine(v => !v.effective_to || v.effective_to >= v.effective_from, {
+  message: 'The end date must be on or after the start date',
+  path: ['effective_to'],
+}).refine(v => v.scheme_type !== 'PERCENTAGE_MARGIN' || (v.calculation_basis && v.calculation_method && v.percentage != null), {
+  message: 'A percentage-margin scheme needs a basis, method and percentage',
+  path: ['percentage'],
+}).refine(v => v.scheme_type !== 'FREE_QUANTITY' || (v.buy_quantity != null && v.free_quantity != null), {
+  message: 'A free-quantity scheme needs both a buy quantity and a free quantity',
+  path: ['buy_quantity'],
+})
+
+export const SchemeStatusSchema = z.object({
+  scheme_id: uuid,
+  status:    z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'CANCELLED']),
+})
+
 // ─── Inferred input types ───────────────────────────────────────────────────
 
 export type ErpLoginInput           = z.infer<typeof ErpLoginSchema>
@@ -597,3 +673,6 @@ export type PayrollItemInput          = z.infer<typeof PayrollItemSchema>
 export type PayrollReopenInput        = z.infer<typeof PayrollReopenSchema>
 export type ExpenseInput              = z.infer<typeof ExpenseSchema>
 export type ExpenseReviewInput        = z.infer<typeof ExpenseReviewSchema>
+export type PricingRuleInput          = z.infer<typeof PricingRuleSchema>
+export type SchemeInput               = z.infer<typeof SchemeSchema>
+export type SchemeStatusInput         = z.infer<typeof SchemeStatusSchema>

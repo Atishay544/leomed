@@ -1,11 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
-import { AlertTriangle, Check, Loader2, Printer, ShoppingCart, Trash2 } from 'lucide-react'
+import { useEffect, useState, useTransition } from 'react'
+import { AlertTriangle, Check, Loader2, Lock, Printer, ShoppingCart, Trash2 } from 'lucide-react'
 import ProductPicker from '../visits/ProductPicker'
 import { lookupBatchesForSale, type ProductOption } from '@/lib/erp/actions/lookup'
 import { saveSalesInvoice } from '@/lib/erp/actions/billing'
+import { resolvePrice } from '@/lib/erp/actions/pricing'
 import { invoiceTotals, lineAmounts } from '@/lib/erp/invoice-math'
 import { daysUntil, formatDate, isoDate, money, PAYMENT_METHOD_LABELS, qty } from '@/lib/erp/format'
 import { PAYMENT_METHODS, type PaymentMethod } from '@/lib/erp/types'
@@ -50,6 +51,12 @@ interface Line {
   sale_rate: number
   discount_percent: number
   gst_rate: number
+  /** True once a pricing-engine scheme has actually set free_quantity for
+   *  this line — locks the field, since a manual edit here would just be
+   *  overwritten by the server anyway (spec §33). */
+  schemeAppliesFreeQty: boolean
+  priceLoading: boolean
+  priceError: string | null
 }
 
 let rowCounter = 0
@@ -122,6 +129,43 @@ export default function SalesInvoiceForm({
   const patch = (uid: string, changes: Partial<Line>) =>
     setLines(rows => rows.map(row => (row.uid === uid ? { ...row, ...changes } : row)))
 
+  const buyerId = buyerType === 'DISTRIBUTOR' ? distributorId : buyerType === 'CHEMIST' ? chemistId : doctorId
+
+  /**
+   * The authoritative price/free-quantity for one line, resolved server-side
+   * (spec §33 — the client never computes or edits these itself). Re-run
+   * whenever the buyer or a line's paid quantity changes; skipped silently
+   * until a buyer is actually chosen.
+   */
+  async function resolveLine(uid: string, productId: string, paidQty: number) {
+    if (!buyerId) return
+    patch(uid, { priceLoading: true, priceError: null })
+
+    const result = await resolvePrice({
+      productId,
+      customerType: buyerType,
+      distributorId: buyerType === 'DISTRIBUTOR' ? buyerId : undefined,
+      chemistId: buyerType === 'CHEMIST' ? buyerId : undefined,
+      doctorId: buyerType === 'DOCTOR' ? buyerId : undefined,
+      invoiceDate,
+      paidQty,
+    })
+
+    if (result.ok && result.data) {
+      const d = result.data as { selling_rate?: number; free?: { free_quantity?: number } }
+      const freeQty = Number(d.free?.free_quantity ?? 0)
+      patch(uid, {
+        sale_rate: Number(d.selling_rate) || 0,
+        priceLoading: false,
+        // Only a matched scheme's free quantity ever locks the field —
+        // zero from "no scheme configured" must not overwrite a manual entry.
+        ...(freeQty > 0 ? { free_quantity: freeQty, schemeAppliesFreeQty: true } : {}),
+      })
+    } else {
+      patch(uid, { priceLoading: false, priceError: result.error ?? 'Could not price this product for this buyer.' })
+    }
+  }
+
   async function addLine(product: ProductOption) {
     const uid = nextUid()
     setLines(rows => [...rows, {
@@ -135,6 +179,9 @@ export default function SalesInvoiceForm({
       sale_rate: Number(product.sale_rate) || 0,
       discount_percent: 0,
       gst_rate: Number(product.gst_rate) || 0,
+      schemeAppliesFreeQty: false,
+      priceLoading: false,
+      priceError: null,
     }])
 
     const batches = (await lookupBatchesForSale(product.id)) as unknown as BatchOption[]
@@ -145,10 +192,21 @@ export default function SalesInvoiceForm({
           loadingBatches: false,
           // FEFO: the batch expiring soonest is preselected.
           batch_id: batches[0]?.id ?? '',
-          sale_rate: batches[0] ? Number(batches[0].sale_rate) || row.sale_rate : row.sale_rate,
         }
       : row))
+
+    resolveLine(uid, product.id, 1)
   }
+
+  // Re-price every line whenever the buyer changes — the same product can
+  // have a different negotiated rate for a different customer.
+  useEffect(() => {
+    if (!buyerId) return
+    for (const line of lines) resolveLine(line.uid, line.product.id, line.quantity)
+    // Only the buyer identity should re-trigger this, not every line edit —
+    // per-line quantity changes are resolved individually where they happen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyerType, buyerId])
 
   function handleSubmit() {
     setError(null)
@@ -166,6 +224,14 @@ export default function SalesInvoiceForm({
           ? `${line.product.product_name} has no stock available to sell.`
           : `Choose a batch for ${line.product.product_name}.`,
       )
+    }
+
+    if (lines.some(l => l.priceLoading)) {
+      return setError('Still calculating pricing — wait a moment and try again.')
+    }
+    const priceError = lines.find(l => l.priceError)
+    if (priceError) {
+      return setError(`${priceError.product.product_name}: ${priceError.priceError}`)
     }
 
     // Q9: expired stock is blocked by default. The database refuses it too —
@@ -387,6 +453,11 @@ export default function SalesInvoiceForm({
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-[14px] font-semibold text-gray-900">Products</h2>
+        {!buyerId && (
+          <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+            Choose who you&apos;re billing above first — the rate for each product depends on it.
+          </p>
+        )}
         <ProductPicker onPick={addLine} placeholder="Search products to add to this invoice…" />
 
         {lines.length > 0 && (
@@ -438,13 +509,7 @@ export default function SalesInvoiceForm({
                           <label className="mb-1 block text-[11px] text-gray-500">Batch (earliest expiry first)</label>
                           <select
                             value={line.batch_id}
-                            onChange={e => {
-                              const next = line.batches.find(b => b.id === e.target.value)
-                              patch(line.uid, {
-                                batch_id: e.target.value,
-                                sale_rate: next ? Number(next.sale_rate) || line.sale_rate : line.sale_rate,
-                              })
-                            }}
+                            onChange={e => patch(line.uid, { batch_id: e.target.value })}
                             className={inputClass}
                           >
                             {line.batches.map(b => (
@@ -457,20 +522,33 @@ export default function SalesInvoiceForm({
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Qty</label>
                           <input type="number" min={1} inputMode="numeric" value={line.quantity}
-                                 onChange={e => patch(line.uid, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                                 onChange={e => {
+                                   const next = Math.max(1, parseInt(e.target.value, 10) || 1)
+                                   patch(line.uid, { quantity: next })
+                                   resolveLine(line.uid, line.product.id, next)
+                                 }}
                                  className={inputClass} />
                         </div>
                         <div>
-                          <label className="mb-1 block text-[11px] text-gray-500">Free</label>
+                          <label className="mb-1 flex items-center gap-1 text-[11px] text-gray-500">
+                            Free {line.schemeAppliesFreeQty && <Lock size={10} className="text-emerald-600" />}
+                          </label>
                           <input type="number" min={0} inputMode="numeric" value={line.free_quantity}
+                                 disabled={line.schemeAppliesFreeQty}
                                  onChange={e => patch(line.uid, { free_quantity: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-                                 className={inputClass} />
+                                 className={`${inputClass} ${line.schemeAppliesFreeQty ? 'bg-emerald-50 text-emerald-800' : ''}`} />
+                          {line.schemeAppliesFreeQty && (
+                            <p className="mt-0.5 text-[10px] text-emerald-700">Scheme-applied</p>
+                          )}
                         </div>
                         <div>
-                          <label className="mb-1 block text-[11px] text-gray-500">Rate ₹</label>
-                          <input type="number" min={0} step="0.01" inputMode="decimal" value={line.sale_rate}
-                                 onChange={e => patch(line.uid, { sale_rate: Math.max(0, parseFloat(e.target.value) || 0) })}
-                                 className={inputClass} />
+                          <label className="mb-1 flex items-center gap-1 text-[11px] text-gray-500">
+                            Rate ₹ <Lock size={10} className="text-gray-400" />
+                          </label>
+                          <div className={`${inputClass} flex items-center bg-gray-50 text-gray-700`}>
+                            {line.priceLoading ? <Loader2 size={13} className="animate-spin text-gray-400" /> : money(line.sale_rate)}
+                          </div>
+                          {line.priceError && <p className="mt-0.5 text-[10px] text-red-600">{line.priceError}</p>}
                         </div>
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Disc %</label>

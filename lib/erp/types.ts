@@ -601,3 +601,95 @@ export interface ErpExpense {
   created_at: string
   updated_at: string
 }
+
+// ─── Pricing engine: negotiated pricing, schemes ────────────────────────────
+
+export const BILLING_CUSTOMER_TYPES = ['DISTRIBUTOR', 'CHEMIST', 'DOCTOR'] as const
+export type BillingCustomerType = (typeof BILLING_CUSTOMER_TYPES)[number]
+
+export const CALCULATION_BASES = ['MRP', 'PTR', 'PTS', 'COST', 'FIXED'] as const
+export type CalculationBasis = (typeof CALCULATION_BASES)[number]
+
+export const CALCULATION_METHODS = ['MARGIN', 'DISCOUNT', 'MARKUP', 'FIXED_PRICE'] as const
+export type CalculationMethod = (typeof CALCULATION_METHODS)[number]
+
+export const PRICING_STATUSES = ['DRAFT', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'CANCELLED'] as const
+export type PricingStatus = (typeof PRICING_STATUSES)[number]
+
+export const SCHEME_TYPES = ['PERCENTAGE_MARGIN', 'FREE_QUANTITY'] as const
+export type SchemeType = (typeof SCHEME_TYPES)[number]
+
+export interface ErpPricingRule {
+  id: string
+  distributor_id: string | null
+  chemist_id: string | null
+  doctor_id: string | null
+  customer_type: BillingCustomerType
+  product_id: string
+  calculation_basis: CalculationBasis
+  calculation_method: CalculationMethod
+  percentage: number | null
+  fixed_amount: number | null
+  effective_from: string
+  effective_to: string | null
+  priority: number
+  status: PricingStatus
+  version: number
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpScheme {
+  id: string
+  scheme_name: string
+  scheme_type: SchemeType
+  product_id: string
+  customer_type: BillingCustomerType | null
+  calculation_basis: CalculationBasis | null
+  calculation_method: CalculationMethod | null
+  percentage: number | null
+  buy_quantity: number | null
+  free_quantity: number | null
+  effective_from: string
+  effective_to: string | null
+  priority: number
+  status: PricingStatus
+  version: number
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpSchemeCustomer {
+  id: string
+  scheme_id: string
+  distributor_id: string | null
+  chemist_id: string | null
+  doctor_id: string | null
+  created_at: string
+}
+
+/** What erp_explain_price() returns — shape depends on the caller's role:
+ *  an admin gets the full explanation, everyone else gets only the rupee
+ *  figures they're allowed to bill with (spec §28, §30). */
+export interface PriceExplanation {
+  selling_rate: number
+  mrp: number
+  gst_rate: number
+  free: { free_quantity: number }
+  // Admin-only fields — absent entirely for a non-admin caller.
+  source?: 'NEGOTIATED' | 'SCHEME' | 'DEFAULT'
+  calculation_basis?: CalculationBasis
+  calculation_method?: CalculationMethod
+  percentage?: number | null
+  pricing_rule_id?: string | null
+  pricing_rule_version?: number | null
+  scheme_id?: string | null
+  scheme_version?: number | null
+  scheme_name?: string | null
+}
