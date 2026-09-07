@@ -134,6 +134,17 @@ const MR_CAPABILITIES: readonly Capability[] = [
  * corrections (damage, expiry write-off, opening balance) are part of the
  * same job. erp_adjust_inventory() checks erp_can_write_billing() (ADMIN or
  * ACCOUNTANT) to match, not erp_is_admin() alone.
+ *
+ * billing.purchase.read/write are ALSO deliberately kept, even though the
+ * pricing-engine spec says an Accountant must never see landing/purchase
+ * cost: that rule is about the SALES side (never let selling-price screens
+ * leak the margin behind them — see erp_explain_price()'s role-filtered
+ * shape and masters/batches' inventory.valuation gate). An accountant who
+ * enters a supplier's purchase invoice necessarily sees the cost on that
+ * invoice — it IS the record they're keying in — so restricting it there
+ * would break their actual job. Confirmed as the intended scope with the
+ * business (2026-09-07); do not "fix" this without a product decision to
+ * change it.
  */
 const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'masters.read',
