@@ -64,6 +64,11 @@ export interface PayrollRecordListParams {
   page?: number
   q?: string
   department?: string
+  // erp_generate_payroll_period() snapshots the employee's role into
+  // `designation` (r.role::text) at generation time — reused here rather
+  // than joining erp_users, so "role" filtering matches what the worksheet
+  // itself already shows for that period, not the employee's role today.
+  role?: string
 }
 
 /** Records for one period — the admin payroll worksheet. */
@@ -83,10 +88,28 @@ export async function listPayrollRecords(
     .range(from, to)
 
   if (params.department) query = query.eq('department', params.department)
+  if (params.role) query = query.eq('designation', params.role)
   if (params.q) query = query.ilike('employee_name', `%${params.q}%`)
 
   const { data, count } = await query
   return toPage<ErpPayrollRecord>(data as ErpPayrollRecord[] | null, count, page, 50)
+}
+
+/** All records for one role in one period, unpaginated — the bulk
+ *  incentive/bonus screen needs every employee of the chosen role on screen
+ *  at once (typically a few dozen at most), not a paged worksheet. */
+export async function listPayrollRecordsForRole(
+  periodId: string,
+  role: string,
+): Promise<ErpPayrollRecord[]> {
+  const db = await erpDb()
+  const { data } = await db
+    .from('erp_payroll_records')
+    .select('*')
+    .eq('payroll_period_id', periodId)
+    .eq('designation', role)
+    .order('employee_name', { ascending: true })
+  return (data ?? []) as ErpPayrollRecord[]
 }
 
 export async function getPayrollRecord(recordId: string): Promise<ErpPayrollRecord | null> {

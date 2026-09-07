@@ -505,7 +505,7 @@ export interface ErpLeaveRequest {
 export const PAYROLL_STATUSES = ['DRAFT', 'CALCULATED', 'UNDER_REVIEW', 'FINALIZED', 'PAID'] as const
 export type PayrollStatus = (typeof PAYROLL_STATUSES)[number]
 
-export const PAYROLL_ITEM_TYPES = ['INCENTIVE', 'OTHER_EARNING', 'DEDUCTION'] as const
+export const PAYROLL_ITEM_TYPES = ['INCENTIVE', 'BONUS', 'OTHER_EARNING', 'DEDUCTION'] as const
 export type PayrollItemType = (typeof PAYROLL_ITEM_TYPES)[number]
 
 export const EXPENSE_CATEGORIES = [
@@ -566,6 +566,7 @@ export interface ErpPayrollRecord {
   allowances: number
   standard_deductions: number
   incentives: number
+  bonus: number
   other_earnings: number
   deductions: number
   net_salary: number
