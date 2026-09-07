@@ -164,7 +164,7 @@ export async function lookupBatchesForSale(productId: string) {
   const db = await erpDb()
 
   const { data } = await db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select('id, batch_number, expiry_date, current_quantity, sale_rate, mrp')
     .eq('product_id', productId)
     .gt('current_quantity', 0)
@@ -186,7 +186,7 @@ export async function lookupAllBatches(productId: string) {
   const db = await erpDb()
 
   const { data } = await db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select('id, batch_number, expiry_date, current_quantity, sale_rate, mrp')
     .eq('product_id', productId)
     .order('expiry_date', { ascending: true })
