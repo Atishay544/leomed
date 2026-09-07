@@ -1,6 +1,6 @@
 import { requireAdmin } from '@/lib/admin-auth'
-import { AdminThemeProvider } from './AdminThemeProvider'
-import AdminShell from './AdminShell'
+import { AdminThemeProvider } from '../AdminThemeProvider'
+import AdminShell from '../AdminShell'
 
 export const dynamic = 'force-dynamic'
 
