@@ -148,11 +148,18 @@ export async function getAttendanceSummary(
   department?: string,
 ): Promise<AttendanceSummary> {
   const db = await erpDb()
+  // `|| null`, not `?? null`: the filter form's "All roles"/"All
+  // territories"/"All departments" option submits as an empty string, not
+  // as an absent param — every GET form submission includes every named
+  // field, even the ones left on their default. An empty string reaching
+  // p_role would fail outright (it's typed as the erp_role enum in
+  // erp_attendance_summary(), and '' isn't a valid member), throwing an
+  // uncaught error the moment any OTHER filter was applied.
   const { data } = await db.rpc('erp_attendance_summary', {
     p_date: date,
-    p_role: role ?? null,
-    p_territory: territory ?? null,
-    p_department: department ?? null,
+    p_role: role || null,
+    p_territory: territory || null,
+    p_department: department || null,
   })
   return data as AttendanceSummary
 }
