@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import {
-  DISCUSSION_TYPES, ERP_ROLES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
-  FOLLOWUP_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, TARGET_TYPES,
-  VISIT_PURPOSES,
+  ATTENDANCE_STATUSES, BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS,
+  DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
+  FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, PAYROLL_ITEM_TYPES,
+  SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
 } from './types'
 
 /**
@@ -56,12 +57,14 @@ export const ErpLoginSchema = z.object({
 // ─── Staff ──────────────────────────────────────────────────────────────────
 
 export const ErpUserSchema = z.object({
-  name:      requiredText('Name', 100),
-  email:     z.email('Enter a valid email address'),
+  name:          requiredText('Name', 100),
+  email:         z.email('Enter a valid email address'),
   phone,
-  role:      z.enum(ERP_ROLES),
-  mr_code:   optionalText(20),
-  territory: optionalText(100),
+  role:          z.enum(ERP_ROLES),
+  mr_code:       optionalText(20),
+  territory:     optionalText(100),
+  department:    optionalText(100),
+  employee_code: optionalText(30),
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
   // silently do nothing. The edit form always renders the checkbox.
@@ -72,12 +75,14 @@ export const ErpUserSchema = z.object({
 })
 
 export const ErpUserCreateSchema = z.object({
-  name:      requiredText('Name', 100),
-  email:     z.email('Enter a valid email address'),
+  name:          requiredText('Name', 100),
+  email:         z.email('Enter a valid email address'),
   phone,
-  role:      z.enum(ERP_ROLES),
-  mr_code:   optionalText(20),
-  territory: optionalText(100),
+  role:          z.enum(ERP_ROLES),
+  mr_code:       optionalText(20),
+  territory:     optionalText(100),
+  department:    optionalText(100),
+  employee_code: optionalText(30),
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
   message: 'An MR code is required for medical representatives',
@@ -226,8 +231,12 @@ const VisitBase = {
   follow_up_date:        optionalDate,
   follow_up_description: optionalText(500),
   follow_up_priority:    z.enum(FOLLOWUP_PRIORITIES).default('MEDIUM'),
-  latitude:    z.union([z.coerce.number().min(-90).max(90), z.literal('')]).optional(),
-  longitude:   z.union([z.coerce.number().min(-180).max(180), z.literal('')]).optional(),
+  // Mandatory: every visit must carry proof of where the MR actually was.
+  latitude:    z.coerce.number().min(-90).max(90),
+  longitude:   z.coerce.number().min(-180).max(180),
+  /** A public Supabase Storage URL of a photo taken by the MR during the
+   *  visit — proof-of-visit, not a document requiring validation beyond URL shape. */
+  photo_url:   z.union([z.string().url(), z.literal('')]).optional(),
   /** Idempotency key — a retried save must not create a second visit (D11). */
   client_request_id: uuid,
   order: FieldOrderInput.optional(),
@@ -320,11 +329,12 @@ export const SalesItemSchema = z.object({
 })
 
 export const SalesInvoiceSchema = z.object({
-  // Exactly one buyer — a sale is either to a distributor or direct to a
-  // chemist, never both, never neither. The database re-checks this too
-  // (erp_sales_invoice_buyer_xor).
+  // Exactly one buyer — a sale is to a distributor, direct to a chemist, or
+  // direct to a doctor, never more than one, never none. The database
+  // re-checks this too (erp_sales_invoice_buyer_xor).
   distributor_id: optionalUuid,
   chemist_id:     optionalUuid,
+  doctor_id:      optionalUuid,
   invoice_date:   dateString,
   is_interstate:  z.coerce.boolean().default(false),
   initial_payment:   money.default(0),
@@ -335,8 +345,8 @@ export const SalesInvoiceSchema = z.object({
   // batch. The database re-checks the role and refuses without a reason.
   expired_sale_reason: optionalText(500),
   items:          z.array(SalesItemSchema).min(1, 'Add at least one product line'),
-}).refine(data => !!data.distributor_id !== !!data.chemist_id, {
-  message: 'Choose either a distributor or a chemist to bill.',
+}).refine(data => [data.distributor_id, data.chemist_id, data.doctor_id].filter(Boolean).length === 1, {
+  message: 'Choose exactly one of a distributor, a chemist or a doctor to bill.',
   path: ['distributor_id'],
 })
 
@@ -419,6 +429,215 @@ export const SettingsSchema = z.object({
   financial_year_start_month: z.coerce.number().int().min(1).max(12),
 })
 
+// ─── HR: attendance ─────────────────────────────────────────────────────────
+// GPS is deliberately optional here, unlike the mandatory GPS on visit forms —
+// this spec is explicit that a missing/poor fix must become a reviewable
+// exception, never a block on checking in or out.
+
+const gpsCoord = z.union([z.coerce.number(), z.literal('')]).transform(v => (v === '' ? undefined : v)).optional()
+
+export const AttendanceCheckSchema = z.object({
+  latitude:  gpsCoord,
+  longitude: gpsCoord,
+  accuracy:  gpsCoord,
+})
+
+export const AttendanceCorrectionSchema = z.object({
+  attendance_id:   uuid,
+  status:          z.enum(ATTENDANCE_STATUSES).optional(),
+  check_in_time:   optionalText(40),  // datetime-local string, converted at the call site
+  check_out_time:  optionalText(40),
+  reason:          requiredText('Reason', 500),
+})
+
+export const AttendanceRulesSchema = z.object({
+  work_start_time:                  z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Enter a valid time'),
+  grace_period_minutes:             z.coerce.number().int().min(0).max(180),
+  min_full_day_minutes:             z.coerce.number().int().min(1).max(1440),
+  min_half_day_minutes:             z.coerce.number().int().min(1).max(1440),
+  late_threshold_minutes:           z.coerce.number().int().min(0).max(180),
+  early_checkout_threshold_minutes: z.coerce.number().int().min(0).max(180),
+  gps_required:                     z.coerce.boolean().default(false),
+  min_gps_accuracy_meters:          z.coerce.number().positive().max(10_000),
+  default_mr_doctor_visits:         nonNegativeInt,
+  default_mr_chemist_visits:        nonNegativeInt,
+}).refine(v => v.min_half_day_minutes < v.min_full_day_minutes, {
+  message: 'The half-day minimum must be less than the full-day minimum',
+  path: ['min_half_day_minutes'],
+})
+
+export const MrAttendanceTargetSchema = z.object({
+  mr_id:                    uuid,
+  required_doctor_visits:   nonNegativeInt,
+  required_chemist_visits:  nonNegativeInt,
+})
+
+export const HolidaySchema = z.object({
+  holiday_date: dateString,
+  name:         requiredText('Holiday name', 150),
+})
+
+// ─── HR: leave ──────────────────────────────────────────────────────────────
+
+export const LeaveTypeSchema = z.object({
+  name:       requiredText('Leave type name', 60),
+  // false, not true: an unchecked checkbox is simply absent from FormData, so
+  // defaulting to true would make unchecking either box silently do nothing
+  // (same footgun ErpUserSchema.active avoids for the same reason).
+  is_paid:    z.coerce.boolean().default(false),
+  active:     z.coerce.boolean().default(false),
+  sort_order: z.coerce.number().int().default(0),
+})
+
+export const LeaveApplicationSchema = z.object({
+  leave_type_id: uuid,
+  from_date:     dateString,
+  to_date:       dateString,
+  reason:        optionalText(500),
+}).refine(v => v.to_date >= v.from_date, {
+  message: 'The end date must be on or after the start date',
+  path: ['to_date'],
+})
+
+export const LeaveReviewSchema = z.object({
+  leave_id:      uuid,
+  status:        z.enum(['APPROVED', 'REJECTED', 'CANCELLED']),
+  admin_remarks: optionalText(500),
+})
+
+export const AdminCreateLeaveSchema = z.object({
+  employee_id:   uuid,
+  leave_type_id: uuid,
+  from_date:     dateString,
+  to_date:       dateString,
+  reason:        optionalText(500),
+  status:        z.enum(LEAVE_STATUSES).default('APPROVED'),
+}).refine(v => v.to_date >= v.from_date, {
+  message: 'The end date must be on or after the start date',
+  path: ['to_date'],
+})
+
+// ─── HR: salary, payroll, expenses ──────────────────────────────────────────
+
+export const EmployeeSalarySchema = z.object({
+  employee_id:         uuid,
+  fixed_salary:        money,
+  basic_salary:        money,
+  gross_salary:        money,
+  allowances:          money,
+  standard_deductions: money,
+  effective_from:      dateString,
+})
+
+export const PayrollGenerateSchema = z.object({
+  period_year:  z.coerce.number().int().min(2000).max(2200),
+  period_month: z.coerce.number().int().min(1).max(12),
+})
+
+export const PayrollItemSchema = z.object({
+  record_id: uuid,
+  item_type: z.enum(PAYROLL_ITEM_TYPES),
+  label:     requiredText('Label', 100),
+  amount:    z.coerce.number().positive('Enter an amount above zero').max(99_999_999),
+})
+
+export const PayrollReopenSchema = z.object({
+  period_id: uuid,
+  reason:    requiredText('Reason', 500),
+})
+
+export const ExpenseSchema = z.object({
+  expense_date: dateString,
+  category:     z.enum(EXPENSE_CATEGORIES),
+  vendor_name:  optionalText(150),
+  amount:       z.coerce.number().positive('Enter an amount above zero').max(99_999_999),
+  description:  optionalText(1000),
+  receipt_url:  z.union([z.string().url(), z.literal('')]).optional(),
+  payment_mode: z.enum(PAYMENT_METHODS),
+})
+
+export const ExpenseReviewSchema = z.object({
+  expense_id: uuid,
+  status:     z.enum(['APPROVED', 'REJECTED', 'PAID']),
+  notes:      optionalText(500),
+})
+
+// ─── Pricing engine: negotiated pricing, schemes ────────────────────────────
+// Admin-only (pricing.manage) — see lib/erp/permissions.ts.
+
+const oneOfThreeCustomers = (v: { distributor_id?: string; chemist_id?: string; doctor_id?: string }) =>
+  [v.distributor_id, v.chemist_id, v.doctor_id].filter(Boolean).length
+
+export const PricingRuleSchema = z.object({
+  // At most one set = a negotiated rule for that one customer; none set = a
+  // product default for the whole customer_type.
+  distributor_id: optionalUuid,
+  chemist_id:     optionalUuid,
+  doctor_id:      optionalUuid,
+  customer_type:      z.enum(BILLING_CUSTOMER_TYPES),
+  product_id:         uuid,
+  calculation_basis:  z.enum(CALCULATION_BASES),
+  calculation_method: z.enum(CALCULATION_METHODS),
+  percentage:    z.union([z.coerce.number().min(0).max(100), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  fixed_amount:  z.union([money, z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  effective_from: dateString,
+  effective_to:   optionalDate,
+  notes:          optionalText(500),
+}).refine(v => oneOfThreeCustomers(v) <= 1, {
+  message: 'A pricing rule can target at most one specific customer',
+  path: ['distributor_id'],
+}).refine(v => v.calculation_method === 'FIXED_PRICE' ? v.fixed_amount != null : v.percentage != null, {
+  message: 'Enter a percentage, or switch to Fixed Price and enter a fixed amount',
+  path: ['percentage'],
+}).refine(v => !v.effective_to || v.effective_to >= v.effective_from, {
+  message: 'The end date must be on or after the start date',
+  path: ['effective_to'],
+})
+
+const SchemeCustomerRef = z.object({
+  distributor_id: optionalUuid,
+  chemist_id:     optionalUuid,
+  doctor_id:      optionalUuid,
+}).refine(v => oneOfThreeCustomers(v) === 1, { message: 'Each target must be exactly one customer' })
+
+export const SchemeSchema = z.object({
+  scheme_name:   requiredText('Scheme name', 150),
+  scheme_type:   z.enum(SCHEME_TYPES),
+  product_id:    uuid,
+  // Empty = applies across every customer type for this product.
+  customer_type: z.union([z.enum(BILLING_CUSTOMER_TYPES), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+
+  calculation_basis:  z.union([z.enum(CALCULATION_BASES), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  calculation_method: z.union([z.enum(CALCULATION_METHODS), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  percentage:    z.union([z.coerce.number().min(0).max(100), z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+
+  buy_quantity:  z.union([positiveInt, z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+  free_quantity: z.union([positiveInt, z.literal('')]).transform(v => v === '' ? undefined : v).optional(),
+
+  effective_from: dateString,
+  effective_to:   optionalDate,
+  priority:       z.coerce.number().int().min(0).max(9999).default(100),
+  status:         z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'CANCELLED']).default('DRAFT'),
+  notes:          optionalText(500),
+  // Empty = a company-wide scheme for the chosen customer_type; non-empty =
+  // targeted to exactly these customers only.
+  customers:      z.array(SchemeCustomerRef).default([]),
+}).refine(v => !v.effective_to || v.effective_to >= v.effective_from, {
+  message: 'The end date must be on or after the start date',
+  path: ['effective_to'],
+}).refine(v => v.scheme_type !== 'PERCENTAGE_MARGIN' || (v.calculation_basis && v.calculation_method && v.percentage != null), {
+  message: 'A percentage-margin scheme needs a basis, method and percentage',
+  path: ['percentage'],
+}).refine(v => v.scheme_type !== 'FREE_QUANTITY' || (v.buy_quantity != null && v.free_quantity != null), {
+  message: 'A free-quantity scheme needs both a buy quantity and a free quantity',
+  path: ['buy_quantity'],
+})
+
+export const SchemeStatusSchema = z.object({
+  scheme_id: uuid,
+  status:    z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'EXPIRED', 'CANCELLED']),
+})
+
 // ─── Inferred input types ───────────────────────────────────────────────────
 
 export type ErpLoginInput           = z.infer<typeof ErpLoginSchema>
@@ -439,3 +658,21 @@ export type TargetInput             = z.infer<typeof TargetSchema>
 export type SettingsInput           = z.infer<typeof SettingsSchema>
 export type PurchasePaymentInput    = z.infer<typeof PurchasePaymentSchema>
 export type SalesReceiptInput       = z.infer<typeof SalesReceiptSchema>
+export type AttendanceCheckInput      = z.infer<typeof AttendanceCheckSchema>
+export type AttendanceCorrectionInput = z.infer<typeof AttendanceCorrectionSchema>
+export type AttendanceRulesInput      = z.infer<typeof AttendanceRulesSchema>
+export type MrAttendanceTargetInput   = z.infer<typeof MrAttendanceTargetSchema>
+export type HolidayInput              = z.infer<typeof HolidaySchema>
+export type LeaveTypeInput            = z.infer<typeof LeaveTypeSchema>
+export type LeaveApplicationInput     = z.infer<typeof LeaveApplicationSchema>
+export type LeaveReviewInput          = z.infer<typeof LeaveReviewSchema>
+export type AdminCreateLeaveInput     = z.infer<typeof AdminCreateLeaveSchema>
+export type EmployeeSalaryInput       = z.infer<typeof EmployeeSalarySchema>
+export type PayrollGenerateInput      = z.infer<typeof PayrollGenerateSchema>
+export type PayrollItemInput          = z.infer<typeof PayrollItemSchema>
+export type PayrollReopenInput        = z.infer<typeof PayrollReopenSchema>
+export type ExpenseInput              = z.infer<typeof ExpenseSchema>
+export type ExpenseReviewInput        = z.infer<typeof ExpenseReviewSchema>
+export type PricingRuleInput          = z.infer<typeof PricingRuleSchema>
+export type SchemeInput               = z.infer<typeof SchemeSchema>
+export type SchemeStatusInput         = z.infer<typeof SchemeStatusSchema>

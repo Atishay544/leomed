@@ -55,10 +55,13 @@ export async function listInventoryTransactions(params: {
 export interface StockSummary {
   totalBatches: number
   inStockBatches: number
-  stockValue: number
+  /** Landing-cost valuation — null when the caller lacks inventory.valuation,
+   *  never a silent 0 (0 would read as "no stock value" rather than "you
+   *  can't see this"). */
+  stockValue: number | null
   expiredBatches: number
   expiringBatches: number
-  expiredValue: number
+  expiredValue: number | null
 }
 
 /**
@@ -67,8 +70,15 @@ export interface StockSummary {
  * Only batches holding stock are loaded — an empty batch contributes nothing
  * to any of these figures, and skipping them keeps the query small on a
  * catalogue with years of exhausted batches behind it.
+ *
+ * includeCost gates stockValue/expiredValue exactly like listBatches()'s own
+ * param — landing cost is admin-only (inventory.valuation), enforced here by
+ * not even asking for purchase_rate, not just by the caller choosing not to
+ * render it. Reads erp_product_batches_secure either way, which also masks
+ * the column at the database itself — see
+ * 20260907000009_product_batches_cost_masking_view.sql.
  */
-export async function getStockSummary(expiryWarningDays: number): Promise<StockSummary> {
+export async function getStockSummary(expiryWarningDays: number, includeCost = false): Promise<StockSummary> {
   const db = await erpDb()
   const today = new Date()
   const todayStr = today.toISOString().slice(0, 10)
@@ -77,26 +87,28 @@ export async function getStockSummary(expiryWarningDays: number): Promise<StockS
   const horizonStr = horizon.toISOString().slice(0, 10)
 
   const [{ data: batches }, { count: totalBatches }] = await Promise.all([
-    db.from('erp_product_batches')
-      .select('current_quantity, purchase_rate, expiry_date')
+    db.from('erp_product_batches_secure')
+      .select('current_quantity, expiry_date' + (includeCost ? ', purchase_rate' : ''))
       .gt('current_quantity', 0)
       .limit(5000),
-    db.from('erp_product_batches').select('id', { count: 'exact', head: true }),
+    db.from('erp_product_batches_secure').select('id', { count: 'exact', head: true }),
   ])
 
-  const rows = (batches ?? []) as { current_quantity: number; purchase_rate: number; expiry_date: string }[]
+  const rows = (batches ?? []) as unknown as { current_quantity: number; purchase_rate?: number; expiry_date: string }[]
 
-  let stockValue = 0
+  let stockValue = includeCost ? 0 : null
   let expiredBatches = 0
   let expiringBatches = 0
-  let expiredValue = 0
+  let expiredValue = includeCost ? 0 : null
 
   for (const b of rows) {
-    const value = Number(b.current_quantity) * Number(b.purchase_rate)
-    stockValue += value
+    if (includeCost) {
+      const value = Number(b.current_quantity) * Number(b.purchase_rate)
+      stockValue = (stockValue ?? 0) + value
+      if (b.expiry_date < todayStr) expiredValue = (expiredValue ?? 0) + value
+    }
     if (b.expiry_date < todayStr) {
       expiredBatches += 1
-      expiredValue += value
     } else if (b.expiry_date <= horizonStr) {
       expiringBatches += 1
     }
@@ -144,7 +156,7 @@ export async function getLowStockProducts(limit = 20): Promise<LowStockRow[]> {
   if (list.length === 0) return []
 
   const { data: batches } = await db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select('product_id, current_quantity')
     .in('product_id', list.map(p => p.id))
     .gt('current_quantity', 0)
@@ -167,6 +179,55 @@ export async function getLowStockProducts(limit = 20): Promise<LowStockRow[]> {
     .filter(row => row.onHand <= row.minStockLevel)
     .sort((a, b) => a.onHand - b.onHand)
     .slice(0, limit)
+}
+
+export interface ProductStockTotal {
+  product_id: string
+  batch_count: number
+  total_quantity: number
+  /** Landing/cost value — quantity × purchase_rate. Null for anyone but an
+   *  admin — masked at the view itself (erp_product_stock_totals), not just
+   *  left unrendered here. */
+  total_value: number | null
+  /** Retail-ceiling value — quantity × MRP. Same masking as total_value. */
+  total_mrp_value: number | null
+  earliest_expiry: string | null
+}
+
+/** Total stock for a set of products, aggregated across every batch —
+ *  "how many of product ABC do we have, full stop" — alongside the existing
+ *  batch-level detail at /erp/masters/batches?product=. One grouped query
+ *  for exactly the products being displayed, not a client-side sum over
+ *  every batch row (spec §41). */
+export async function getStockTotalsForProducts(productIds: string[]): Promise<Map<string, ProductStockTotal>> {
+  const map = new Map<string, ProductStockTotal>()
+  if (productIds.length === 0) return map
+
+  const db = await erpDb()
+  const { data } = await db
+    .from('erp_product_stock_totals')
+    .select('*')
+    .in('product_id', productIds)
+
+  for (const row of (data ?? []) as ProductStockTotal[]) {
+    map.set(row.product_id, row)
+  }
+  return map
+}
+
+export interface StockValuationSummary {
+  product_count: number
+  total_landing_value: number
+  total_mrp_value: number
+}
+
+/** Company-wide stock valuation — landing cost and MRP — for the
+ *  admin-only valuation screen. One aggregate query, not a sum over every
+ *  product's row (spec §41). */
+export async function getStockValuationSummary(): Promise<StockValuationSummary> {
+  const db = await erpDb()
+  const { data } = await db.rpc('erp_stock_valuation_summary')
+  return (data ?? { product_count: 0, total_landing_value: 0, total_mrp_value: 0 }) as StockValuationSummary
 }
 
 /** Batches where the cached quantity disagrees with the ledger. An empty

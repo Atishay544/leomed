@@ -27,8 +27,10 @@ const CREATE_FIELDS: FieldSpec[] = [
   },
   { name: 'role',      label: 'Role', type: 'select', options: ROLE_OPTIONS, required: true },
   { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
+  { name: 'employee_code', label: 'Employee ID', hint: 'For non-MR staff, e.g. EMP0042' },
   { name: 'phone',     label: 'Phone', type: 'tel' },
   { name: 'territory', label: 'Territory' },
+  { name: 'department', label: 'Department', hint: 'e.g. Sales, Accounts, HR, Warehouse' },
 ]
 
 const EDIT_FIELDS: FieldSpec[] = [
@@ -37,8 +39,10 @@ const EDIT_FIELDS: FieldSpec[] = [
     hint: 'Changing this here does not change their sign-in address.' },
   { name: 'role',      label: 'Role', type: 'select', options: ROLE_OPTIONS, required: true },
   { name: 'mr_code',   label: 'MR code' },
+  { name: 'employee_code', label: 'Employee ID' },
   { name: 'phone',     label: 'Phone', type: 'tel' },
   { name: 'territory', label: 'Territory' },
+  { name: 'department', label: 'Department' },
   { name: 'active',    label: 'Account active', type: 'checkbox', placeholder: 'Can sign in', span: 2 },
 ]
 
@@ -111,6 +115,8 @@ export default async function StaffPage({ searchParams }: Props) {
                   <Th>Email</Th>
                   <Th>Role</Th>
                   <Th>MR code</Th>
+                  <Th>Employee ID</Th>
+                  <Th>Department</Th>
                   <Th>Territory</Th>
                   <Th>Added</Th>
                   <Th align="right">Actions</Th>
@@ -132,6 +138,8 @@ export default async function StaffPage({ searchParams }: Props) {
                       </Badge>
                     </Td>
                     <Td className="font-mono text-[12px]">{user.mr_code ?? '—'}</Td>
+                    <Td className="font-mono text-[12px]">{user.employee_code ?? '—'}</Td>
+                    <Td>{user.department ?? '—'}</Td>
                     <Td>{user.territory ?? '—'}</Td>
                     <Td className="text-[12px] text-gray-500">{formatDate(user.created_at)}</Td>
                     <Td align="right">

@@ -101,3 +101,33 @@ export async function sendSignupConfirmation({ to, name, confirmLink }: { to: st
   })
   if (error) throw new Error(error.message)
 }
+
+// ─── HR: Payslip delivery ────────────────────────────────────────────────────
+// Reuses the existing Resend client rather than adding a second email
+// provider or a WhatsApp integration this project has no existing account
+// for (spec §34 — email is the preferred first implementation).
+
+export async function sendPayslipEmail({
+  to, employeeName, month, pdf,
+}: {
+  to: string
+  employeeName: string
+  month: string
+  pdf: Buffer
+}) {
+  const greeting = employeeName.split(/\s+/)[0]
+  const html = baseLayout(`
+    <h2 style="margin:0 0 4px;font-size:22px;color:#111">Your payslip for ${month}</h2>
+    <p style="margin:0 0 24px;color:#666;font-size:14px">Hi ${greeting}, your payslip for ${month} is attached to this email as a PDF.</p>
+    <p style="color:#9ca3af;font-size:12px;margin:0">Questions about your salary? Reach out to HR.</p>
+  `)
+
+  const { error } = await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `Your Leomed Pharma payslip — ${month}`,
+    html,
+    attachments: [{ filename: `payslip-${month.replace(/\s+/g, '-')}.pdf`, content: pdf }],
+  })
+  if (error) throw new Error(error.message)
+}

@@ -15,6 +15,8 @@ export interface InvoiceListParams {
   partyId?: string
   /** Sales invoices only — filters by direct-to-chemist buyer instead of distributor. */
   chemistId?: string
+  /** Sales invoices only — filters by direct-to-doctor buyer instead of distributor. */
+  doctorId?: string
   paymentStatus?: string
 }
 
@@ -81,6 +83,7 @@ export async function getPurchaseInvoice(id: string) {
 export type SalesInvoiceRow = SalesInvoice & {
   erp_distributors: { distributor_name: string; distributor_code: string } | null
   erp_chemists: { chemist_name: string } | null
+  erp_doctors: { doctor_name: string } | null
   erp_sales_invoice_items: { id: string }[] | null
 }
 
@@ -97,6 +100,7 @@ export async function listSalesInvoices(
       `*,
        erp_distributors!erp_sales_invoices_distributor_id_fkey(distributor_name, distributor_code),
        erp_chemists!erp_sales_invoices_chemist_id_fkey(chemist_name),
+       erp_doctors!erp_sales_invoices_doctor_id_fkey(doctor_name),
        erp_sales_invoice_items(id)`,
       { count: 'exact' },
     )
@@ -106,6 +110,7 @@ export async function listSalesInvoices(
 
   if (params.partyId)   query = query.eq('distributor_id', params.partyId)
   if (params.chemistId) query = query.eq('chemist_id', params.chemistId)
+  if (params.doctorId)  query = query.eq('doctor_id', params.doctorId)
   if (params.from)    query = query.gte('invoice_date', params.from)
   if (params.to)      query = query.lte('invoice_date', params.to)
   if (params.paymentStatus && params.paymentStatus !== 'ALL') {
@@ -127,6 +132,7 @@ export async function getSalesInvoice(id: string) {
       `*,
        erp_distributors!erp_sales_invoices_distributor_id_fkey(*),
        erp_chemists!erp_sales_invoices_chemist_id_fkey(*),
+       erp_doctors!erp_sales_invoices_doctor_id_fkey(*),
        erp_sales_invoice_items(
          id, quantity, free_quantity, sale_rate, discount_percent, gst_rate,
          taxable_amount, tax_amount, line_total,

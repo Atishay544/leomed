@@ -35,11 +35,16 @@ export default async function BatchesPage({ searchParams }: Props) {
 
   const settings = await getErpSettings()
   const canWrite = can(session.role, 'billing.purchase.write')
+  // Stock value is quantity × LANDING COST — an Accountant/Manager needs
+  // inventory.read for day-to-day billing, but landing cost specifically is
+  // restricted the same way it is on the dedicated valuation screen.
+  const canSeeValue = can(session.role, 'inventory.valuation')
 
   const [{ rows, total, pageCount }, products] = await Promise.all([
     listBatches({
       q: params.q, page, filter, productId: params.product,
       expiryWarningDays: settings.expiry_warning_days,
+      includeCost: canSeeValue,
     }),
     canWrite ? searchProductsForPicker('', 200) : Promise.resolve([]),
   ])
@@ -131,7 +136,7 @@ export default async function BatchesPage({ searchParams }: Props) {
                   <Th align="right">In stock</Th>
                   <Th align="right">MRP</Th>
                   <Th align="right">Sale rate</Th>
-                  <Th align="right">Stock value</Th>
+                  {canSeeValue && <Th align="right">Stock value</Th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -173,9 +178,11 @@ export default async function BatchesPage({ searchParams }: Props) {
                       </Td>
                       <Td align="right" className="tabular-nums">{money(b.mrp)}</Td>
                       <Td align="right" className="tabular-nums">{money(b.sale_rate)}</Td>
-                      <Td align="right" className="tabular-nums text-gray-900">
-                        {money(b.current_quantity * b.purchase_rate)}
-                      </Td>
+                      {canSeeValue && (
+                        <Td align="right" className="tabular-nums text-gray-900">
+                          {money(b.current_quantity * b.purchase_rate)}
+                        </Td>
+                      )}
                     </tr>
                   )
                 })}

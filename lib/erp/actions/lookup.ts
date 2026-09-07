@@ -80,6 +80,12 @@ export interface ProductOption {
   unit: string
   sale_rate: number
   gst_rate: number
+  /** Already shown to every masters.read role on the Product Master list —
+   *  not new exposure, just carried here too so the pricing/scheme dialogs
+   *  can preview a computed price ("≈ ₹X incl. GST") the moment a product
+   *  is picked, without a second round trip. */
+  mrp: number
+  retailer_price: number
 }
 
 export async function lookupProducts(term: string): Promise<ProductOption[]> {
@@ -88,7 +94,7 @@ export async function lookupProducts(term: string): Promise<ProductOption[]> {
 
   let query = db
     .from('erp_products')
-    .select('id, product_code, product_name, strength, pack_size, unit, sale_rate, gst_rate')
+    .select('id, product_code, product_name, strength, pack_size, unit, sale_rate, gst_rate, mrp, retailer_price')
     .eq('active', true)
     .order('product_name')
     .limit(15)
@@ -158,7 +164,7 @@ export async function lookupBatchesForSale(productId: string) {
   const db = await erpDb()
 
   const { data } = await db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select('id, batch_number, expiry_date, current_quantity, sale_rate, mrp')
     .eq('product_id', productId)
     .gt('current_quantity', 0)
@@ -180,11 +186,80 @@ export async function lookupAllBatches(productId: string) {
   const db = await erpDb()
 
   const { data } = await db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select('id, batch_number, expiry_date, current_quantity, sale_rate, mrp')
     .eq('product_id', productId)
     .order('expiry_date', { ascending: true })
     .limit(100)
 
   return data ?? []
+}
+
+export interface EmployeeOption {
+  id: string
+  name: string
+  role: string
+  mr_code: string | null
+  employee_code: string | null
+  department: string | null
+}
+
+/** Typeahead for the admin "create leave on someone's behalf" screen — the
+ *  company can have 1000+ employees, so this is a search, never a full list
+ *  shipped to the browser (spec §41). */
+export async function lookupEmployees(term: string): Promise<EmployeeOption[]> {
+  await assertCapability('leave.manage')
+  const db = await erpDb()
+
+  let query = db
+    .from('erp_users')
+    .select('id, name, role, mr_code, employee_code, department')
+    .eq('active', true)
+    .neq('role', 'ADMIN')
+    .order('name')
+    .limit(15)
+
+  const q = safeSearch(term)
+  if (q) query = query.or(ilikeAny(['name', 'mr_code', 'employee_code'], q))
+
+  const { data } = await query
+  return (data ?? []) as EmployeeOption[]
+}
+
+export interface BillingCustomerOption {
+  id: string
+  name: string
+}
+
+/** Typeahead for negotiated-pricing and scheme-targeting screens — a
+ *  distributor, chemist or doctor search scoped to the chosen customer type,
+ *  never the full table (spec §41). */
+export async function lookupBillingCustomers(
+  customerType: 'DISTRIBUTOR' | 'CHEMIST' | 'DOCTOR',
+  term: string,
+): Promise<BillingCustomerOption[]> {
+  await assertCapability('pricing.manage')
+  const db = await erpDb()
+
+  if (customerType === 'DISTRIBUTOR') {
+    let query = db.from('erp_distributors').select('id, distributor_name').eq('active', true).order('distributor_name').limit(15)
+    const q = safeSearch(term)
+    if (q) query = query.ilike('distributor_name', `%${q}%`)
+    const { data } = await query
+    return (data ?? []).map(d => ({ id: (d as { id: string }).id, name: (d as { distributor_name: string }).distributor_name }))
+  }
+
+  if (customerType === 'CHEMIST') {
+    let query = db.from('erp_chemists').select('id, chemist_name').eq('active', true).order('chemist_name').limit(15)
+    const q = safeSearch(term)
+    if (q) query = query.ilike('chemist_name', `%${q}%`)
+    const { data } = await query
+    return (data ?? []).map(c => ({ id: (c as { id: string }).id, name: (c as { chemist_name: string }).chemist_name }))
+  }
+
+  let query = db.from('erp_doctors').select('id, doctor_name').eq('active', true).order('doctor_name').limit(15)
+  const q = safeSearch(term)
+  if (q) query = query.ilike('doctor_name', `%${q}%`)
+  const { data } = await query
+  return (data ?? []).map(d => ({ id: (d as { id: string }).id, name: (d as { doctor_name: string }).doctor_name }))
 }

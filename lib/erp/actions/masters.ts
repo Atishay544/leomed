@@ -226,8 +226,69 @@ const PRODUCT: MasterConfig = {
   label: 'product',
 }
 
-export async function saveProduct(_prev: ActionState, formData: FormData) {
-  return saveMaster(PRODUCT, ErpProductSchema, formData)
+/**
+ * Not a plain saveMaster() delegation: after the product row is written,
+ * this also keeps the product's DEFAULT pricing rules (erp_pricing_rules,
+ * customer_id columns all null) in sync — so this dialog stays the one
+ * place Admin edits default prices, while every edit becomes a new,
+ * versioned, audited rule underneath (spec §17) rather than an overwrite.
+ * Distributor margin is computed as % of the retailer price (PTR), never of
+ * MRP — see PricingFields.tsx and erp_default_ptr().
+ */
+export async function saveProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction('Could not save the product. Please try again.', async () => {
+    const session = await assertCapability(PRODUCT.capability)
+
+    const parsed = ErpProductSchema.safeParse(formObject(formData))
+    if (!parsed.success) return invalid(parsed.error)
+
+    const id = String(formData.get('id') ?? '').trim()
+    const db = await erpDb()
+    const values = parsed.data as Record<string, unknown>
+    let productId = id
+
+    if (id) {
+      const { error, count } = await db
+        .from(PRODUCT.table)
+        .update({ ...values, updated_by: session.id }, { count: 'exact' })
+        .eq('id', id)
+      if (error) return friendlyDbError(error, 'Could not update the product.')
+      if (!count) {
+        return { ok: false, error: 'Could not update this product — you may not have access to it.' }
+      }
+    } else {
+      const { data, error } = await db
+        .from(PRODUCT.table)
+        .insert({ ...values, created_by: session.id, updated_by: session.id })
+        .select('id')
+        .single()
+      if (error) return friendlyDbError(error, 'Could not add the product.')
+      productId = (data as { id: string }).id
+    }
+
+    const mrp = Number(values.mrp)
+    const retailerPrice = Number(values.retailer_price)
+    const distributorPrice = Number(values.distributor_price)
+
+    if (productId && mrp > 0) {
+      const retailerPct = Math.max(0, Math.min(100, (1 - retailerPrice / mrp) * 100))
+      await db.rpc('erp_set_product_default_price', {
+        p_product_id: productId, p_customer_type: 'CHEMIST',
+        p_basis: 'MRP', p_method: 'MARGIN', p_percentage: retailerPct,
+      })
+
+      if (retailerPrice > 0) {
+        const distributorPct = Math.max(0, Math.min(100, (1 - distributorPrice / retailerPrice) * 100))
+        await db.rpc('erp_set_product_default_price', {
+          p_product_id: productId, p_customer_type: 'DISTRIBUTOR',
+          p_basis: 'PTR', p_method: 'MARGIN', p_percentage: distributorPct,
+        })
+      }
+    }
+
+    revalidatePath(PRODUCT.path)
+    return { ok: true }
+  })
 }
 
 export async function setProductActive(id: string, active: boolean) {

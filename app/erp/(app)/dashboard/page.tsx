@@ -6,6 +6,7 @@ import {
 import { requireCapability } from '@/lib/erp/auth'
 import { currentMonthRange, getDashboardSummary, getMrPerformance } from '@/lib/erp/data/dashboard'
 import { getStockSummary } from '@/lib/erp/data/inventory'
+import { can } from '@/lib/erp/permissions'
 import { getErpSettings } from '@/lib/erp/data/settings'
 import { listMrs, listErpUsers } from '@/lib/erp/data/users'
 import { formatDate, isoDate, money, moneyCompact, qty } from '@/lib/erp/format'
@@ -26,7 +27,8 @@ interface Props {
  * first screen answers the daily question without touching a filter.
  */
 export default async function DashboardPage({ searchParams }: Props) {
-  await requireCapability('reports.read.all')
+  const session = await requireCapability('reports.read.all')
+  const canSeeValue = can(session.role, 'inventory.valuation')
   const params = await searchParams
 
   const today = isoDate()
@@ -44,7 +46,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     listErpUsers({ page: 1 }),
   ])
 
-  const stock = await getStockSummary(settings.expiry_warning_days)
+  const stock = await getStockSummary(settings.expiry_warning_days, canSeeValue)
 
   const territories = [...new Set(
     staff.rows.map(u => u.territory).filter((t): t is string => !!t),
@@ -220,12 +222,14 @@ export default async function DashboardPage({ searchParams }: Props) {
             <h2 className="text-[13.5px] font-semibold text-gray-800">Inventory</h2>
           </div>
           <dl className="space-y-2.5 text-[13px]">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-gray-500">Stock value</dt>
-              <dd className="text-[16px] font-bold tabular-nums text-gray-900">
-                {moneyCompact(stock.stockValue)}
-              </dd>
-            </div>
+            {canSeeValue && (
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-gray-500">Stock value</dt>
+                <dd className="text-[16px] font-bold tabular-nums text-gray-900">
+                  {moneyCompact(stock.stockValue ?? 0)}
+                </dd>
+              </div>
+            )}
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-gray-500">Batches in stock</dt>
               <dd className="tabular-nums text-gray-800">{qty(stock.inStockBatches)}</dd>

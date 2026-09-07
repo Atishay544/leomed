@@ -1,7 +1,7 @@
 import type {
-  DiscussionType, DoctorStatus, FieldOrderStatus, FollowupPriority,
-  FollowupStatus, InventoryTxnType, PaymentMethod, PaymentStatus,
-  TargetType, VisitPurpose,
+  AttendanceStatus, DiscussionType, DoctorStatus, ExpenseCategory, ExpenseStatus,
+  FieldOrderStatus, FollowupPriority, FollowupStatus, InventoryTxnType, LeaveStatus,
+  PaymentMethod, PaymentStatus, PayrollStatus, TargetType, VisitPurpose,
 } from './types'
 
 // ─── Formatting (Indian conventions — ₹, lakh/crore grouping, dd Mmm yyyy) ──
@@ -48,6 +48,24 @@ export function formatDateTime(value: string | null | undefined): string {
   return `${formatDate(value)}, ${dt.toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit',
   })}`
+}
+
+/** Local clock time out of a full timestamp — "09:15 AM" from a
+ *  timestamptz, as opposed to formatTime() below which formats a bare
+ *  "HH:MM" time-of-day value. */
+export function formatClockTime(value: string | null | undefined): string {
+  if (!value) return '—'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return '—'
+  return dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+/** Minutes → "8h 57m", the working-time format used across attendance. */
+export function formatMinutes(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—'
+  const h = Math.floor(Math.abs(value) / 60)
+  const m = Math.abs(value) % 60
+  return `${h}h ${m}m`
 }
 
 export function formatTime(value: string | null | undefined): string {
@@ -169,4 +187,86 @@ export const FOLLOWUP_PRIORITY_STYLES: Record<FollowupPriority, string> = {
   LOW:    'bg-gray-100 text-gray-600 ring-gray-500/20',
   MEDIUM: 'bg-blue-50 text-blue-700 ring-blue-600/20',
   HIGH:   'bg-red-50 text-red-700 ring-red-600/20',
+}
+
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  PRESENT:                'Present',
+  PRESENT_WITH_EXCEPTION: 'Present (exception)',
+  ABSENT:                 'Absent',
+  HALF_DAY:               'Half day',
+  LEAVE:                  'Leave',
+  HOLIDAY:                'Holiday',
+  WEEK_OFF:               'Week off',
+  PENDING_REVIEW:         'Pending review',
+}
+
+export const ATTENDANCE_STATUS_STYLES: Record<AttendanceStatus, string> = {
+  PRESENT:                'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  PRESENT_WITH_EXCEPTION: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  ABSENT:                 'bg-red-50 text-red-700 ring-red-600/20',
+  HALF_DAY:               'bg-amber-50 text-amber-700 ring-amber-600/20',
+  LEAVE:                  'bg-blue-50 text-blue-700 ring-blue-600/20',
+  HOLIDAY:                'bg-violet-50 text-violet-700 ring-violet-600/20',
+  WEEK_OFF:               'bg-gray-100 text-gray-600 ring-gray-500/20',
+  PENDING_REVIEW:         'bg-amber-50 text-amber-700 ring-amber-600/20',
+}
+
+export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  PENDING:   'Pending',
+  APPROVED:  'Approved',
+  REJECTED:  'Rejected',
+  CANCELLED: 'Cancelled',
+}
+
+export const LEAVE_STATUS_STYLES: Record<LeaveStatus, string> = {
+  PENDING:   'bg-amber-50 text-amber-700 ring-amber-600/20',
+  APPROVED:  'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
+  CANCELLED: 'bg-gray-100 text-gray-600 ring-gray-500/20',
+}
+
+export const PAYROLL_STATUS_LABELS: Record<PayrollStatus, string> = {
+  DRAFT:         'Draft',
+  CALCULATED:    'Calculated',
+  UNDER_REVIEW:  'Under review',
+  FINALIZED:     'Finalized',
+  PAID:          'Paid',
+}
+
+export const PAYROLL_STATUS_STYLES: Record<PayrollStatus, string> = {
+  DRAFT:        'bg-gray-100 text-gray-600 ring-gray-500/20',
+  CALCULATED:   'bg-blue-50 text-blue-700 ring-blue-600/20',
+  UNDER_REVIEW: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  FINALIZED:    'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  PAID:         'bg-violet-50 text-violet-700 ring-violet-600/20',
+}
+
+export const EXPENSE_STATUS_LABELS: Record<ExpenseStatus, string> = {
+  DRAFT:     'Draft',
+  SUBMITTED: 'Submitted',
+  APPROVED:  'Approved',
+  REJECTED:  'Rejected',
+  PAID:      'Paid',
+}
+
+export const EXPENSE_STATUS_STYLES: Record<ExpenseStatus, string> = {
+  DRAFT:     'bg-gray-100 text-gray-600 ring-gray-500/20',
+  SUBMITTED: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  APPROVED:  'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
+  PAID:      'bg-violet-50 text-violet-700 ring-violet-600/20',
+}
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  TRAVEL:         'Travel',
+  FUEL:           'Fuel',
+  OFFICE:         'Office',
+  MARKETING:      'Marketing',
+  PROMOTIONAL:    'Promotional activity',
+  DOCTOR_MEETING: 'Doctor meeting',
+  SAMPLES:        'Samples',
+  EVENTS:         'Events',
+  LOGISTICS:      'Logistics',
+  MISCELLANEOUS:  'Miscellaneous',
+  OTHER:          'Other',
 }

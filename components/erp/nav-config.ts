@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Stethoscope, Store, UserRound, Users, Package, Boxes,
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
-  Factory, BarChart3, Target, Settings, ScrollText, Globe, type LucideIcon,
+  Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
+  CalendarDays, SlidersHorizontal, IndianRupee, Wallet, Tag, Gift, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -17,6 +18,11 @@ export interface ErpNavItem {
   label: string
   icon: LucideIcon
   capability: Capability
+  /** ADMIN structurally holds every capability (see ADMIN_CAPABILITIES in
+   *  permissions.ts) but must never see attendance/leave self-service —
+   *  admins don't clock in. This filters an item out for specific roles even
+   *  though their capability check alone would pass. */
+  excludeRoles?: ErpRole[]
 }
 
 export interface ErpNavGroup {
@@ -30,6 +36,22 @@ const ALL_GROUPS: ErpNavGroup[] = [
     items: [
       { href: '/erp/dashboard', label: 'Dashboard', icon: LayoutDashboard, capability: 'reports.read.all' },
       { href: '/erp/mr',        label: 'My Day',    icon: ClipboardList,   capability: 'visits.read.own' },
+      {
+        href: '/erp/attendance', label: 'My Attendance', icon: Fingerprint,
+        capability: 'attendance.checkin', excludeRoles: ['ADMIN'],
+      },
+      {
+        href: '/erp/leave', label: 'My Leave', icon: CalendarDays,
+        capability: 'leave.apply', excludeRoles: ['ADMIN'],
+      },
+      {
+        href: '/erp/my-payroll', label: 'My Payroll', icon: IndianRupee,
+        capability: 'payroll.read.own', excludeRoles: ['ADMIN'],
+      },
+      {
+        href: '/erp/expenses', label: 'My Expenses', icon: Wallet,
+        capability: 'expenses.submit', excludeRoles: ['ADMIN'],
+      },
     ],
   },
   {
@@ -53,8 +75,11 @@ const ALL_GROUPS: ErpNavGroup[] = [
   {
     label: 'Products',
     items: [
-      { href: '/erp/masters/products', label: 'Product Master', icon: Package, capability: 'masters.read' },
-      { href: '/erp/masters/batches',  label: 'Batches',        icon: Boxes,   capability: 'inventory.read' },
+      { href: '/erp/masters/products',            label: 'Product Master', icon: Package,     capability: 'masters.read' },
+      { href: '/erp/masters/batches',              label: 'Batches',        icon: Boxes,       capability: 'inventory.read' },
+      { href: '/erp/masters/products/valuation',   label: 'Stock Valuation', icon: IndianRupee, capability: 'inventory.valuation' },
+      { href: '/erp/pricing/negotiated',           label: 'Negotiated Pricing', icon: Tag,     capability: 'pricing.manage' },
+      { href: '/erp/pricing/schemes',              label: 'Schemes',        icon: Gift,        capability: 'pricing.manage' },
     ],
   },
   {
@@ -70,6 +95,18 @@ const ALL_GROUPS: ErpNavGroup[] = [
     items: [
       { href: '/erp/reports', label: 'Reports', icon: BarChart3, capability: 'reports.read.all' },
       { href: '/erp/targets', label: 'Targets', icon: Target,    capability: 'targets.manage' },
+    ],
+  },
+  {
+    label: 'HR',
+    items: [
+      { href: '/erp/hr',                label: 'HR Overview',      icon: LayoutDashboard,    capability: 'attendance.read.all' },
+      { href: '/erp/attendance/admin', label: 'Attendance',       icon: Fingerprint,        capability: 'attendance.read.all' },
+      { href: '/erp/leave/admin',      label: 'Leave Requests',   icon: CalendarDays,       capability: 'leave.manage' },
+      { href: '/erp/attendance/rules', label: 'Attendance Rules', icon: SlidersHorizontal,  capability: 'attendance.manage' },
+      { href: '/erp/payroll',          label: 'Payroll',          icon: IndianRupee,        capability: 'payroll.manage' },
+      { href: '/erp/payroll/salaries', label: 'Salaries',         icon: Wallet,             capability: 'payroll.manage' },
+      { href: '/erp/expenses/admin',   label: 'Expenses',         icon: Receipt,            capability: 'expenses.manage' },
     ],
   },
   {
@@ -89,7 +126,10 @@ const ALL_GROUPS: ErpNavGroup[] = [
 
 export function navGroupsFor(role: ErpRole): ErpNavGroup[] {
   return ALL_GROUPS
-    .map(group => ({ ...group, items: group.items.filter(i => can(role, i.capability)) }))
+    .map(group => ({
+      ...group,
+      items: group.items.filter(i => can(role, i.capability) && !i.excludeRoles?.includes(role)),
+    }))
     .filter(group => group.items.length > 0)
 }
 

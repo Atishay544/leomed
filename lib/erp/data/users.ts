@@ -30,6 +30,15 @@ export async function listErpUsers(params: {
   return toPage<ErpUser>(data as ErpUser[] | null, count, page)
 }
 
+/** One employee's own directory row — RLS returns null if the caller may not
+ *  see it (an MR reading someone else's id, say), which callers must handle
+ *  as "not found" rather than assuming the row exists. */
+export async function getErpUserById(id: string): Promise<ErpUser | null> {
+  const db = await erpDb()
+  const { data } = await db.from('erp_users').select('*').eq('id', id).maybeSingle()
+  return (data as ErpUser | null) ?? null
+}
+
 export interface MrOption {
   id: string
   name: string

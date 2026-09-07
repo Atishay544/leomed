@@ -26,18 +26,19 @@ interface Props {
 
 export default async function InventoryPage({ searchParams }: Props) {
   const session = await requireCapability('inventory.read')
+  const canAdjust = can(session.role, 'inventory.adjust')
+  const canSeeValue = can(session.role, 'inventory.valuation')
   const params = await searchParams
   const page = parsePage(params.page)
   const settings = await getErpSettings()
 
   const [summary, lowStock, ledger, mismatches] = await Promise.all([
-    getStockSummary(settings.expiry_warning_days),
+    getStockSummary(settings.expiry_warning_days, canSeeValue),
     getLowStockProducts(10),
     listInventoryTransactions({ page, type: params.type, from: params.from, to: params.to }),
     getReconciliationIssues(),
   ])
 
-  const canAdjust = can(session.role, 'inventory.adjust')
   const hasFilters = !!(params.type || params.from || params.to)
 
   return (
@@ -63,10 +64,12 @@ export default async function InventoryPage({ searchParams }: Props) {
       )}
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard
-          label="Stock value" value={moneyCompact(summary.stockValue)}
-          hint="At purchase rate" icon={IndianRupee}
-        />
+        {canSeeValue && (
+          <StatCard
+            label="Stock value" value={moneyCompact(summary.stockValue ?? 0)}
+            hint="At purchase rate" icon={IndianRupee}
+          />
+        )}
         <StatCard
           label="Batches in stock" value={qty(summary.inStockBatches)}
           hint={`${qty(summary.totalBatches)} total`} icon={Boxes}
@@ -80,7 +83,7 @@ export default async function InventoryPage({ searchParams }: Props) {
         />
         <StatCard
           label="Expired" value={qty(summary.expiredBatches)}
-          hint={summary.expiredValue > 0 ? `${money(summary.expiredValue)} at risk` : 'None'}
+          hint={canSeeValue ? ((summary.expiredValue ?? 0) > 0 ? `${money(summary.expiredValue ?? 0)} at risk` : 'None') : undefined}
           icon={AlertTriangle}
           tone={summary.expiredBatches > 0 ? 'critical' : 'default'}
           href="/erp/masters/batches?filter=expired"

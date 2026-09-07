@@ -218,6 +218,11 @@ export interface BatchListParams {
   /** 'in-stock' | 'expiring' | 'expired' | 'all' */
   filter?: string
   expiryWarningDays?: number
+  /** Landing cost (purchase_rate) is only ever fetched when the caller has
+   *  already checked inventory.valuation — never sent over the wire to a
+   *  role that shouldn't see it, not just hidden in the rendered table
+   *  (spec §30, §45: "if frontend hides field -> secure" is false). */
+  includeCost?: boolean
 }
 
 export async function listBatches(params: BatchListParams = {}): Promise<PageResult<BatchWithProduct>> {
@@ -226,12 +231,20 @@ export async function listBatches(params: BatchListParams = {}): Promise<PageRes
   const [from, to] = rangeFor(page)
   const today = new Date().toISOString().slice(0, 10)
 
+  // erp_product_batches_secure (not the base table): landing cost is masked
+  // to null for anyone but an admin at the database itself, not just left
+  // out of this query — see 20260907000009_product_batches_cost_masking_view.sql.
+  // The product join is resolved as a separate lookup rather than a
+  // PostgREST embed, since embedding through a view depends on PostgREST
+  // tracing the FK through the view definition — a plain second query has
+  // no such dependency, and this function already resolves the search-term
+  // product-id match the same way below.
   let query = db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select(
-      'id, product_id, batch_number, manufacturing_date, expiry_date, mrp, purchase_rate, ' +
-      'sale_rate, opening_quantity, current_quantity, created_at, updated_at, ' +
-      'erp_products!inner(product_name, product_code, unit, gst_rate)',
+      'id, product_id, batch_number, manufacturing_date, expiry_date, mrp, ' +
+      (params.includeCost ? 'purchase_rate, ' : '') +
+      'sale_rate, opening_quantity, current_quantity, created_at, updated_at',
       { count: 'exact' },
     )
     .order('expiry_date', { ascending: true })
@@ -270,7 +283,22 @@ export async function listBatches(params: BatchListParams = {}): Promise<PageRes
   }
 
   const { data, count } = await query
-  return toPage<BatchWithProduct>(data as unknown as BatchWithProduct[] | null, count, page)
+  const rows = (data ?? []) as unknown as ProductBatch[]
+
+  const productIds = [...new Set(rows.map(r => r.product_id))]
+  const { data: products } = productIds.length
+    ? await db.from('erp_products').select('id, product_name, product_code, unit, gst_rate').in('id', productIds)
+    : { data: [] as { id: string; product_name: string; product_code: string; unit: string; gst_rate: number }[] }
+  const byId = new Map((products ?? []).map(p => [p.id, p]))
+
+  const withProduct: BatchWithProduct[] = rows.map(r => ({
+    ...r,
+    erp_products: byId.get(r.product_id)
+      ? { product_name: byId.get(r.product_id)!.product_name, product_code: byId.get(r.product_id)!.product_code, unit: byId.get(r.product_id)!.unit, gst_rate: byId.get(r.product_id)!.gst_rate }
+      : null,
+  }))
+
+  return toPage<BatchWithProduct>(withProduct, count, page)
 }
 
 /** Batches available to sell, earliest-expiry first (FEFO) — the order a
@@ -280,7 +308,7 @@ export async function batchesForSale(productId: string, allowExpired = false) {
   const today = new Date().toISOString().slice(0, 10)
 
   let query = db
-    .from('erp_product_batches')
+    .from('erp_product_batches_secure')
     .select('id, batch_number, expiry_date, current_quantity, sale_rate, mrp')
     .eq('product_id', productId)
     .gt('current_quantity', 0)

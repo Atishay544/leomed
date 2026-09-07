@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { inputClass } from './Field'
 
 interface Props {
@@ -13,64 +13,97 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-/** % off MRP that this price represents. */
-function pctFromPrice(mrp: number, price: number): string {
-  if (mrp <= 0) return ''
-  return (((mrp - price) / mrp) * 100).toFixed(2)
+/** % off a base value (MRP, or PTR for the distributor row) that a price represents. */
+function pctFromPrice(base: number, price: number): string {
+  if (base <= 0) return ''
+  return (((base - price) / base) * 100).toFixed(2)
 }
 
-/** The price that a given % off MRP works out to. */
-function priceFromPct(mrp: number, pct: number): string {
-  if (mrp <= 0) return ''
-  return (mrp * (1 - pct / 100)).toFixed(2)
+/** The price that a given % off a base value works out to. */
+function priceFromPct(base: number, pct: number): string {
+  if (base <= 0) return ''
+  return (base * (1 - pct / 100)).toFixed(2)
 }
 
 /**
- * MRP, Distributor Price, and Retailer Price — each of the two trade prices
- * is bidirectionally linked to a "% off MRP" figure the same way a discount
- * calculator works: type the price and the % updates, type the % and the
- * price updates. Both come out of the same MRP, so changing MRP recomputes
- * both prices from their last-known percentages.
+ * MRP, Retailer Price (PTR) and Distributor Price (PTS).
+ *
+ * Retailer margin is a % of MRP: PTR = MRP × (1 − Retailer Margin %).
+ * Distributor margin is a % of PTR — NOT of MRP: PTS = PTR × (1 − Distributor
+ * Margin %). This is the one thing that must never be conflated (a pharma
+ * distribution model where the distributor's cut comes off the retailer
+ * price, not off MRP directly) — each percentage field is bidirectionally
+ * linked to its OWN base, not both to MRP.
  *
  * Only mrp / distributor_price / retailer_price are real form fields (named
- * inputs submitted with the rest of the form) — the percentage inputs and
- * the retailer-margin line are pure UI convenience, computed client-side,
- * never sent to the server.
+ * inputs submitted with the rest of the form) — the percentage inputs are
+ * pure UI convenience, computed client-side, never sent to the server.
+ * Saving the product also creates a matching versioned default pricing rule
+ * (erp_set_product_default_price) — this dialog stays the one place Admin
+ * edits default prices; the pricing engine underneath is what actually
+ * governs every invoice.
  */
 export default function PricingFields({ initial, errors }: Props) {
   const [mrp, setMrp]           = useState(String(initial?.mrp ?? ''))
-  const [distPrice, setDistPrice] = useState(String(initial?.distributor_price ?? ''))
   const [retPrice, setRetPrice]   = useState(String(initial?.retailer_price ?? ''))
-  const [distPct, setDistPct]     = useState(() => pctFromPrice(toNum(initial?.mrp), toNum(initial?.distributor_price)))
+  const [distPrice, setDistPrice] = useState(String(initial?.distributor_price ?? ''))
   const [retPct, setRetPct]       = useState(() => pctFromPrice(toNum(initial?.mrp), toNum(initial?.retailer_price)))
+  const [distPct, setDistPct]     = useState(() => pctFromPrice(toNum(initial?.retailer_price), toNum(initial?.distributor_price)))
+
+  // GST rate lives in its own sibling <select id="gst_rate"> rendered right
+  // after this block (components/erp/master-fields.ts) — a plain uncontrolled
+  // field like every other one in this generic form. Rather than restructure
+  // that architecture just for this hint, read its value directly and listen
+  // for changes, so "price incl. GST" stays live as the admin picks a rate.
+  const [gst, setGst] = useState(toNum(initial?.gst_rate))
+  useEffect(() => {
+    // Matches the select's own defaultValue on mount, so no need to read it
+    // again here — just listen for the admin actually changing it.
+    const el = document.getElementById('gst_rate') as HTMLSelectElement | null
+    if (!el) return
+    const onChange = () => setGst(toNum(el.value))
+    el.addEventListener('change', onChange)
+    return () => el.removeEventListener('change', onChange)
+  }, [])
+
+  function inclGst(price: number): string | null {
+    if (price <= 0) return null
+    return (price * (1 + gst / 100)).toFixed(2)
+  }
 
   function onMrpChange(value: string) {
     setMrp(value)
     const m = toNum(value)
-    // Preserve each trade partner's agreed discount % when MRP changes,
-    // rather than leaving stale prices that no longer match the stated %.
-    if (distPct !== '') setDistPrice(priceFromPct(m, toNum(distPct)))
-    if (retPct !== '')  setRetPrice(priceFromPct(m, toNum(retPct)))
-  }
-
-  function onDistPriceChange(value: string) {
-    setDistPrice(value)
-    setDistPct(pctFromPrice(toNum(mrp), toNum(value)))
-  }
-
-  function onDistPctChange(value: string) {
-    setDistPct(value)
-    setDistPrice(priceFromPct(toNum(mrp), toNum(value)))
+    // Preserve the retailer's agreed margin % when MRP changes, rather than
+    // leaving a stale price that no longer matches the stated %. The
+    // distributor price is left alone here — it tracks PTR, not MRP, and
+    // PTR itself only changes if the retailer % or price is edited below.
+    if (retPct !== '') setRetPrice(priceFromPct(m, toNum(retPct)))
   }
 
   function onRetPriceChange(value: string) {
     setRetPrice(value)
     setRetPct(pctFromPrice(toNum(mrp), toNum(value)))
+    // PTR just changed — keep the distributor's agreed margin % over the
+    // NEW PTR rather than leaving a stale distributor price.
+    if (distPct !== '') setDistPrice(priceFromPct(toNum(value), toNum(distPct)))
   }
 
   function onRetPctChange(value: string) {
     setRetPct(value)
-    setRetPrice(priceFromPct(toNum(mrp), toNum(value)))
+    const nextRetPrice = priceFromPct(toNum(mrp), toNum(value))
+    setRetPrice(nextRetPrice)
+    if (distPct !== '') setDistPrice(priceFromPct(toNum(nextRetPrice), toNum(distPct)))
+  }
+
+  function onDistPriceChange(value: string) {
+    setDistPrice(value)
+    setDistPct(pctFromPrice(toNum(retPrice), toNum(value)))
+  }
+
+  function onDistPctChange(value: string) {
+    setDistPct(value)
+    setDistPrice(priceFromPct(toNum(retPrice), toNum(value)))
   }
 
   const distNum = toNum(distPrice)
@@ -96,21 +129,23 @@ export default function PricingFields({ initial, errors }: Props) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
         <div className="col-span-2 sm:col-span-1">
-          <label htmlFor="distributor_price" className={labelClass}>
-            Price to Distributor (₹) <span className="ml-0.5 text-red-500">*</span>
+          <label htmlFor="retailer_price" className={labelClass}>
+            Price to Retailer / PTR (₹) <span className="ml-0.5 text-red-500">*</span>
           </label>
           <input
-            id="distributor_price" name="distributor_price" type="number" step="0.01" min="0" required
-            value={distPrice} onChange={e => onDistPriceChange(e.target.value)}
+            id="retailer_price" name="retailer_price" type="number" step="0.01" min="0" required
+            value={retPrice} onChange={e => onRetPriceChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
-          {errors?.distributor_price && <p className={errClass}>{errors.distributor_price[0]}</p>}
+          {errors?.retailer_price
+            ? <p className={errClass}>{errors.retailer_price[0]}</p>
+            : inclGst(retNum) && <p className="mt-1 text-[11.5px] text-gray-500">≈ ₹{inclGst(retNum)} incl. GST ({gst}%)</p>}
         </div>
         <div>
-          <label htmlFor="distributor_pct" className={labelClass}>% off MRP</label>
+          <label htmlFor="retailer_pct" className={labelClass}>Retailer margin % (of MRP)</label>
           <input
-            id="distributor_pct" type="number" step="0.01" min="0" max="100"
-            value={distPct} onChange={e => onDistPctChange(e.target.value)}
+            id="retailer_pct" type="number" step="0.01" min="0" max="100"
+            value={retPct} onChange={e => onRetPctChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
         </div>
@@ -118,21 +153,23 @@ export default function PricingFields({ initial, errors }: Props) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
         <div className="col-span-2 sm:col-span-1">
-          <label htmlFor="retailer_price" className={labelClass}>
-            Price to Retailer (₹) <span className="ml-0.5 text-red-500">*</span>
+          <label htmlFor="distributor_price" className={labelClass}>
+            Price to Distributor / PTS (₹) <span className="ml-0.5 text-red-500">*</span>
           </label>
           <input
-            id="retailer_price" name="retailer_price" type="number" step="0.01" min="0" required
-            value={retPrice} onChange={e => onRetPriceChange(e.target.value)}
+            id="distributor_price" name="distributor_price" type="number" step="0.01" min="0" required
+            value={distPrice} onChange={e => onDistPriceChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
-          {errors?.retailer_price && <p className={errClass}>{errors.retailer_price[0]}</p>}
+          {errors?.distributor_price
+            ? <p className={errClass}>{errors.distributor_price[0]}</p>
+            : inclGst(distNum) && <p className="mt-1 text-[11.5px] text-gray-500">≈ ₹{inclGst(distNum)} incl. GST ({gst}%)</p>}
         </div>
         <div>
-          <label htmlFor="retailer_pct" className={labelClass}>% off MRP</label>
+          <label htmlFor="distributor_pct" className={labelClass}>Distributor margin % (of PTR, not MRP)</label>
           <input
-            id="retailer_pct" type="number" step="0.01" min="0" max="100"
-            value={retPct} onChange={e => onRetPctChange(e.target.value)}
+            id="distributor_pct" type="number" step="0.01" min="0" max="100"
+            value={distPct} onChange={e => onDistPctChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
         </div>

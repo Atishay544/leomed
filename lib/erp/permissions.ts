@@ -48,12 +48,49 @@ export const CAPABILITIES = [
   // Stock
   'inventory.read',
   'inventory.adjust',
+  // Landing cost and MRP valuation of stock on hand — deliberately
+  // ADMIN-only (granted to no other role below): it reveals purchase
+  // pricing and margin, unlike inventory.read's plain quantities, which
+  // accountants and managers already need for day-to-day billing.
+  'inventory.valuation',
+
+  // Negotiated pricing and schemes — ADMIN-only. An accountant raises sales
+  // invoices (billing.sales.write) and sees the resulting selling rate, but
+  // never the margin %, pricing-rule detail or scheme configuration behind
+  // it (spec §30) — that distinction is enforced by which capability this
+  // is, not by hiding a field in a component.
+  'pricing.manage',
 
   // Administration
   'users.manage',
   'targets.manage',
   'reports.read.all',
   'settings.manage',
+
+  // HR: attendance — every non-admin employee checks in; ADMIN deliberately
+  // never holds 'attendance.checkin' in spirit (enforced in the RPCs and in
+  // nav-config's excludeRoles, since ADMIN structurally inherits every
+  // capability below — see the note on ADMIN_CAPABILITIES).
+  'attendance.checkin',
+  'attendance.read.own',
+  'attendance.read.all',
+  'attendance.manage',   // rules, holidays, MR visit-target overrides, corrections
+
+  // HR: leave
+  'leave.apply',
+  'leave.read.own',
+  'leave.manage',        // approve/reject/cancel/create on anyone's behalf
+
+  // HR: payroll & salary — deliberately ADMIN-only, held by no other role
+  // below (see ACCOUNTANT_CAPABILITIES' note on why billing access does not
+  // imply payroll access).
+  'payroll.manage',      // salary structures, generate/finalize/reopen payroll
+  'payroll.read.own',    // an employee's own payslips — never another's
+
+  // HR: expenses
+  'expenses.submit',
+  'expenses.read.own',
+  'expenses.manage',     // approve/reject/mark paid, read every employee's
 ] as const
 
 export type Capability = (typeof CAPABILITIES)[number]
@@ -73,6 +110,13 @@ const MR_CAPABILITIES: readonly Capability[] = [
   'orders.create',
   'orders.read.own',
   'followups.manage',
+  'attendance.checkin',
+  'attendance.read.own',
+  'leave.apply',
+  'leave.read.own',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
 ]
 
 /**
@@ -90,6 +134,17 @@ const MR_CAPABILITIES: readonly Capability[] = [
  * corrections (damage, expiry write-off, opening balance) are part of the
  * same job. erp_adjust_inventory() checks erp_can_write_billing() (ADMIN or
  * ACCOUNTANT) to match, not erp_is_admin() alone.
+ *
+ * billing.purchase.read/write are ALSO deliberately kept, even though the
+ * pricing-engine spec says an Accountant must never see landing/purchase
+ * cost: that rule is about the SALES side (never let selling-price screens
+ * leak the margin behind them — see erp_explain_price()'s role-filtered
+ * shape and masters/batches' inventory.valuation gate). An accountant who
+ * enters a supplier's purchase invoice necessarily sees the cost on that
+ * invoice — it IS the record they're keying in — so restricting it there
+ * would break their actual job. Confirmed as the intended scope with the
+ * business (2026-09-07); do not "fix" this without a product decision to
+ * change it.
  */
 const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'masters.read',
@@ -100,6 +155,13 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'billing.sales.write',
   'inventory.read',
   'inventory.adjust',
+  'attendance.checkin',
+  'attendance.read.own',
+  'leave.apply',
+  'leave.read.own',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
 ]
 
 /** Reads the whole field force and the money, changes only order status. */
@@ -115,6 +177,14 @@ const MANAGER_CAPABILITIES: readonly Capability[] = [
   'billing.sales.read',
   'inventory.read',
   'reports.read.all',
+  'attendance.checkin',
+  'attendance.read.own',
+  'attendance.read.all',
+  'leave.apply',
+  'leave.read.own',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
 ]
 
 /**
