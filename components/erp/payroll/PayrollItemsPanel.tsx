@@ -9,6 +9,7 @@ import type { ErpPayrollItem, PayrollItemType } from '@/lib/erp/types'
 
 const TYPE_LABELS: Record<PayrollItemType, string> = {
   INCENTIVE: 'Incentive',
+  BONUS: 'Bonus',
   OTHER_EARNING: 'Other earning',
   DEDUCTION: 'Deduction',
 }

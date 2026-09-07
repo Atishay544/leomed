@@ -99,7 +99,7 @@ export function generatePayslipPdf(
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0f5132').text('Salary Breakdown')
     doc.moveDown(0.4)
 
-    const earnings = items.filter(i => i.item_type === 'INCENTIVE' || i.item_type === 'OTHER_EARNING')
+    const earnings = items.filter(i => i.item_type === 'INCENTIVE' || i.item_type === 'BONUS' || i.item_type === 'OTHER_EARNING')
     const deductionItems = items.filter(i => i.item_type === 'DEDUCTION')
 
     const earningRows: [string, string][] = [

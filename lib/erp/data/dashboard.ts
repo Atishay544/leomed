@@ -38,11 +38,17 @@ export async function getDashboardSummary(
   from: string, to: string, mrId?: string, territory?: string,
 ): Promise<DashboardSummary> {
   const db = await erpDb()
+  // `|| null`, not `?? null`: the filter form's "All MRs"/"All territories"
+  // option submits as an empty string, not an absent param, since a GET
+  // form includes every named field regardless of whether it was touched.
+  // p_mr is uuid-typed in erp_dashboard_summary() — an empty string there
+  // would fail outright rather than degrade quietly, same bug class as
+  // erp_attendance_summary's p_role (see getAttendanceSummary above).
   const { data, error } = await db.rpc('erp_dashboard_summary', {
     p_from: from,
     p_to: to,
-    p_mr: mrId ?? null,
-    p_territory: territory ?? null,
+    p_mr: mrId || null,
+    p_territory: territory || null,
   })
 
   // A dashboard that renders zeroes beats one that 500s: the tiles stay

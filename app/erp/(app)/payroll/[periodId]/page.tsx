@@ -63,6 +63,7 @@ export default async function PayrollPeriodPage({ params }: Props) {
                   <Th align="right">Payable days</Th>
                   <Th align="right">Fixed salary</Th>
                   <Th align="right">Incentives</Th>
+                  <Th align="right">Bonus</Th>
                   <Th align="right">Other earnings</Th>
                   <Th align="right">Deductions</Th>
                   <Th align="right">Net salary</Th>
@@ -79,6 +80,7 @@ export default async function PayrollPeriodPage({ params }: Props) {
                     <Td align="right" className="tabular-nums">{r.payable_days} / {r.working_days}</Td>
                     <Td align="right" className="tabular-nums">{money(r.fixed_salary)}</Td>
                     <Td align="right" className="tabular-nums">{r.incentives > 0 ? money(r.incentives) : '—'}</Td>
+                    <Td align="right" className="tabular-nums">{r.bonus > 0 ? money(r.bonus) : '—'}</Td>
                     <Td align="right" className="tabular-nums">{r.other_earnings > 0 ? money(r.other_earnings) : '—'}</Td>
                     <Td align="right" className="tabular-nums">{money(r.deductions)}</Td>
                     <Td align="right" className="tabular-nums font-semibold text-gray-900">{money(r.net_salary)}</Td>
