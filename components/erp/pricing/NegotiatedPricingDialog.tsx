@@ -7,6 +7,7 @@ import { lookupBillingCustomers, type BillingCustomerOption } from '@/lib/erp/ac
 import { lookupProducts, type ProductOption } from '@/lib/erp/actions/lookup'
 import { savePricingRule } from '@/lib/erp/actions/pricing'
 import { isoDate } from '@/lib/erp/format'
+import { previewPrice, priceInclGst } from '@/lib/erp/pricing-preview'
 import { BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS } from '@/lib/erp/types'
 import type { BillingCustomerType } from '@/lib/erp/types'
 
@@ -56,6 +57,10 @@ export default function NegotiatedPricingDialog() {
     debounce.current = setTimeout(async () => setCustomerResults(await lookupBillingCustomers(customerType, customerTerm)), 250)
     return () => { if (debounce.current) clearTimeout(debounce.current) }
   }, [customerTerm, customerType, open])
+
+  const preview = product
+    ? previewPrice(basis, method, parseFloat(percentage) || 0, parseFloat(fixedAmount) || 0, product.mrp, product.retailer_price)
+    : null
 
   function reset() {
     setProductTerm(''); setProductResults([]); setProduct(null)
@@ -187,6 +192,18 @@ export default function NegotiatedPricingDialog() {
                   <label className="mb-1 block text-[12px] font-medium text-gray-700">Percentage</label>
                   <input type="number" min="0" max="100" step="0.01" value={percentage} onChange={e => setPercentage(e.target.value)} className={inputClass} />
                 </div>
+              )}
+
+              {preview !== null && product && (
+                <p className="text-[11.5px] text-gray-500">
+                  Works out to <strong className="text-gray-700">₹{preview.toFixed(2)}</strong>
+                  {' '}(≈ ₹{priceInclGst(preview, product.gst_rate).toFixed(2)} incl. {product.gst_rate}% GST)
+                </p>
+              )}
+              {basis === 'COST' && (
+                <p className="text-[11.5px] text-gray-500">
+                  COST has no single preview — it&apos;s whichever batch&apos;s actual purchase rate is on hand at sale time.
+                </p>
               )}
 
               <div className="grid grid-cols-2 gap-3">

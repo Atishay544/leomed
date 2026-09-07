@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { inputClass } from './Field'
 
 interface Props {
@@ -49,6 +49,27 @@ export default function PricingFields({ initial, errors }: Props) {
   const [distPrice, setDistPrice] = useState(String(initial?.distributor_price ?? ''))
   const [retPct, setRetPct]       = useState(() => pctFromPrice(toNum(initial?.mrp), toNum(initial?.retailer_price)))
   const [distPct, setDistPct]     = useState(() => pctFromPrice(toNum(initial?.retailer_price), toNum(initial?.distributor_price)))
+
+  // GST rate lives in its own sibling <select id="gst_rate"> rendered right
+  // after this block (components/erp/master-fields.ts) — a plain uncontrolled
+  // field like every other one in this generic form. Rather than restructure
+  // that architecture just for this hint, read its value directly and listen
+  // for changes, so "price incl. GST" stays live as the admin picks a rate.
+  const [gst, setGst] = useState(toNum(initial?.gst_rate))
+  useEffect(() => {
+    // Matches the select's own defaultValue on mount, so no need to read it
+    // again here — just listen for the admin actually changing it.
+    const el = document.getElementById('gst_rate') as HTMLSelectElement | null
+    if (!el) return
+    const onChange = () => setGst(toNum(el.value))
+    el.addEventListener('change', onChange)
+    return () => el.removeEventListener('change', onChange)
+  }, [])
+
+  function inclGst(price: number): string | null {
+    if (price <= 0) return null
+    return (price * (1 + gst / 100)).toFixed(2)
+  }
 
   function onMrpChange(value: string) {
     setMrp(value)
@@ -116,7 +137,9 @@ export default function PricingFields({ initial, errors }: Props) {
             value={retPrice} onChange={e => onRetPriceChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
-          {errors?.retailer_price && <p className={errClass}>{errors.retailer_price[0]}</p>}
+          {errors?.retailer_price
+            ? <p className={errClass}>{errors.retailer_price[0]}</p>
+            : inclGst(retNum) && <p className="mt-1 text-[11.5px] text-gray-500">≈ ₹{inclGst(retNum)} incl. GST ({gst}%)</p>}
         </div>
         <div>
           <label htmlFor="retailer_pct" className={labelClass}>Retailer margin % (of MRP)</label>
@@ -138,7 +161,9 @@ export default function PricingFields({ initial, errors }: Props) {
             value={distPrice} onChange={e => onDistPriceChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
-          {errors?.distributor_price && <p className={errClass}>{errors.distributor_price[0]}</p>}
+          {errors?.distributor_price
+            ? <p className={errClass}>{errors.distributor_price[0]}</p>
+            : inclGst(distNum) && <p className="mt-1 text-[11.5px] text-gray-500">≈ ₹{inclGst(distNum)} incl. GST ({gst}%)</p>}
         </div>
         <div>
           <label htmlFor="distributor_pct" className={labelClass}>Distributor margin % (of PTR, not MRP)</label>

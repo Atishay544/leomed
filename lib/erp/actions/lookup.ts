@@ -80,6 +80,12 @@ export interface ProductOption {
   unit: string
   sale_rate: number
   gst_rate: number
+  /** Already shown to every masters.read role on the Product Master list —
+   *  not new exposure, just carried here too so the pricing/scheme dialogs
+   *  can preview a computed price ("≈ ₹X incl. GST") the moment a product
+   *  is picked, without a second round trip. */
+  mrp: number
+  retailer_price: number
 }
 
 export async function lookupProducts(term: string): Promise<ProductOption[]> {
@@ -88,7 +94,7 @@ export async function lookupProducts(term: string): Promise<ProductOption[]> {
 
   let query = db
     .from('erp_products')
-    .select('id, product_code, product_name, strength, pack_size, unit, sale_rate, gst_rate')
+    .select('id, product_code, product_name, strength, pack_size, unit, sale_rate, gst_rate, mrp, retailer_price')
     .eq('active', true)
     .order('product_name')
     .limit(15)
