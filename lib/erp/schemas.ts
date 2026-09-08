@@ -196,29 +196,20 @@ export const ProductBatchSchema = z.object({
 // ─── Visits ─────────────────────────────────────────────────────────────────
 
 /**
- * A priced line on a field order (Q2). Rate and discount give the order an
- * ESTIMATED value for MR performance and demand tracking — it is not a sale,
- * moves no stock, and creates no receivable.
+ * An order captured during a visit — just enough to track that one was
+ * placed and find it again later. Business value no longer comes from
+ * product/rate lines typed in the field (too easy to invent, disconnected
+ * from what actually gets billed); it comes from the invoice number,
+ * amount and photo the MR submits later against this order book number,
+ * once the real invoice exists — see erp_submit_order_invoice().
  */
-const FieldOrderItemInput = z.object({
-  product_id:       uuid,
-  quantity:         positiveInt,
-  unit:             optionalText(20),
-  unit_rate:        z.union([money, z.literal('')]).transform(v => (v === '' ? undefined : v)).optional(),
-  discount_percent: percent.default(0),
-  remarks:          optionalText(200),
-})
-
-/** An order captured during a visit. This is a demand signal, never an
- *  invoice — see the note on erp_field_orders (spec §4, §29). */
 const FieldOrderInput = z.object({
   received:          z.coerce.boolean().default(false),
   order_book_number: optionalText(50),
   remarks:           optionalText(500),
-  items:             z.array(FieldOrderItemInput).default([]),
-}).refine(v => !v.received || v.items.length > 0, {
-  message: 'Add at least one product to the order',
-  path: ['items'],
+}).refine(v => !v.received || !!v.order_book_number, {
+  message: 'Enter the order book number',
+  path: ['order_book_number'],
 })
 
 const VisitBase = {
@@ -395,6 +386,29 @@ export const FieldOrderStatusSchema = z.object({
   order_id: uuid,
   status:   z.enum(FIELD_ORDER_STATUSES),
   remarks:  optionalText(500),
+})
+
+/** MR self-reports the real invoice against their own order book entry —
+ *  the number, the amount, and a photo as evidence. Rough by design (spec:
+ *  "before that leomed/admin want a general idea") — checked properly only
+ *  when an admin reviews it. */
+export const OrderInvoiceSubmitSchema = z.object({
+  order_id:       uuid,
+  invoice_number: requiredText('Invoice number', 50),
+  invoice_amount: z.coerce.number().positive('Enter the invoice amount').max(99_999_999),
+  photo_url:      z.union([z.string().url(), z.literal('')]).optional(),
+})
+
+/** Admin review of one MR's submission — SUBMITTED stays the default an
+ *  incentive calculation counts; REJECTED is strictly excluded. A reason is
+ *  required only when rejecting. */
+export const OrderInvoiceReviewSchema = z.object({
+  order_id: uuid,
+  status:   z.enum(['SUBMITTED', 'REJECTED']),
+  reason:   optionalText(500),
+}).refine(v => v.status !== 'REJECTED' || !!v.reason, {
+  message: 'Enter a reason for rejecting this submission',
+  path: ['reason'],
 })
 
 export const FollowupUpdateSchema = z.object({

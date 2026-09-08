@@ -5,11 +5,13 @@ import { requireCapability } from '@/lib/erp/auth'
 import { getFieldOrder } from '@/lib/erp/data/visits'
 import { can } from '@/lib/erp/permissions'
 import {
-  FIELD_ORDER_STATUS_LABELS, FIELD_ORDER_STATUS_STYLES, formatDate, money, qty,
+  FIELD_ORDER_STATUS_LABELS, FIELD_ORDER_STATUS_STYLES, ORDER_INVOICE_STATUS_LABELS,
+  ORDER_INVOICE_STATUS_STYLES, formatDate, money, qty,
 } from '@/lib/erp/format'
 import FieldOrderStatusSelect from '@/components/erp/FieldOrderStatusSelect'
+import OrderInvoicePanel from '@/components/erp/visits/OrderInvoicePanel'
 import { Badge, Card, CardHeader, TableWrap, Td, Th } from '@/components/erp/ui'
-import type { CustomerType, FieldOrderStatus } from '@/lib/erp/types'
+import type { CustomerType, FieldOrderStatus, OrderInvoiceStatus } from '@/lib/erp/types'
 
 export const metadata = { title: 'Field Order' }
 
@@ -17,10 +19,16 @@ interface OrderDetail {
   id: string
   order_number: string
   customer_type: CustomerType
+  mr_id: string
   order_date: string
   order_book_number: string | null
   status: FieldOrderStatus
   estimated_value: number
+  invoice_status: OrderInvoiceStatus
+  reported_invoice_number: string | null
+  reported_invoice_amount: number | null
+  reported_invoice_photo_url: string | null
+  rejection_reason: string | null
   remarks: string | null
   doctor_visit_id: string | null
   chemist_visit_id: string | null
@@ -224,6 +232,30 @@ export default async function FieldOrderDetailPage({
                 <p className="text-[12.5px] leading-relaxed text-gray-700">{order.remarks}</p>
               </div>
             )}
+          </Card>
+
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-[13px] font-semibold text-gray-800">Invoice</h2>
+              <Badge className={ORDER_INVOICE_STATUS_STYLES[order.invoice_status]}>
+                {ORDER_INVOICE_STATUS_LABELS[order.invoice_status]}
+              </Badge>
+            </div>
+            <p className="mb-3 text-[11.5px] leading-relaxed text-gray-500">
+              What Leomed actually charged against this order — submitted once the distributor
+              or Leomed raises the real invoice. This, not the order book number, is what your
+              incentive is based on.
+            </p>
+            <OrderInvoicePanel
+              orderId={order.id}
+              invoiceStatus={order.invoice_status}
+              invoiceNumber={order.reported_invoice_number}
+              invoiceAmount={order.reported_invoice_amount}
+              photoUrl={order.reported_invoice_photo_url}
+              rejectionReason={order.rejection_reason}
+              canSubmit={session.id === order.mr_id}
+              canReview={can(session.role, 'orders.review_invoice')}
+            />
           </Card>
 
           {can(session.role, 'orders.manage_status') && (

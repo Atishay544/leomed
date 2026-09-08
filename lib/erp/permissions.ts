@@ -37,6 +37,10 @@ export const CAPABILITIES = [
   'orders.read.own',
   'orders.read.all',
   'orders.manage_status',
+  // Reviewing an MR's self-reported invoice (accept/reject) decides what
+  // counts toward incentive calculation — ADMIN only, deliberately not
+  // added to MANAGER_CAPABILITIES even though orders.manage_status is.
+  'orders.review_invoice',
   'followups.manage',
 
   // Money

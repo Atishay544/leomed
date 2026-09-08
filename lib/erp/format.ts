@@ -1,7 +1,7 @@
 import type {
   AttendanceStatus, DiscussionType, DoctorStatus, ExpenseCategory, ExpenseStatus,
   FieldOrderStatus, FollowupPriority, FollowupStatus, InventoryTxnType, LeaveStatus,
-  PaymentMethod, PaymentStatus, PayrollStatus, TargetType, VisitPurpose,
+  OrderInvoiceStatus, PaymentMethod, PaymentStatus, PayrollStatus, TargetType, VisitPurpose,
 } from './types'
 
 // ─── Formatting (Indian conventions — ₹, lakh/crore grouping, dd Mmm yyyy) ──
@@ -121,6 +121,12 @@ export const FIELD_ORDER_STATUS_LABELS: Record<FieldOrderStatus, string> = {
   CANCELLED:               'Cancelled',
 }
 
+export const ORDER_INVOICE_STATUS_LABELS: Record<OrderInvoiceStatus, string> = {
+  PENDING:   'Awaiting invoice',
+  SUBMITTED: 'Submitted',
+  REJECTED:  'Rejected',
+}
+
 export const INVENTORY_TXN_LABELS: Record<InventoryTxnType, string> = {
   OPENING:         'Opening stock',
   PURCHASE:        'Purchase',
@@ -175,6 +181,12 @@ export const FIELD_ORDER_STATUS_STYLES: Record<FieldOrderStatus, string> = {
   PARTIALLY_FULFILLED:      'bg-amber-50 text-amber-700 ring-amber-600/20',
   FULFILLED:                'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   CANCELLED:                'bg-gray-100 text-gray-600 ring-gray-500/20',
+}
+
+export const ORDER_INVOICE_STATUS_STYLES: Record<OrderInvoiceStatus, string> = {
+  PENDING:   'bg-gray-100 text-gray-600 ring-gray-500/20',
+  SUBMITTED: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
 }
 
 export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {

@@ -6,9 +6,10 @@ import { listMrs } from '@/lib/erp/data/users'
 import { can } from '@/lib/erp/permissions'
 import { PAGE_SIZE } from '@/lib/erp/data/query'
 import {
-  FIELD_ORDER_STATUS_LABELS, FIELD_ORDER_STATUS_STYLES, formatDate, money, qty,
+  FIELD_ORDER_STATUS_LABELS, FIELD_ORDER_STATUS_STYLES, ORDER_INVOICE_STATUS_LABELS,
+  ORDER_INVOICE_STATUS_STYLES, formatDate, money,
 } from '@/lib/erp/format'
-import { FIELD_ORDER_STATUSES } from '@/lib/erp/types'
+import { FIELD_ORDER_STATUSES, ORDER_INVOICE_STATUSES } from '@/lib/erp/types'
 import { FilterDate, FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import Pagination from '@/components/erp/Pagination'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
@@ -18,7 +19,7 @@ export const metadata = { title: 'Field Orders' }
 interface Props {
   searchParams: Promise<{
     page?: string; from?: string; to?: string; mr?: string
-    status?: string; type?: string
+    status?: string; type?: string; invoiceStatus?: string
   }>
 }
 
@@ -34,19 +35,25 @@ export default async function FieldOrdersPage({ searchParams }: Props) {
     listFieldOrders({
       page, mrId: mrFilter, from: params.from, to: params.to,
       status: params.status,
+      invoiceStatus: params.invoiceStatus,
       customerType: params.type === 'DOCTOR' || params.type === 'CHEMIST' ? params.type : undefined,
     }),
     seesEveryone ? listMrs() : Promise.resolve([]),
   ])
 
-  const hasFilters = !!(params.from || params.to || params.mr || params.status || params.type)
-  const totalValue = rows.reduce((sum, o) => sum + Number(o.estimated_value ?? 0), 0)
+  const hasFilters = !!(params.from || params.to || params.mr || params.status || params.type || params.invoiceStatus)
+  // reported_invoice_amount is what "business generated" means now — only
+  // SUBMITTED counts, exactly like the reporting functions.
+  const totalValue = rows.reduce(
+    (sum, o) => sum + (o.invoice_status === 'SUBMITTED' ? Number(o.reported_invoice_amount ?? 0) : 0),
+    0,
+  )
 
   return (
     <>
       <PageHeader
         title="Field Orders"
-        description="Orders given to MRs by doctors and chemists, with an estimated value. A measure of demand and field performance."
+        description="Orders given to MRs by doctors and chemists. Business value comes from the invoice the MR submits once the distributor or Leomed actually raises one."
       />
 
       {/* Stated plainly and permanently, because conflating the two is the
@@ -74,6 +81,10 @@ export default async function FieldOrdersPage({ searchParams }: Props) {
           <FilterSelect
             name="status" label="Status" defaultValue={params.status}
             options={FIELD_ORDER_STATUSES.map(s => ({ value: s, label: FIELD_ORDER_STATUS_LABELS[s] }))}
+          />
+          <FilterSelect
+            name="invoiceStatus" label="Invoice" defaultValue={params.invoiceStatus}
+            options={ORDER_INVOICE_STATUSES.map(s => ({ value: s, label: ORDER_INVOICE_STATUS_LABELS[s] }))}
           />
           {seesEveryone && mrs.length > 0 && (
             <FilterSelect
@@ -104,8 +115,7 @@ export default async function FieldOrdersPage({ searchParams }: Props) {
                   <Th>From</Th>
                   {seesEveryone && <Th>MR</Th>}
                   <Th>Book no.</Th>
-                  <Th align="center">Items</Th>
-                  <Th align="right">Est. value</Th>
+                  <Th align="right">Invoice</Th>
                   <Th>Status</Th>
                 </tr>
               </thead>
@@ -139,11 +149,15 @@ export default async function FieldOrdersPage({ searchParams }: Props) {
                       <Td className="font-mono text-[11.5px] text-gray-600">
                         {order.order_book_number ?? '—'}
                       </Td>
-                      <Td align="center" className="tabular-nums">
-                        {order.erp_field_order_items?.length ?? 0}
-                      </Td>
-                      <Td align="right" className="tabular-nums font-medium text-gray-900">
-                        {money(order.estimated_value)}
+                      <Td align="right">
+                        <Badge className={ORDER_INVOICE_STATUS_STYLES[order.invoice_status]}>
+                          {ORDER_INVOICE_STATUS_LABELS[order.invoice_status]}
+                        </Badge>
+                        {order.invoice_status !== 'PENDING' && (
+                          <p className="mt-0.5 tabular-nums text-[11.5px] text-gray-500">
+                            {money(order.reported_invoice_amount ?? 0)}
+                          </p>
+                        )}
                       </Td>
                       <Td>
                         <Badge className={FIELD_ORDER_STATUS_STYLES[order.status]}>
@@ -160,9 +174,6 @@ export default async function FieldOrdersPage({ searchParams }: Props) {
                   <Td /><Td />
                   {seesEveryone && <Td />}
                   <Td />
-                  <Td align="center" className="tabular-nums font-medium">
-                    {qty(rows.reduce((s, o) => s + (o.erp_field_order_items?.length ?? 0), 0))}
-                  </Td>
                   <Td align="right" className="tabular-nums font-bold text-gray-900">{money(totalValue)}</Td>
                   <Td />
                 </tr>
