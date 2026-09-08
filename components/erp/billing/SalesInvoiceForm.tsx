@@ -420,11 +420,14 @@ export default function SalesInvoiceForm({
             </label>
             <select id="s_method" value={paymentMethod} disabled={initialPayment <= 0}
                     onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className={inputClass}>
+                    className={`${inputClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}>
               {PAYMENT_METHODS.map(m => (
                 <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
               ))}
             </select>
+            {initialPayment <= 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">Enter an amount received above to set this.</p>
+            )}
           </div>
           <div>
             <label htmlFor="s_ref" className="mb-1 block text-[12px] font-medium text-gray-700">
@@ -432,7 +435,11 @@ export default function SalesInvoiceForm({
             </label>
             <input id="s_ref" value={paymentReference} disabled={initialPayment <= 0}
                    onChange={e => setPaymentReference(e.target.value)}
-                   placeholder="Cheque / UTR no." className={inputClass} />
+                   placeholder="Cheque / UTR no."
+                   className={`${inputClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`} />
+            {initialPayment <= 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">Enter an amount received above to set this.</p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <label className="flex items-center gap-2 text-[13px] text-gray-700">
