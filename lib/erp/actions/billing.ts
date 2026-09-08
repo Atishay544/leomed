@@ -69,6 +69,49 @@ export async function saveSalesInvoice(input: unknown): Promise<ActionState> {
 }
 
 /**
+ * Deletes a purchase invoice — ADMIN only (billing.purchase.delete, held by
+ * no other role). erp_delete_purchase_invoice() reverses the stock it
+ * brought in via a PURCHASE_RETURN ledger entry before removing the invoice,
+ * and refuses outright if any of that stock has since been sold on (would
+ * take a batch negative) or if payments are still recorded against it.
+ */
+export async function deletePurchaseInvoice(invoiceId: string): Promise<ActionState> {
+  return runAction('Could not delete this purchase invoice.', async () => {
+    await assertCapability('billing.purchase.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_purchase_invoice', { p_invoice_id: invoiceId })
+    if (error) return friendlyDbError(error, 'Could not delete this purchase invoice.')
+
+    revalidatePath('/erp/accounting/purchases')
+    revalidatePath('/erp/accounting/inventory')
+    revalidatePath('/erp/masters/batches')
+    revalidatePath('/erp/dashboard')
+
+    return { ok: true }
+  })
+}
+
+/** Mirror of deletePurchaseInvoice for sales invoices — restores stock via a
+ *  SALE_RETURN ledger entry, refuses if receipts are still recorded. */
+export async function deleteSalesInvoice(invoiceId: string): Promise<ActionState> {
+  return runAction('Could not delete this sales invoice.', async () => {
+    await assertCapability('billing.sales.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_sales_invoice', { p_invoice_id: invoiceId })
+    if (error) return friendlyDbError(error, 'Could not delete this sales invoice.')
+
+    revalidatePath('/erp/accounting/sales')
+    revalidatePath('/erp/accounting/inventory')
+    revalidatePath('/erp/masters/batches')
+    revalidatePath('/erp/dashboard')
+
+    return { ok: true }
+  })
+}
+
+/**
  * Records one payment to a supplier (Q6).
  *
  * An invoice can have many. The balance and the payment status are derived by

@@ -8,7 +8,9 @@ import { gstSplit } from '@/lib/erp/invoice-math'
 import {
   formatDate, formatDateTime, money, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES, qty,
 } from '@/lib/erp/format'
+import { deleteSalesInvoice } from '@/lib/erp/actions/billing'
 import PaymentPanel, { type PaymentEntry } from '@/components/erp/billing/PaymentPanel'
+import DeleteInvoiceButton from '@/components/erp/billing/DeleteInvoiceButton'
 import { Badge, Card, CardHeader, TableWrap, Td, Th } from '@/components/erp/ui'
 import type { PaymentMethod, PaymentStatus } from '@/lib/erp/types'
 
@@ -119,18 +121,28 @@ export default async function SalesInvoiceDetailPage({
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <a
-                  href={`/api/erp/sales-invoice/${invoice.id}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5
-                             text-[12px] font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  <Printer size={13} /> Print / Download
-                </a>
-                <Badge className={PAYMENT_STATUS_STYLES[invoice.payment_status]}>
-                  {PAYMENT_STATUS_LABELS[invoice.payment_status]}
-                </Badge>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/api/erp/sales-invoice/${invoice.id}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5
+                               text-[12px] font-medium text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <Printer size={13} /> Print / Download
+                  </a>
+                  <Badge className={PAYMENT_STATUS_STYLES[invoice.payment_status]}>
+                    {PAYMENT_STATUS_LABELS[invoice.payment_status]}
+                  </Badge>
+                </div>
+                {can(session.role, 'billing.sales.delete') && (
+                  <DeleteInvoiceButton
+                    invoiceId={invoice.id}
+                    action={deleteSalesInvoice}
+                    listHref="/erp/accounting/sales"
+                    noun="sales invoice"
+                  />
+                )}
               </div>
             </div>
 

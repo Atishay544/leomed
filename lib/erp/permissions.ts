@@ -44,6 +44,12 @@ export const CAPABILITIES = [
   'billing.purchase.write',
   'billing.sales.read',
   'billing.sales.write',
+  // Deleting a raised invoice rewrites financial and stock history — ADMIN
+  // only, deliberately separate from billing.*.write which ACCOUNTANT also
+  // holds. The RPC itself independently checks erp_is_admin() too (database
+  // wins if the two ever disagree, per this file's own rule).
+  'billing.purchase.delete',
+  'billing.sales.delete',
 
   // Stock
   'inventory.read',

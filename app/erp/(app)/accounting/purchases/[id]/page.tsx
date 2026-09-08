@@ -6,7 +6,9 @@ import { getPurchaseInvoice } from '@/lib/erp/data/billing'
 import { can } from '@/lib/erp/permissions'
 import { gstSplit } from '@/lib/erp/invoice-math'
 import { formatDate, money, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES, qty } from '@/lib/erp/format'
+import { deletePurchaseInvoice } from '@/lib/erp/actions/billing'
 import PaymentPanel, { type PaymentEntry } from '@/components/erp/billing/PaymentPanel'
+import DeleteInvoiceButton from '@/components/erp/billing/DeleteInvoiceButton'
 import { Badge, Card, CardHeader, TableWrap, Td, Th } from '@/components/erp/ui'
 import type { PaymentMethod, PaymentStatus } from '@/lib/erp/types'
 
@@ -99,9 +101,19 @@ export default async function PurchaseInvoiceDetailPage({
                   </p>
                 </div>
               </div>
-              <Badge className={PAYMENT_STATUS_STYLES[invoice.payment_status]}>
-                {PAYMENT_STATUS_LABELS[invoice.payment_status]}
-              </Badge>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <Badge className={PAYMENT_STATUS_STYLES[invoice.payment_status]}>
+                  {PAYMENT_STATUS_LABELS[invoice.payment_status]}
+                </Badge>
+                {can(session.role, 'billing.purchase.delete') && (
+                  <DeleteInvoiceButton
+                    invoiceId={invoice.id}
+                    action={deletePurchaseInvoice}
+                    listHref="/erp/accounting/purchases"
+                    noun="purchase invoice"
+                  />
+                )}
+              </div>
             </div>
           </Card>
 
