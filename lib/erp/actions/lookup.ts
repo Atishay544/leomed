@@ -106,6 +106,32 @@ export async function lookupProducts(term: string): Promise<ProductOption[]> {
   return (data ?? []) as unknown as ProductOption[]
 }
 
+export interface ProductPurchaseReference {
+  mrp: number
+  purchase_rate: number
+}
+
+/**
+ * The Product Master's CURRENT mrp/purchase_rate for one product, fetched
+ * only when recording a purchase — so that screen can flag a new batch
+ * arriving at a different price. Deliberately a separate lookup from
+ * lookupProducts()/ProductOption: purchase_rate (landing cost) must never
+ * reach an MR, and ProductPicker/lookupProducts is shared by MR-facing
+ * screens too, so it stays free of this column. Gated on
+ * billing.purchase.write, never masters.read — only whoever can actually
+ * record a purchase (Admin/Accountant) sees this.
+ */
+export async function getProductPurchaseReference(productId: string): Promise<ProductPurchaseReference | null> {
+  await assertCapability('billing.purchase.write')
+  const db = await erpDb()
+  const { data } = await db
+    .from('erp_products')
+    .select('mrp, purchase_rate')
+    .eq('id', productId)
+    .maybeSingle()
+  return (data as ProductPurchaseReference | null) ?? null
+}
+
 export interface SimilarDoctor extends DoctorOption {
   match_score: number
 }

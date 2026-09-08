@@ -153,6 +153,7 @@ export const ErpProductSchema = z.object({
   product_name:    requiredText('Product name', 200),
   generic_name:    optionalText(200),
   brand_name:      optionalText(200),
+  composition:     optionalText(500),
   category:        optionalText(100),
   dosage_form:     optionalText(50),
   strength:        optionalText(50),

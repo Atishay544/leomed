@@ -173,6 +173,7 @@ export interface ErpProduct {
   product_name: string
   generic_name: string | null
   brand_name: string | null
+  composition: string | null
   category: string | null
   dosage_form: string | null
   strength: string | null
