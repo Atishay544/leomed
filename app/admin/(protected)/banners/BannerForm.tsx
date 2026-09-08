@@ -276,7 +276,7 @@ export default function BannerForm() {
           )}
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-gray-600">Sort</label>
-            <input type="number" value={sortOrder} onChange={e => setSortOrder(e.target.value)}
+            <input type="number" onFocus={e => e.target.select()} value={sortOrder} onChange={e => setSortOrder(e.target.value)}
               className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
           </div>
           <div className="flex items-center gap-2">

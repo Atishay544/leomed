@@ -97,7 +97,7 @@ export default function PayrollItemsPanel({
           <div>
             <label className="mb-1 block text-[11px] font-medium text-gray-600">Amount (₹)</label>
             <input
-              type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
+              type="number" onFocus={e => e.target.select()} min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
               className="w-28 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px] focus:border-emerald-600 focus:outline-none"
             />
           </div>

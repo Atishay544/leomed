@@ -59,35 +59,35 @@ export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRul
             <label htmlFor="grace_period_minutes" className="mb-1 block text-[12px] font-medium text-gray-700">
               Grace period (minutes)
             </label>
-            <input id="grace_period_minutes" name="grace_period_minutes" type="number" min={0} max={180}
+            <input id="grace_period_minutes" name="grace_period_minutes" type="number" onFocus={e => e.target.select()} min={0} max={180}
                    defaultValue={rules.grace_period_minutes} className={inputClass} />
           </div>
           <div>
             <label htmlFor="min_full_day_minutes" className="mb-1 block text-[12px] font-medium text-gray-700">
               Minimum full-day working minutes
             </label>
-            <input id="min_full_day_minutes" name="min_full_day_minutes" type="number" min={1} max={1440}
+            <input id="min_full_day_minutes" name="min_full_day_minutes" type="number" onFocus={e => e.target.select()} min={1} max={1440}
                    defaultValue={rules.min_full_day_minutes} className={inputClass} />
           </div>
           <div>
             <label htmlFor="min_half_day_minutes" className="mb-1 block text-[12px] font-medium text-gray-700">
               Minimum half-day working minutes
             </label>
-            <input id="min_half_day_minutes" name="min_half_day_minutes" type="number" min={1} max={1440}
+            <input id="min_half_day_minutes" name="min_half_day_minutes" type="number" onFocus={e => e.target.select()} min={1} max={1440}
                    defaultValue={rules.min_half_day_minutes} className={inputClass} />
           </div>
           <div>
             <label htmlFor="late_threshold_minutes" className="mb-1 block text-[12px] font-medium text-gray-700">
               Late arrival threshold (minutes)
             </label>
-            <input id="late_threshold_minutes" name="late_threshold_minutes" type="number" min={0} max={180}
+            <input id="late_threshold_minutes" name="late_threshold_minutes" type="number" onFocus={e => e.target.select()} min={0} max={180}
                    defaultValue={rules.late_threshold_minutes} className={inputClass} />
           </div>
           <div>
             <label htmlFor="early_checkout_threshold_minutes" className="mb-1 block text-[12px] font-medium text-gray-700">
               Early checkout threshold (minutes)
             </label>
-            <input id="early_checkout_threshold_minutes" name="early_checkout_threshold_minutes" type="number" min={0} max={180}
+            <input id="early_checkout_threshold_minutes" name="early_checkout_threshold_minutes" type="number" onFocus={e => e.target.select()} min={0} max={180}
                    defaultValue={rules.early_checkout_threshold_minutes} className={inputClass} />
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRul
             <label htmlFor="min_gps_accuracy_meters" className="mb-1 block text-[12px] font-medium text-gray-700">
               Minimum acceptable accuracy (metres)
             </label>
-            <input id="min_gps_accuracy_meters" name="min_gps_accuracy_meters" type="number" min={1} max={10000} step="1"
+            <input id="min_gps_accuracy_meters" name="min_gps_accuracy_meters" type="number" onFocus={e => e.target.select()} min={1} max={10000} step="1"
                    defaultValue={rules.min_gps_accuracy_meters} className={inputClass} />
           </div>
         </div>
@@ -127,14 +127,14 @@ export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRul
             <label htmlFor="default_mr_doctor_visits" className="mb-1 block text-[12px] font-medium text-gray-700">
               Doctor visits required per day
             </label>
-            <input id="default_mr_doctor_visits" name="default_mr_doctor_visits" type="number" min={0}
+            <input id="default_mr_doctor_visits" name="default_mr_doctor_visits" type="number" onFocus={e => e.target.select()} min={0}
                    defaultValue={rules.default_mr_doctor_visits} className={inputClass} />
           </div>
           <div>
             <label htmlFor="default_mr_chemist_visits" className="mb-1 block text-[12px] font-medium text-gray-700">
               Chemist visits required per day
             </label>
-            <input id="default_mr_chemist_visits" name="default_mr_chemist_visits" type="number" min={0}
+            <input id="default_mr_chemist_visits" name="default_mr_chemist_visits" type="number" onFocus={e => e.target.select()} min={0}
                    defaultValue={rules.default_mr_chemist_visits} className={inputClass} />
           </div>
         </div>

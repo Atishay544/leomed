@@ -241,7 +241,7 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
             <label htmlFor="paid" className="mb-1 block text-[12px] font-medium text-gray-700">
               Paid now (₹)
             </label>
-            <input id="paid" type="number" min={0} step="0.01" value={initialPayment}
+            <input id="paid" type="number" onFocus={e => e.target.select()} min={0} step="0.01" value={initialPayment}
                    onChange={e => setInitialPayment(Math.max(0, parseFloat(e.target.value) || 0))}
                    className={inputClass} />
             <p className="mt-1 text-[11px] text-gray-400">
@@ -319,37 +319,37 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Qty</label>
-                      <input type="number" min={1} inputMode="numeric" value={line.quantity}
+                      <input type="number" onFocus={e => e.target.select()} min={1} inputMode="numeric" value={line.quantity}
                              onChange={e => patch(index, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Free</label>
-                      <input type="number" min={0} inputMode="numeric" value={line.free_quantity}
+                      <input type="number" onFocus={e => e.target.select()} min={0} inputMode="numeric" value={line.free_quantity}
                              onChange={e => patch(index, { free_quantity: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Rate ₹</label>
-                      <input type="number" min={0} step="0.01" inputMode="decimal" value={line.purchase_rate}
+                      <input type="number" onFocus={e => e.target.select()} min={0} step="0.01" inputMode="decimal" value={line.purchase_rate}
                              onChange={e => patch(index, { purchase_rate: Math.max(0, parseFloat(e.target.value) || 0) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Disc %</label>
-                      <input type="number" min={0} max={100} step="0.01" value={line.discount_percent}
+                      <input type="number" onFocus={e => e.target.select()} min={0} max={100} step="0.01" value={line.discount_percent}
                              onChange={e => patch(index, { discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">GST %</label>
-                      <input type="number" min={0} max={28} step="0.01" value={line.gst_rate}
+                      <input type="number" onFocus={e => e.target.select()} min={0} max={28} step="0.01" value={line.gst_rate}
                              onChange={e => patch(index, { gst_rate: Math.min(28, Math.max(0, parseFloat(e.target.value) || 0)) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">MRP ₹</label>
-                      <input type="number" min={0} step="0.01" value={line.mrp}
+                      <input type="number" onFocus={e => e.target.select()} min={0} step="0.01" value={line.mrp}
                              onChange={e => patch(index, { mrp: Math.max(0, parseFloat(e.target.value) || 0) })}
                              className={inputClass} />
                     </div>

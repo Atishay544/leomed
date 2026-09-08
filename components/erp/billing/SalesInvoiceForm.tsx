@@ -406,7 +406,7 @@ export default function SalesInvoiceForm({
             <label htmlFor="s_paid" className="mb-1 block text-[12px] font-medium text-gray-700">
               Received now (₹)
             </label>
-            <input id="s_paid" type="number" min={0} step="0.01" value={initialPayment}
+            <input id="s_paid" type="number" onFocus={e => e.target.select()} min={0} step="0.01" value={initialPayment}
                    onChange={e => setInitialPayment(Math.max(0, parseFloat(e.target.value) || 0))}
                    className={inputClass} />
             <p className="mt-1 text-[11px] text-gray-400">
@@ -521,7 +521,7 @@ export default function SalesInvoiceForm({
                         </div>
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Qty</label>
-                          <input type="number" min={1} inputMode="numeric" value={line.quantity}
+                          <input type="number" onFocus={e => e.target.select()} min={1} inputMode="numeric" value={line.quantity}
                                  onChange={e => {
                                    const next = Math.max(1, parseInt(e.target.value, 10) || 1)
                                    patch(line.uid, { quantity: next })
@@ -533,7 +533,7 @@ export default function SalesInvoiceForm({
                           <label className="mb-1 flex items-center gap-1 text-[11px] text-gray-500">
                             Free {line.schemeAppliesFreeQty && <Lock size={10} className="text-emerald-600" />}
                           </label>
-                          <input type="number" min={0} inputMode="numeric" value={line.free_quantity}
+                          <input type="number" onFocus={e => e.target.select()} min={0} inputMode="numeric" value={line.free_quantity}
                                  disabled={line.schemeAppliesFreeQty}
                                  onChange={e => patch(line.uid, { free_quantity: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                                  className={`${inputClass} ${line.schemeAppliesFreeQty ? 'bg-emerald-50 text-emerald-800' : ''}`} />
@@ -552,7 +552,7 @@ export default function SalesInvoiceForm({
                         </div>
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Disc %</label>
-                          <input type="number" min={0} max={100} step="0.01" value={line.discount_percent}
+                          <input type="number" onFocus={e => e.target.select()} min={0} max={100} step="0.01" value={line.discount_percent}
                                  onChange={e => patch(line.uid, { discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
                                  className={inputClass} />
                         </div>

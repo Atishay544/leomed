@@ -120,7 +120,7 @@ export default function PricingFields({ initial, errors }: Props) {
           MRP (₹) <span className="ml-0.5 text-red-500">*</span>
         </label>
         <input
-          id="mrp" name="mrp" type="number" step="0.01" min="0" required
+          id="mrp" name="mrp" type="number" onFocus={e => e.target.select()} step="0.01" min="0" required
           value={mrp} onChange={e => onMrpChange(e.target.value)}
           className={`${inputClass} text-base sm:text-[13px] max-w-40`}
         />
@@ -133,7 +133,7 @@ export default function PricingFields({ initial, errors }: Props) {
             Price to Retailer / PTR (₹) <span className="ml-0.5 text-red-500">*</span>
           </label>
           <input
-            id="retailer_price" name="retailer_price" type="number" step="0.01" min="0" required
+            id="retailer_price" name="retailer_price" type="number" onFocus={e => e.target.select()} step="0.01" min="0" required
             value={retPrice} onChange={e => onRetPriceChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
@@ -144,7 +144,7 @@ export default function PricingFields({ initial, errors }: Props) {
         <div>
           <label htmlFor="retailer_pct" className={labelClass}>Retailer margin % (of MRP)</label>
           <input
-            id="retailer_pct" type="number" step="0.01" min="0" max="100"
+            id="retailer_pct" type="number" onFocus={e => e.target.select()} step="0.01" min="0" max="100"
             value={retPct} onChange={e => onRetPctChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
@@ -157,7 +157,7 @@ export default function PricingFields({ initial, errors }: Props) {
             Price to Distributor / PTS (₹) <span className="ml-0.5 text-red-500">*</span>
           </label>
           <input
-            id="distributor_price" name="distributor_price" type="number" step="0.01" min="0" required
+            id="distributor_price" name="distributor_price" type="number" onFocus={e => e.target.select()} step="0.01" min="0" required
             value={distPrice} onChange={e => onDistPriceChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />
@@ -168,7 +168,7 @@ export default function PricingFields({ initial, errors }: Props) {
         <div>
           <label htmlFor="distributor_pct" className={labelClass}>Distributor margin % (of PTR, not MRP)</label>
           <input
-            id="distributor_pct" type="number" step="0.01" min="0" max="100"
+            id="distributor_pct" type="number" onFocus={e => e.target.select()} step="0.01" min="0" max="100"
             value={distPct} onChange={e => onDistPctChange(e.target.value)}
             className={`${inputClass} text-base sm:text-[13px]`}
           />

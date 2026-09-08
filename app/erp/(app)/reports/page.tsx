@@ -145,7 +145,7 @@ export default async function ReportsPage({ searchParams }: Props) {
             </div>
             <div>
               <label htmlFor="r_year" className="mb-1 block text-[11px] font-medium text-gray-500">Year</label>
-              <input id="r_year" name="year" type="number" defaultValue={payrollYear}
+              <input id="r_year" name="year" type="number" onFocus={e => e.target.select()} defaultValue={payrollYear}
                      className="w-24 rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-[12.5px] focus:border-emerald-600 focus:outline-none" />
             </div>
             <button type="submit" className="rounded-lg bg-gray-900 px-3 py-2 text-[12.5px] font-semibold text-white hover:bg-gray-800">

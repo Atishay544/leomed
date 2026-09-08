@@ -185,12 +185,12 @@ export default function NegotiatedPricingDialog() {
               {method === 'FIXED_PRICE' ? (
                 <div>
                   <label className="mb-1 block text-[12px] font-medium text-gray-700">Fixed amount (₹)</label>
-                  <input type="number" min="0" step="0.01" value={fixedAmount} onChange={e => setFixedAmount(e.target.value)} className={inputClass} />
+                  <input type="number" onFocus={e => e.target.select()} min="0" step="0.01" value={fixedAmount} onChange={e => setFixedAmount(e.target.value)} className={inputClass} />
                 </div>
               ) : (
                 <div>
                   <label className="mb-1 block text-[12px] font-medium text-gray-700">Percentage</label>
-                  <input type="number" min="0" max="100" step="0.01" value={percentage} onChange={e => setPercentage(e.target.value)} className={inputClass} />
+                  <input type="number" onFocus={e => e.target.select()} min="0" max="100" step="0.01" value={percentage} onChange={e => setPercentage(e.target.value)} className={inputClass} />
                 </div>
               )}
 

@@ -70,7 +70,7 @@ export default function ExpenseForm() {
         </div>
         <div>
           <label htmlFor="amount" className="mb-1 block text-[12px] font-medium text-gray-700">Amount (₹)</label>
-          <input id="amount" name="amount" type="number" min="0.01" step="0.01" required className={inputClass} />
+          <input id="amount" name="amount" type="number" onFocus={e => e.target.select()} min="0.01" step="0.01" required className={inputClass} />
         </div>
         <div>
           <label htmlFor="payment_mode" className="mb-1 block text-[12px] font-medium text-gray-700">Payment mode</label>
