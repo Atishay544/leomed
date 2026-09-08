@@ -173,6 +173,7 @@ export type FieldOrderRow = FieldOrder & {
 
 export interface FieldOrderListParams extends VisitListParams {
   customerType?: 'DOCTOR' | 'CHEMIST'
+  invoiceStatus?: string
 }
 
 export async function listFieldOrders(params: FieldOrderListParams = {}): Promise<PageResult<FieldOrderRow>> {
@@ -200,6 +201,9 @@ export async function listFieldOrders(params: FieldOrderListParams = {}): Promis
   if (params.to)           query = query.lte('order_date', params.to)
   if (params.status && params.status !== 'ALL') {
     query = query.eq('status', params.status as FieldOrderStatus)
+  }
+  if (params.invoiceStatus && params.invoiceStatus !== 'ALL') {
+    query = query.eq('invoice_status', params.invoiceStatus)
   }
 
   const term = safeSearch(params.q)

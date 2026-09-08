@@ -33,6 +33,15 @@ export const FIELD_ORDER_STATUSES = [
 ] as const
 export type FieldOrderStatus = (typeof FIELD_ORDER_STATUSES)[number]
 
+/** Whether an MR has submitted proof of the real invoice against a field
+ *  order yet — PENDING until they do, SUBMITTED once they have (the
+ *  default an admin should treat as "counts" for incentive purposes),
+ *  REJECTED if an admin found the submission wrong (strictly excluded from
+ *  incentive-relevant business-generated figures). Distinct from
+ *  FieldOrderStatus, which tracks distributor fulfilment, not this. */
+export const ORDER_INVOICE_STATUSES = ['PENDING', 'SUBMITTED', 'REJECTED'] as const
+export type OrderInvoiceStatus = (typeof ORDER_INVOICE_STATUSES)[number]
+
 export const INVENTORY_TXN_TYPES = [
   'OPENING', 'PURCHASE', 'SALE', 'SALE_RETURN', 'PURCHASE_RETURN',
   'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'DAMAGE', 'EXPIRY',
@@ -253,8 +262,23 @@ export interface FieldOrder {
   /** The MR's physical order-book reference — a business field, not a key. */
   order_book_number: string | null
   status: FieldOrderStatus
-  /** Estimated demand value. Never a receivable and never a sales invoice. */
+  /** Estimated demand value from product lines — legacy: new orders are
+   *  never given product lines, so this is 0 for anything recorded after
+   *  the switch to invoice-based reporting. reported_invoice_amount is the
+   *  figure that actually matters now. */
   estimated_value: number
+  /** What the MR actually generated, self-reported once the real invoice
+   *  exists (distributor's or Leomed's own) — a rough figure until an
+   *  admin cross-checks it against reported_invoice_photo_url. */
+  invoice_status: OrderInvoiceStatus
+  reported_invoice_number: string | null
+  reported_invoice_amount: number | null
+  reported_invoice_photo_url: string | null
+  reported_by: string | null
+  reported_at: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  rejection_reason: string | null
   remarks: string | null
   created_at: string
   updated_at: string

@@ -5,6 +5,7 @@ import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import {
   ChemistVisitSchema, DoctorVisitSchema, FieldOrderStatusSchema, FollowupUpdateSchema,
+  OrderInvoiceReviewSchema, OrderInvoiceSubmitSchema,
 } from '../schemas'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
 
@@ -109,6 +110,61 @@ export async function setFieldOrderStatus(input: unknown): Promise<ActionState> 
 
     revalidatePath('/erp/mr/orders')
     revalidatePath('/erp/orders')
+    return { ok: true }
+  })
+}
+
+/**
+ * MR self-reports the real invoice (number, amount, photo) against their own
+ * order book entry, once the distributor or Leomed has actually raised it.
+ * A rough figure until an admin reviews it (erp_submit_order_invoice() is
+ * the single authority on ownership/validation) — this is what "business
+ * generated" now measures instead of product lines typed in at order time.
+ */
+export async function submitOrderInvoice(input: unknown): Promise<ActionState> {
+  return runAction('Could not submit the invoice.', async () => {
+    await assertCapability('orders.create')
+
+    const parsed = OrderInvoiceSubmitSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_submit_order_invoice', {
+      p_order_id: parsed.data.order_id,
+      p_invoice_number: parsed.data.invoice_number,
+      p_invoice_amount: parsed.data.invoice_amount,
+      p_photo_url: parsed.data.photo_url || null,
+    })
+
+    if (error) return friendlyDbError(error, 'Could not submit the invoice.')
+
+    revalidatePath('/erp/mr/orders')
+    revalidatePath(`/erp/mr/orders/${parsed.data.order_id}`)
+    return { ok: true }
+  })
+}
+
+/** Admin accepts (or rejects, with a reason) an MR's self-reported invoice —
+ *  ADMIN only (orders.review_invoice), never MANAGER even though managers
+ *  can otherwise manage a field order's fulfilment status. */
+export async function reviewOrderInvoice(input: unknown): Promise<ActionState> {
+  return runAction('Could not review this invoice.', async () => {
+    await assertCapability('orders.review_invoice')
+
+    const parsed = OrderInvoiceReviewSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_review_order_invoice', {
+      p_order_id: parsed.data.order_id,
+      p_status: parsed.data.status,
+      p_reason: parsed.data.reason || null,
+    })
+
+    if (error) return friendlyDbError(error, 'Could not review this invoice.')
+
+    revalidatePath('/erp/mr/orders')
+    revalidatePath(`/erp/mr/orders/${parsed.data.order_id}`)
     return { ok: true }
   })
 }

@@ -11,7 +11,7 @@ import VisitLocationPhoto, { type LocationPhotoValue } from './VisitLocationPhot
 import { lookupDoctors, findSimilarDoctors, type ProductOption } from '@/lib/erp/actions/lookup'
 import { createDoctorVisit } from '@/lib/erp/actions/visits'
 import type { DiscussionType, VisitPurpose } from '@/lib/erp/types'
-import { DISCUSSION_TYPE_LABELS, isoDate, money, VISIT_PURPOSE_LABELS } from '@/lib/erp/format'
+import { DISCUSSION_TYPE_LABELS, isoDate, VISIT_PURPOSE_LABELS } from '@/lib/erp/format'
 import { DISCUSSION_TYPES, VISIT_PURPOSES } from '@/lib/erp/types'
 import type { FieldSpec } from '../form/Field'
 
@@ -39,13 +39,6 @@ interface DiscussedRow {
   product: ProductOption
   discussion_type: DiscussionType
   sample_quantity: number
-}
-
-interface OrderRow {
-  product: ProductOption
-  quantity: number
-  unit_rate: number
-  discount_percent: number
 }
 
 function Section({
@@ -91,7 +84,6 @@ export default function DoctorVisitForm() {
 
   const [orderReceived, setOrderReceived] = useState(false)
   const [orderBookNumber, setOrderBookNumber] = useState('')
-  const [orderItems, setOrderItems] = useState<OrderRow[]>([])
 
   const [followUp, setFollowUp] = useState(false)
   const [followUpDate, setFollowUpDate] = useState('')
@@ -111,13 +103,6 @@ export default function DoctorVisitForm() {
   // original visit rather than recording a second one (spec §43).
   const requestId = useRef<string | null>(null)
 
-  /** Estimated value of one order line: quantity × rate, less any discount.
-   *  Mirrors the generated column on erp_field_order_items (Q2). */
-  const lineValue = (row: OrderRow) =>
-    Math.round(row.quantity * row.unit_rate * (1 - row.discount_percent / 100) * 100) / 100
-
-  const orderTotal = orderItems.reduce((sum, row) => sum + lineValue(row), 0)
-
   /** Clears the form for the next visit without a page reload — an MR working
    *  through a clinic list records several in a row, often on a weak signal.
    *  The request id is cleared too, so the next visit is a new submission. */
@@ -131,7 +116,6 @@ export default function DoctorVisitForm() {
     setDiscussed([])
     setOrderReceived(false)
     setOrderBookNumber('')
-    setOrderItems([])
     setFollowUp(false)
     setFollowUpDate('')
     setFollowUpNote('')
@@ -145,14 +129,6 @@ export default function DoctorVisitForm() {
   const addDiscussed = (product: ProductOption) =>
     setDiscussed(rows => [...rows, { product, discussion_type: 'DETAILED', sample_quantity: 0 }])
 
-  const addOrderItem = (product: ProductOption) =>
-    setOrderItems(rows => [...rows, {
-      product,
-      quantity: 1,
-      unit_rate: Number(product.sale_rate) || 0,
-      discount_percent: 0,
-    }])
-
   function handleSubmit() {
     setError(null)
     setFieldErrors({})
@@ -161,8 +137,8 @@ export default function DoctorVisitForm() {
       setError('Choose the doctor you visited, or add them as a new doctor.')
       return
     }
-    if (orderReceived && orderItems.length === 0) {
-      setError('Add at least one product to the order, or turn the order off.')
+    if (orderReceived && !orderBookNumber.trim()) {
+      setError('Enter the order book number, or turn the order off.')
       return
     }
     if (followUp && !followUpDate) {
@@ -192,17 +168,7 @@ export default function DoctorVisitForm() {
         sample_quantity: row.sample_quantity,
       })),
       order: orderReceived
-        ? {
-            received: true,
-            order_book_number: orderBookNumber || undefined,
-            items: orderItems.map(row => ({
-              product_id:       row.product.id,
-              quantity:         row.quantity,
-              unit:             row.product.unit,
-              unit_rate:        row.unit_rate,
-              discount_percent: row.discount_percent,
-            })),
-          }
+        ? { received: true, order_book_number: orderBookNumber || undefined }
         : undefined,
       follow_up_required: followUp,
       follow_up_date: followUp ? followUpDate : undefined,
@@ -244,8 +210,9 @@ export default function DoctorVisitForm() {
         </p>
         {typeof saved.order_number === 'string' && (
           <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-[12.5px] text-blue-800">
-            Field order <strong>{saved.order_number}</strong> recorded.
-            This tracks demand — it is not a company invoice.
+            Field order <strong>{saved.order_number}</strong> recorded. Once you have the invoice
+            from the distributor or Leomed, submit its number, amount and a photo from
+            Field Orders — that is what your incentive is based on.
           </p>
         )}
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -412,108 +379,21 @@ export default function DoctorVisitForm() {
         }
       >
         {orderReceived ? (
-          <div className="space-y-3">
-            <div>
-              <label htmlFor="order_book" className="mb-1 block text-[12px] font-medium text-gray-700">
-                Order book number
-              </label>
-              <input
-                id="order_book" value={orderBookNumber}
-                onChange={e => setOrderBookNumber(e.target.value)}
-                placeholder="From your physical order book, e.g. OB-2026-00452"
-                className={inputClass}
-              />
-            </div>
-
-            <ProductPicker
-              onPick={addOrderItem}
-              excludeIds={orderItems.map(r => r.product.id)}
-              placeholder="Search products to add to the order…"
+          <div>
+            <label htmlFor="order_book" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Order book number
+            </label>
+            <input
+              id="order_book" value={orderBookNumber}
+              onChange={e => setOrderBookNumber(e.target.value)}
+              placeholder="From your physical order book, e.g. OB-2026-00452"
+              className={inputClass}
             />
-
-            {orderItems.length > 0 && (
-              <>
-                <ul className="space-y-2">
-                  {orderItems.map((row, index) => (
-                    <li key={row.product.id} className="rounded-lg border border-gray-200 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-[13px] font-medium text-gray-900">
-                          {row.product.product_name}
-                          {row.product.strength && <span className="ml-1 text-gray-500">{row.product.strength}</span>}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setOrderItems(rows => rows.filter((_, i) => i !== index))}
-                          className="shrink-0 rounded-lg p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                          aria-label={`Remove ${row.product.product_name}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <div className="mt-2.5 grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="mb-1 block text-[11px] text-gray-500">
-                            Qty ({row.product.unit})
-                          </label>
-                          <input
-                            type="number" onFocus={e => e.target.select()} min={1} inputMode="numeric" value={row.quantity}
-                            onChange={e => setOrderItems(rows => rows.map((r, i) =>
-                              i === index ? { ...r, quantity: Math.max(1, parseInt(e.target.value, 10) || 1) } : r))}
-                            className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-base
-                                       focus:border-emerald-600 focus:outline-none sm:text-[13px]"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-[11px] text-gray-500">Rate (₹)</label>
-                          <input
-                            type="number" onFocus={e => e.target.select()} min={0} step="0.01" inputMode="decimal" value={row.unit_rate}
-                            onChange={e => setOrderItems(rows => rows.map((r, i) =>
-                              i === index ? { ...r, unit_rate: Math.max(0, parseFloat(e.target.value) || 0) } : r))}
-                            className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-base
-                                       focus:border-emerald-600 focus:outline-none sm:text-[13px]"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-[11px] text-gray-500">Discount %</label>
-                          <input
-                            type="number" onFocus={e => e.target.select()} min={0} max={100} step="0.01" inputMode="decimal"
-                            value={row.discount_percent}
-                            onChange={e => setOrderItems(rows => rows.map((r, i) =>
-                              i === index
-                                ? { ...r, discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }
-                                : r))}
-                            className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-base
-                                       focus:border-emerald-600 focus:outline-none sm:text-[13px]"
-                          />
-                        </div>
-                      </div>
-
-                      <p className="mt-2 text-right text-[12px] text-gray-500">
-                        Line value{' '}
-                        <span className="font-semibold text-gray-900">{money(lineValue(row))}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="rounded-lg bg-gray-50 px-3.5 py-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[12.5px] font-medium text-gray-700">
-                      Estimated field order value
-                    </span>
-                    <span className="text-[15px] font-bold tabular-nums text-gray-900">
-                      {money(orderTotal)}
-                    </span>
-                  </div>
-                  {/* Stated at the point of entry, not just on a report — this
-                      is the number most likely to be mistaken for a sale. */}
-                  <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-                    An estimate of demand for MR performance reporting. It is not a Leomed sale,
-                    does not affect stock, and creates nothing to collect.
-                  </p>
-                </div>
-              </>
-            )}
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
+              Once the distributor or Leomed raises the actual invoice, come back to this order
+              under Field Orders and submit its invoice number, amount and a photo — that is
+              what your business generated and your incentive are based on, not this number.
+            </p>
           </div>
         ) : (
           <p className="text-[13px] text-gray-500">No order taken during this visit.</p>
@@ -584,8 +464,8 @@ export default function DoctorVisitForm() {
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <div className="min-w-0 flex-1 text-[12px] text-gray-500">
             {discussed.length > 0 && <span>{discussed.length} product{discussed.length > 1 ? 's' : ''} detailed</span>}
-            {orderReceived && orderItems.length > 0 && (
-              <span>{discussed.length > 0 ? ' · ' : ''}Estimated order {money(orderTotal)}</span>
+            {orderReceived && orderBookNumber.trim() && (
+              <span>{discussed.length > 0 ? ' · ' : ''}Order book {orderBookNumber.trim()}</span>
             )}
           </div>
           <button
