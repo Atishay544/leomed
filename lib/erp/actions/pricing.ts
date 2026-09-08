@@ -107,6 +107,11 @@ export async function resolvePrice(input: {
   doctorId?: string
   invoiceDate: string
   paidQty?: number
+  // The batch actually selected for this line, when one has been (FEFO
+  // preselects one the moment stock loads) — its own mrp, if set, overrides
+  // the product master's for an MRP-basis rule/scheme, matching what
+  // erp_save_sales_invoice() will actually bill.
+  batchId?: string
 }): Promise<ActionState> {
   return runAction('Could not calculate the price for this product.', async () => {
     await assertCapability('billing.sales.write')
@@ -120,6 +125,7 @@ export async function resolvePrice(input: {
       p_doctor_id: input.doctorId ?? null,
       p_invoice_date: input.invoiceDate,
       p_paid_qty: input.paidQty ?? 0,
+      p_batch_id: input.batchId || null,
     })
     if (error) return friendlyDbError(error, 'Could not calculate the price for this product.')
 

@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { Check, Loader2, Receipt, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, Loader2, Receipt, Trash2 } from 'lucide-react'
 import ProductPicker from '../visits/ProductPicker'
-import type { ProductOption } from '@/lib/erp/actions/lookup'
+import { getProductPurchaseReference, type ProductOption } from '@/lib/erp/actions/lookup'
 import { savePurchaseInvoice } from '@/lib/erp/actions/billing'
 import { invoiceTotals, lineAmounts } from '@/lib/erp/invoice-math'
 import { isoDate, money, PAYMENT_METHOD_LABELS } from '@/lib/erp/format'
@@ -32,6 +32,11 @@ interface Line {
   gst_rate: number
   mrp: number
   sale_rate: number
+  // The Product Master's CURRENT values, fetched once when the line is
+  // added — compared against what's typed for this batch to flag a price
+  // that has moved since the master was last updated. null while loading.
+  referenceMrp: number | null
+  referencePurchaseRate: number | null
 }
 
 const inputClass =
@@ -77,7 +82,7 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
     setSaved(null)
   }
 
-  const addLine = (product: ProductOption) =>
+  async function addLine(product: ProductOption) {
     setLines(rows => [...rows, {
       product,
       batch_number: '',
@@ -90,7 +95,17 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
       gst_rate: Number(product.gst_rate) || 0,
       mrp: 0,
       sale_rate: Number(product.sale_rate) || 0,
+      referenceMrp: null,
+      referencePurchaseRate: null,
     }])
+
+    const reference = await getProductPurchaseReference(product.id)
+    if (reference) {
+      setLines(rows => rows.map(row => row.product.id === product.id && row.referenceMrp === null
+        ? { ...row, referenceMrp: Number(reference.mrp) || 0, referencePurchaseRate: Number(reference.purchase_rate) || 0 }
+        : row))
+    }
+  }
 
   const patch = (index: number, changes: Partial<Line>) =>
     setLines(rows => rows.map((row, i) => (i === index ? { ...row, ...changes } : row)))
@@ -241,7 +256,7 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
             <label htmlFor="paid" className="mb-1 block text-[12px] font-medium text-gray-700">
               Paid now (₹)
             </label>
-            <input id="paid" type="number" min={0} step="0.01" value={initialPayment}
+            <input id="paid" type="number" onFocus={e => e.target.select()} min={0} step="0.01" value={initialPayment}
                    onChange={e => setInitialPayment(Math.max(0, parseFloat(e.target.value) || 0))}
                    className={inputClass} />
             <p className="mt-1 text-[11px] text-gray-400">
@@ -254,11 +269,14 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
             </label>
             <select id="pay_method" value={paymentMethod} disabled={initialPayment <= 0}
                     onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className={inputClass}>
+                    className={`${inputClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}>
               {PAYMENT_METHODS.map(m => (
                 <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
               ))}
             </select>
+            {initialPayment <= 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">Enter an amount paid above to set this.</p>
+            )}
           </div>
           <div>
             <label htmlFor="pay_ref" className="mb-1 block text-[12px] font-medium text-gray-700">
@@ -266,7 +284,11 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
             </label>
             <input id="pay_ref" value={paymentReference} disabled={initialPayment <= 0}
                    onChange={e => setPaymentReference(e.target.value)}
-                   placeholder="Cheque / UTR no." className={inputClass} />
+                   placeholder="Cheque / UTR no."
+                   className={`${inputClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`} />
+            {initialPayment <= 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">Enter an amount paid above to set this.</p>
+            )}
           </div>
           <div>
             <label htmlFor="remarks" className="mb-1 block text-[12px] font-medium text-gray-700">Remarks</label>
@@ -286,6 +308,14 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
                 quantity: line.quantity, rate: line.purchase_rate,
                 discountPercent: line.discount_percent, gstRate: line.gst_rate,
               })
+              // Flags a new batch arriving at a different MRP or landing
+              // price than what's currently on the Product Master — the
+              // agreed process is to update the master the moment that
+              // happens, so this is the reminder at the exact moment it
+              // matters, not a block on saving the invoice.
+              const mrpChanged = line.referenceMrp !== null && line.mrp > 0 && line.mrp !== line.referenceMrp
+              const rateChanged = line.referencePurchaseRate !== null && line.purchase_rate > 0
+                && line.purchase_rate !== line.referencePurchaseRate
               return (
                 <li key={`${line.product.id}-${index}`} className="rounded-xl border border-gray-200 p-3.5">
                   <div className="mb-3 flex items-start justify-between gap-3">
@@ -319,41 +349,56 @@ export default function PurchaseInvoiceForm({ suppliers }: { suppliers: Supplier
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Qty</label>
-                      <input type="number" min={1} inputMode="numeric" value={line.quantity}
+                      <input type="number" onFocus={e => e.target.select()} min={1} inputMode="numeric" value={line.quantity}
                              onChange={e => patch(index, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Free</label>
-                      <input type="number" min={0} inputMode="numeric" value={line.free_quantity}
+                      <input type="number" onFocus={e => e.target.select()} min={0} inputMode="numeric" value={line.free_quantity}
                              onChange={e => patch(index, { free_quantity: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Rate ₹</label>
-                      <input type="number" min={0} step="0.01" inputMode="decimal" value={line.purchase_rate}
+                      <input type="number" onFocus={e => e.target.select()} min={0} step="0.01" inputMode="decimal" value={line.purchase_rate}
                              onChange={e => patch(index, { purchase_rate: Math.max(0, parseFloat(e.target.value) || 0) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">Disc %</label>
-                      <input type="number" min={0} max={100} step="0.01" value={line.discount_percent}
+                      <input type="number" onFocus={e => e.target.select()} min={0} max={100} step="0.01" value={line.discount_percent}
                              onChange={e => patch(index, { discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">GST %</label>
-                      <input type="number" min={0} max={28} step="0.01" value={line.gst_rate}
+                      <input type="number" onFocus={e => e.target.select()} min={0} max={28} step="0.01" value={line.gst_rate}
                              onChange={e => patch(index, { gst_rate: Math.min(28, Math.max(0, parseFloat(e.target.value) || 0)) })}
                              className={inputClass} />
                     </div>
                     <div>
                       <label className="mb-1 block text-[11px] text-gray-500">MRP ₹</label>
-                      <input type="number" min={0} step="0.01" value={line.mrp}
+                      <input type="number" onFocus={e => e.target.select()} min={0} step="0.01" value={line.mrp}
                              onChange={e => patch(index, { mrp: Math.max(0, parseFloat(e.target.value) || 0) })}
                              className={inputClass} />
                     </div>
                   </div>
+
+                  {(mrpChanged || rateChanged) && (
+                    <div className="mt-2.5 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                      <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600" />
+                      <p className="text-[12px] leading-relaxed text-amber-900">
+                        {mrpChanged && (
+                          <>This batch&apos;s MRP ({money(line.mrp)}) differs from the Product Master&apos;s current MRP ({money(line.referenceMrp ?? 0)}). </>
+                        )}
+                        {rateChanged && (
+                          <>This batch&apos;s rate ({money(line.purchase_rate)}) differs from the Product Master&apos;s current purchase rate ({money(line.referencePurchaseRate ?? 0)}). </>
+                        )}
+                        Request admin to update the prices on Product Master for this product.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="mt-2.5 flex flex-wrap items-center justify-end gap-x-4 gap-y-1
                                   border-t border-gray-100 pt-2.5 text-[12px] text-gray-500">

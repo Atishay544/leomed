@@ -103,7 +103,7 @@ export default function BulkIncentiveBonusTable({
                 <Td align="right" className="tabular-nums">{r.bonus > 0 ? money(r.bonus) : '—'}</Td>
                 <Td align="right">
                   <input
-                    type="number" min="0" step="0.01" placeholder="0.00"
+                    type="number" onFocus={e => e.target.select()} min="0" step="0.01" placeholder="0.00"
                     value={row.incentiveAmount}
                     onChange={e => patch(r.id, { incentiveAmount: e.target.value })}
                     disabled={!editable || saving}
@@ -113,7 +113,7 @@ export default function BulkIncentiveBonusTable({
                 </Td>
                 <Td align="right">
                   <input
-                    type="number" min="0" step="0.01" placeholder="0.00"
+                    type="number" onFocus={e => e.target.select()} min="0" step="0.01" placeholder="0.00"
                     value={row.bonusAmount}
                     onChange={e => patch(r.id, { bonusAmount: e.target.value })}
                     disabled={!editable || saving}

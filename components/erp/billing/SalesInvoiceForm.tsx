@@ -137,7 +137,7 @@ export default function SalesInvoiceForm({
    * whenever the buyer or a line's paid quantity changes; skipped silently
    * until a buyer is actually chosen.
    */
-  async function resolveLine(uid: string, productId: string, paidQty: number) {
+  async function resolveLine(uid: string, productId: string, paidQty: number, batchId?: string) {
     if (!buyerId) return
     patch(uid, { priceLoading: true, priceError: null })
 
@@ -149,6 +149,7 @@ export default function SalesInvoiceForm({
       doctorId: buyerType === 'DOCTOR' ? buyerId : undefined,
       invoiceDate,
       paidQty,
+      batchId,
     })
 
     if (result.ok && result.data) {
@@ -195,14 +196,14 @@ export default function SalesInvoiceForm({
         }
       : row))
 
-    resolveLine(uid, product.id, 1)
+    resolveLine(uid, product.id, 1, batches[0]?.id)
   }
 
   // Re-price every line whenever the buyer changes — the same product can
   // have a different negotiated rate for a different customer.
   useEffect(() => {
     if (!buyerId) return
-    for (const line of lines) resolveLine(line.uid, line.product.id, line.quantity)
+    for (const line of lines) resolveLine(line.uid, line.product.id, line.quantity, line.batch_id)
     // Only the buyer identity should re-trigger this, not every line edit —
     // per-line quantity changes are resolved individually where they happen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,7 +407,7 @@ export default function SalesInvoiceForm({
             <label htmlFor="s_paid" className="mb-1 block text-[12px] font-medium text-gray-700">
               Received now (₹)
             </label>
-            <input id="s_paid" type="number" min={0} step="0.01" value={initialPayment}
+            <input id="s_paid" type="number" onFocus={e => e.target.select()} min={0} step="0.01" value={initialPayment}
                    onChange={e => setInitialPayment(Math.max(0, parseFloat(e.target.value) || 0))}
                    className={inputClass} />
             <p className="mt-1 text-[11px] text-gray-400">
@@ -419,11 +420,14 @@ export default function SalesInvoiceForm({
             </label>
             <select id="s_method" value={paymentMethod} disabled={initialPayment <= 0}
                     onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className={inputClass}>
+                    className={`${inputClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}>
               {PAYMENT_METHODS.map(m => (
                 <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
               ))}
             </select>
+            {initialPayment <= 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">Enter an amount received above to set this.</p>
+            )}
           </div>
           <div>
             <label htmlFor="s_ref" className="mb-1 block text-[12px] font-medium text-gray-700">
@@ -431,7 +435,11 @@ export default function SalesInvoiceForm({
             </label>
             <input id="s_ref" value={paymentReference} disabled={initialPayment <= 0}
                    onChange={e => setPaymentReference(e.target.value)}
-                   placeholder="Cheque / UTR no." className={inputClass} />
+                   placeholder="Cheque / UTR no."
+                   className={`${inputClass} disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`} />
+            {initialPayment <= 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">Enter an amount received above to set this.</p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <label className="flex items-center gap-2 text-[13px] text-gray-700">
@@ -509,7 +517,16 @@ export default function SalesInvoiceForm({
                           <label className="mb-1 block text-[11px] text-gray-500">Batch (earliest expiry first)</label>
                           <select
                             value={line.batch_id}
-                            onChange={e => patch(line.uid, { batch_id: e.target.value })}
+                            onChange={e => {
+                              const batchId = e.target.value
+                              patch(line.uid, { batch_id: batchId })
+                              // A different batch can carry a different MRP
+                              // (revised since this batch was purchased), so
+                              // an MRP-basis rule or scheme can price it
+                              // differently — re-resolve, don't just swap
+                              // which batch stock gets deducted from.
+                              resolveLine(line.uid, line.product.id, line.quantity, batchId)
+                            }}
                             className={inputClass}
                           >
                             {line.batches.map(b => (
@@ -521,11 +538,11 @@ export default function SalesInvoiceForm({
                         </div>
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Qty</label>
-                          <input type="number" min={1} inputMode="numeric" value={line.quantity}
+                          <input type="number" onFocus={e => e.target.select()} min={1} inputMode="numeric" value={line.quantity}
                                  onChange={e => {
                                    const next = Math.max(1, parseInt(e.target.value, 10) || 1)
                                    patch(line.uid, { quantity: next })
-                                   resolveLine(line.uid, line.product.id, next)
+                                   resolveLine(line.uid, line.product.id, next, line.batch_id)
                                  }}
                                  className={inputClass} />
                         </div>
@@ -533,7 +550,7 @@ export default function SalesInvoiceForm({
                           <label className="mb-1 flex items-center gap-1 text-[11px] text-gray-500">
                             Free {line.schemeAppliesFreeQty && <Lock size={10} className="text-emerald-600" />}
                           </label>
-                          <input type="number" min={0} inputMode="numeric" value={line.free_quantity}
+                          <input type="number" onFocus={e => e.target.select()} min={0} inputMode="numeric" value={line.free_quantity}
                                  disabled={line.schemeAppliesFreeQty}
                                  onChange={e => patch(line.uid, { free_quantity: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                                  className={`${inputClass} ${line.schemeAppliesFreeQty ? 'bg-emerald-50 text-emerald-800' : ''}`} />
@@ -552,7 +569,7 @@ export default function SalesInvoiceForm({
                         </div>
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Disc %</label>
-                          <input type="number" min={0} max={100} step="0.01" value={line.discount_percent}
+                          <input type="number" onFocus={e => e.target.select()} min={0} max={100} step="0.01" value={line.discount_percent}
                                  onChange={e => patch(line.uid, { discount_percent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
                                  className={inputClass} />
                         </div>

@@ -172,6 +172,48 @@ export async function getProduct(id: string): Promise<ErpProduct | null> {
   return (data as ErpProduct) ?? null
 }
 
+export interface MrPriceReferenceRow {
+  id: string
+  product_name: string
+  generic_name: string | null
+  composition: string | null
+  strength: string | null
+  pack_size: string | null
+  unit: string
+  mrp: number
+  retailer_price: number
+  gst_rate: number
+}
+
+/**
+ * The MR-facing price/composition reference (view-only, no edit) — deliberately
+ * a separate, narrower read from the admin Product Master list: no
+ * purchase_rate, no distributor_price, no edit affordances, and it reads
+ * straight from the product master by design (not the batch actually in
+ * stock) — the agreed process is that admin updates the product master the
+ * moment a new batch arrives at a different price, so this always reflects
+ * the current quotable rate. purchase_rate is simply never selected here,
+ * the same "don't even ask for the column" principle already used for
+ * inventory.valuation elsewhere.
+ */
+export async function listMrPriceReference(q?: string, page = 1): Promise<PageResult<MrPriceReferenceRow>> {
+  const db = await erpDb()
+  const [from, to] = rangeFor(page)
+
+  let query = db
+    .from('erp_products')
+    .select('id, product_name, generic_name, composition, strength, pack_size, unit, mrp, retailer_price, gst_rate', { count: 'exact' })
+    .eq('active', true)
+    .order('product_name', { ascending: true })
+    .range(from, to)
+
+  const term = safeSearch(q)
+  if (term) query = query.or(ilikeAny(['product_name', 'generic_name', 'brand_name', 'composition'], term))
+
+  const { data, count } = await query
+  return toPage<MrPriceReferenceRow>(data as MrPriceReferenceRow[] | null, count, page)
+}
+
 /**
  * The public storefront catalogue (public.products) — a separate table from
  * this product master, used only to populate the optional "link to

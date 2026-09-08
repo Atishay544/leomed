@@ -64,7 +64,7 @@ export default function LaunchForm() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Sort</label>
-            <input type="number" value={sortOrder} onChange={e => setSortOrder(e.target.value)}
+            <input type="number" onFocus={e => e.target.select()} value={sortOrder} onChange={e => setSortOrder(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
           </div>
         </div>

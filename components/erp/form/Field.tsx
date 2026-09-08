@@ -100,6 +100,12 @@ export function Field({
           defaultValue={defaultValue == null ? '' : String(defaultValue)}
           aria-invalid={invalid}
           aria-describedby={describedBy}
+          // A number field defaulting to e.g. "0" is otherwise edited by
+          // inserting at the click position, not replacing it — typing "578"
+          // into a "0" becomes "0578". Selecting the existing text on focus
+          // makes the first keystroke replace it, like every other numeric
+          // field in the app.
+          onFocus={type === 'number' ? (e) => e.target.select() : undefined}
           // 16px on mobile stops iOS Safari zooming in on focus, which on a
           // visit form throws the whole layout off mid-entry.
           className={`${inputClass} text-base sm:text-[13px]`}

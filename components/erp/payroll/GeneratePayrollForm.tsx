@@ -50,7 +50,7 @@ export default function GeneratePayrollForm() {
         <div>
           <label htmlFor="gp_year" className="mb-1 block text-[12px] font-medium text-gray-700">Year</label>
           <input
-            id="gp_year" type="number" value={year} onChange={e => setYear(Number(e.target.value))}
+            id="gp_year" type="number" onFocus={e => e.target.select()} value={year} onChange={e => setYear(Number(e.target.value))}
             className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-[13px] focus:border-emerald-600 focus:outline-none"
           />
         </div>

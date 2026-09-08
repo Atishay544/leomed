@@ -128,29 +128,29 @@ export default function SalaryDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="fixed_salary" className="mb-1 block text-[12px] font-medium text-gray-700">Fixed salary (₹/month)</label>
-                  <input id="fixed_salary" name="fixed_salary" type="number" min="0" step="0.01" required
+                  <input id="fixed_salary" name="fixed_salary" type="number" onFocus={e => e.target.select()} min="0" step="0.01" required
                          defaultValue={existing?.fixed_salary} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="basic_salary" className="mb-1 block text-[12px] font-medium text-gray-700">Basic salary</label>
-                  <input id="basic_salary" name="basic_salary" type="number" min="0" step="0.01" required
+                  <input id="basic_salary" name="basic_salary" type="number" onFocus={e => e.target.select()} min="0" step="0.01" required
                          defaultValue={existing?.basic_salary ?? 0} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="gross_salary" className="mb-1 block text-[12px] font-medium text-gray-700">Gross salary</label>
-                  <input id="gross_salary" name="gross_salary" type="number" min="0" step="0.01" required
+                  <input id="gross_salary" name="gross_salary" type="number" onFocus={e => e.target.select()} min="0" step="0.01" required
                          defaultValue={existing?.gross_salary ?? 0} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="allowances" className="mb-1 block text-[12px] font-medium text-gray-700">Allowances</label>
-                  <input id="allowances" name="allowances" type="number" min="0" step="0.01" required
+                  <input id="allowances" name="allowances" type="number" onFocus={e => e.target.select()} min="0" step="0.01" required
                          defaultValue={existing?.allowances ?? 0} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="standard_deductions" className="mb-1 block text-[12px] font-medium text-gray-700">
                     Standard deductions
                   </label>
-                  <input id="standard_deductions" name="standard_deductions" type="number" min="0" step="0.01" required
+                  <input id="standard_deductions" name="standard_deductions" type="number" onFocus={e => e.target.select()} min="0" step="0.01" required
                          defaultValue={existing?.standard_deductions ?? 0} className={inputClass} />
                   <p className="mt-1 text-[11px] text-gray-400">e.g. PF, insurance — applied every month automatically.</p>
                 </div>

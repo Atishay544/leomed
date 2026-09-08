@@ -219,7 +219,7 @@ export default function PaymentPanel({
               <label htmlFor="pay_amount" className="mb-1 block text-[11px] text-gray-500">
                 Amount (₹)
               </label>
-              <input id="pay_amount" type="number" min="0.01" step="0.01" value={amount}
+              <input id="pay_amount" type="number" onFocus={e => e.target.select()} min="0.01" step="0.01" value={amount}
                      onChange={e => setAmount(e.target.value)} className={inputClass} />
             </div>
             <div>

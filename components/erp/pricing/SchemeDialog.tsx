@@ -207,11 +207,11 @@ export default function SchemeDialog() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1 block text-[12px] font-medium text-gray-700">Buy quantity</label>
-                    <input type="number" min="1" value={buyQty} onChange={e => setBuyQty(e.target.value)} className={inputClass} />
+                    <input type="number" onFocus={e => e.target.select()} min="1" value={buyQty} onChange={e => setBuyQty(e.target.value)} className={inputClass} />
                   </div>
                   <div>
                     <label className="mb-1 block text-[12px] font-medium text-gray-700">Free quantity</label>
-                    <input type="number" min="1" value={freeQty} onChange={e => setFreeQty(e.target.value)} className={inputClass} />
+                    <input type="number" onFocus={e => e.target.select()} min="1" value={freeQty} onChange={e => setFreeQty(e.target.value)} className={inputClass} />
                   </div>
                 </div>
               ) : (
@@ -232,7 +232,7 @@ export default function SchemeDialog() {
                   </div>
                   <div>
                     <label className="mb-1 block text-[12px] font-medium text-gray-700">Percentage</label>
-                    <input type="number" min="0" max="100" step="0.01" value={percentage} onChange={e => setPercentage(e.target.value)} className={inputClass} />
+                    <input type="number" onFocus={e => e.target.select()} min="0" max="100" step="0.01" value={percentage} onChange={e => setPercentage(e.target.value)} className={inputClass} />
                   </div>
                   {preview !== null && product && (
                     <p className="text-[11.5px] text-gray-500">
@@ -262,7 +262,7 @@ export default function SchemeDialog() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-[12px] font-medium text-gray-700">Priority (lower wins ties)</label>
-                  <input name="priority" type="number" defaultValue={100} className={inputClass} />
+                  <input name="priority" type="number" onFocus={e => e.target.select()} defaultValue={100} className={inputClass} />
                 </div>
                 <div>
                   <label className="mb-1 block text-[12px] font-medium text-gray-700">Status</label>

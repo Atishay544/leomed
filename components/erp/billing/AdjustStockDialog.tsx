@@ -199,7 +199,7 @@ export default function AdjustStockDialog() {
                   <label htmlFor="adj_qty" className="mb-1 block text-[12px] font-medium text-gray-700">
                     Quantity
                   </label>
-                  <input id="adj_qty" type="number" min={1} value={quantity}
+                  <input id="adj_qty" type="number" onFocus={e => e.target.select()} min={1} value={quantity}
                          onChange={e => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
                          className={inputClass} />
                 </div>

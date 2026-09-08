@@ -375,7 +375,7 @@ export default function DoctorVisitForm() {
                     ))}
                   </select>
                   <input
-                    type="number" min={0} inputMode="numeric"
+                    type="number" onFocus={e => e.target.select()} min={0} inputMode="numeric"
                     value={row.sample_quantity}
                     onChange={e => setDiscussed(rows => rows.map((r, i) =>
                       i === index ? { ...r, sample_quantity: Math.max(0, parseInt(e.target.value, 10) || 0) } : r))}
@@ -456,7 +456,7 @@ export default function DoctorVisitForm() {
                             Qty ({row.product.unit})
                           </label>
                           <input
-                            type="number" min={1} inputMode="numeric" value={row.quantity}
+                            type="number" onFocus={e => e.target.select()} min={1} inputMode="numeric" value={row.quantity}
                             onChange={e => setOrderItems(rows => rows.map((r, i) =>
                               i === index ? { ...r, quantity: Math.max(1, parseInt(e.target.value, 10) || 1) } : r))}
                             className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-base
@@ -466,7 +466,7 @@ export default function DoctorVisitForm() {
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Rate (₹)</label>
                           <input
-                            type="number" min={0} step="0.01" inputMode="decimal" value={row.unit_rate}
+                            type="number" onFocus={e => e.target.select()} min={0} step="0.01" inputMode="decimal" value={row.unit_rate}
                             onChange={e => setOrderItems(rows => rows.map((r, i) =>
                               i === index ? { ...r, unit_rate: Math.max(0, parseFloat(e.target.value) || 0) } : r))}
                             className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-base
@@ -476,7 +476,7 @@ export default function DoctorVisitForm() {
                         <div>
                           <label className="mb-1 block text-[11px] text-gray-500">Discount %</label>
                           <input
-                            type="number" min={0} max={100} step="0.01" inputMode="decimal"
+                            type="number" onFocus={e => e.target.select()} min={0} max={100} step="0.01" inputMode="decimal"
                             value={row.discount_percent}
                             onChange={e => setOrderItems(rows => rows.map((r, i) =>
                               i === index

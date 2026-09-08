@@ -78,6 +78,8 @@ export const PRODUCT_FIELDS: FieldSpec[] = [
   { name: 'product_name',  label: 'Product name', required: true, span: 2, placeholder: 'Amoxiclav 625' },
   { name: 'generic_name',  label: 'Generic name', placeholder: 'Amoxicillin + Clavulanic acid' },
   { name: 'brand_name',    label: 'Brand name' },
+  { name: 'composition',   label: 'Composition', type: 'textarea', span: 2, placeholder: 'e.g. Amoxicillin 500mg + Clavulanic acid 125mg',
+    hint: 'Shown to MRs on the price reference screen for detailing.' },
   { name: 'category',      label: 'Therapeutic category', placeholder: 'Antibiotic' },
   { name: 'dosage_form',   label: 'Dosage form', type: 'select', options: DOSAGE_FORMS },
   { name: 'strength',      label: 'Strength', placeholder: '625 mg' },

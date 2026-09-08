@@ -88,7 +88,7 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
             <label htmlFor="expiry_warning_days" className="mb-1 block text-[12px] font-medium text-gray-700">
               Flag batches expiring within (days)
             </label>
-            <input id="expiry_warning_days" name="expiry_warning_days" type="number" min={1} max={730}
+            <input id="expiry_warning_days" name="expiry_warning_days" type="number" onFocus={e => e.target.select()} min={1} max={730}
                    defaultValue={settings.expiry_warning_days} className={inputClass} />
             <p className="mt-1 text-[11.5px] text-gray-400">
               Drives the &quot;expiring soon&quot; counts on the dashboard and batch screens.
@@ -130,7 +130,7 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
           <label htmlFor="mr_edit_window_hours" className="mb-1 block text-[12px] font-medium text-gray-700">
             MRs can edit their own records for (hours)
           </label>
-          <input id="mr_edit_window_hours" name="mr_edit_window_hours" type="number" min={0} max={720}
+          <input id="mr_edit_window_hours" name="mr_edit_window_hours" type="number" onFocus={e => e.target.select()} min={0} max={720}
                  defaultValue={settings.mr_edit_window_hours}
                  className={`${inputClass} sm:max-w-xs`} />
           <p className="mt-1 text-[11.5px] leading-relaxed text-gray-400">
