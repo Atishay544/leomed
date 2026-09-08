@@ -5,6 +5,7 @@ import { can } from '@/lib/erp/permissions'
 import {
   currentMonthRange, getDistributorPerformance, getMrPerformance,
   getProductPerformance, getTerritoryPerformance,
+  getDoctorPerformance, getChemistPerformance, getSlowMovingProducts,
 } from '@/lib/erp/data/dashboard'
 import { listAttendance } from '@/lib/erp/data/attendance'
 import { listAllLeaveRequests } from '@/lib/erp/data/leave'
@@ -25,8 +26,11 @@ export const metadata = { title: 'Reports' }
 const ALL_TABS = [
   { key: 'mr',          label: 'MR performance', capability: 'reports.read.all' },
   { key: 'product',     label: 'Products',       capability: 'reports.read.all' },
+  { key: 'doctor',      label: 'Doctors',        capability: 'reports.read.all' },
+  { key: 'chemist',     label: 'Chemists',       capability: 'reports.read.all' },
   { key: 'distributor', label: 'Distributors',   capability: 'reports.read.all' },
   { key: 'territory',   label: 'Territories',    capability: 'reports.read.all' },
+  { key: 'stock',       label: 'Stock health',   capability: 'inventory.read' },
   { key: 'attendance',  label: 'Attendance',     capability: 'attendance.read.all' },
   { key: 'leave',       label: 'Leave',          capability: 'leave.manage' },
   { key: 'payroll',     label: 'Payroll',        capability: 'payroll.manage' },
@@ -57,14 +61,24 @@ export default async function ReportsPage({ searchParams }: Props) {
   const payrollMonth = Number(params.month) || now.getMonth() + 1
   const tab: TabKey = (TABS.find(t => t.key === params.tab)?.key ?? TABS[0]?.key ?? 'mr')
 
-  // Only the active tab's query runs — no point aggregating eight reports to
-  // show one.
-  const [mrRows, productRows, distributorRows, territoryRows] = await Promise.all([
+  // Only the active tab's query runs — no point aggregating a dozen reports
+  // to show one.
+  const [mrRows, productRows, doctorRows, chemistRows, distributorRows, territoryRows, slowMovingRows] = await Promise.all([
     tab === 'mr'          ? getMrPerformance(from, to)          : Promise.resolve([]),
     tab === 'product'     ? getProductPerformance(from, to)     : Promise.resolve([]),
+    tab === 'doctor'      ? getDoctorPerformance(from, to)      : Promise.resolve([]),
+    tab === 'chemist'     ? getChemistPerformance(from, to)     : Promise.resolve([]),
     tab === 'distributor' ? getDistributorPerformance(from, to) : Promise.resolve([]),
     tab === 'territory'   ? getTerritoryPerformance(from, to)   : Promise.resolve([]),
+    tab === 'stock'       ? getSlowMovingProducts(90)           : Promise.resolve([]),
   ])
+
+  // A leaderboard ranking for the MR tab — by business value, not the
+  // table's own doctor-visits-first ordering, so "who generated the most"
+  // and "who's most active" can both be read off the same data.
+  const mrRankByValue = new Map(
+    [...mrRows].sort((a, b) => b.order_value - a.order_value).map((r, i) => [r.mr_id, i + 1]),
+  )
 
   const attendanceResult = tab === 'attendance'
     ? await listAttendance({ from, to, page: 1 })
@@ -104,7 +118,11 @@ export default async function ReportsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Reports"
-        description={tab === 'payroll' ? `${MONTHS[payrollMonth - 1]} ${payrollYear}` : `${formatDate(from)} — ${formatDate(to)}`}
+        description={
+          tab === 'payroll' ? `${MONTHS[payrollMonth - 1]} ${payrollYear}`
+            : tab === 'stock' ? 'As of today — not date-filtered'
+            : `${formatDate(from)} — ${formatDate(to)}`
+        }
         action={exportHref && (
           <a
             href={exportHref}
@@ -152,24 +170,30 @@ export default async function ReportsPage({ searchParams }: Props) {
               Go
             </button>
           </form>
-        ) : (
+        ) : tab !== 'stock' ? (
           <FilterForm action="/erp/reports" hasFilters={!!(params.from || params.to)}>
             <input type="hidden" name="tab" value={tab} />
             <FilterDate name="from" label="From" defaultValue={from} />
             <FilterDate name="to"   label="To"   defaultValue={to} />
           </FilterForm>
-        )}
+        ) : null}
 
         {tab === 'mr' && (
           <>
             <CardHeader title="Field-force activity by MR" />
+            <p className="border-b border-gray-100 px-5 py-2.5 text-[12px] leading-relaxed text-gray-500">
+              Rank is by business value (submitted invoices) — the table itself sorts by doctor
+              visits, so the two answer different questions: who&apos;s most active, and who&apos;s
+              generated the most.
+            </p>
             {mrRows.length === 0 ? (
               <EmptyState icon={BarChart3} title="No MR activity in this period" />
             ) : (
               <TableWrap>
-                <table className="w-full min-w-[960px]">
+                <table className="w-full min-w-[1180px]">
                   <thead className="bg-gray-50">
                     <tr>
+                      <Th align="right">Rank</Th>
                       <Th>MR</Th>
                       <Th>Territory</Th>
                       <Th align="right">Doctor visits</Th>
@@ -178,32 +202,60 @@ export default async function ReportsPage({ searchParams }: Props) {
                       <Th align="right">Chemist visits</Th>
                       <Th align="right">Chemists covered</Th>
                       <Th align="right">Orders</Th>
+                      <Th align="right">Invoice S/P/R</Th>
                       <Th align="right">Order value</Th>
+                      <Th align="right">Attendance</Th>
                       <Th align="right">Open follow-ups</Th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {mrRows.map(row => (
-                      <tr key={row.mr_id} className="hover:bg-gray-50/60">
-                        <Td>
-                          <span className="font-medium text-gray-900">{row.mr_name}</span>
-                          {row.mr_code && (
-                            <p className="mt-0.5 font-mono text-[11px] text-gray-400">{row.mr_code}</p>
-                          )}
-                        </Td>
-                        <Td>{row.territory ?? '—'}</Td>
-                        <Td align="right" className="tabular-nums font-medium">{qty(row.doctor_visits)}</Td>
-                        <Td align="right" className="tabular-nums">{qty(row.doctors_covered)}</Td>
-                        <Td align="right" className="tabular-nums text-emerald-700">{qty(row.new_doctors)}</Td>
-                        <Td align="right" className="tabular-nums">{qty(row.chemist_visits)}</Td>
-                        <Td align="right" className="tabular-nums">{qty(row.chemists_covered)}</Td>
-                        <Td align="right" className="tabular-nums">{qty(row.field_orders)}</Td>
-                        <Td align="right" className="tabular-nums font-medium text-gray-900">
-                          {money(row.order_value)}
-                        </Td>
-                        <Td align="right" className="tabular-nums">{qty(row.followups_open)}</Td>
-                      </tr>
-                    ))}
+                    {mrRows.map(row => {
+                      const rank = mrRankByValue.get(row.mr_id) ?? 0
+                      const attendanceRate = row.attendance_days > 0
+                        ? Math.round((row.attendance_present / row.attendance_days) * 100)
+                        : null
+                      return (
+                        <tr key={row.mr_id} className="hover:bg-gray-50/60">
+                          <Td align="right">
+                            <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+                              rank === 1 ? 'bg-amber-100 text-amber-700'
+                                : rank === 2 ? 'bg-gray-200 text-gray-700'
+                                : rank === 3 ? 'bg-orange-100 text-orange-700'
+                                : 'text-gray-400'
+                            }`}>
+                              {rank}
+                            </span>
+                          </Td>
+                          <Td>
+                            <span className="font-medium text-gray-900">{row.mr_name}</span>
+                            {row.mr_code && (
+                              <p className="mt-0.5 font-mono text-[11px] text-gray-400">{row.mr_code}</p>
+                            )}
+                          </Td>
+                          <Td>{row.territory ?? '—'}</Td>
+                          <Td align="right" className="tabular-nums font-medium">{qty(row.doctor_visits)}</Td>
+                          <Td align="right" className="tabular-nums">{qty(row.doctors_covered)}</Td>
+                          <Td align="right" className="tabular-nums text-emerald-700">{qty(row.new_doctors)}</Td>
+                          <Td align="right" className="tabular-nums">{qty(row.chemist_visits)}</Td>
+                          <Td align="right" className="tabular-nums">{qty(row.chemists_covered)}</Td>
+                          <Td align="right" className="tabular-nums">{qty(row.field_orders)}</Td>
+                          <Td align="right" className="tabular-nums text-[11.5px] text-gray-500">
+                            {qty(row.orders_submitted)}/{qty(row.orders_pending)}/{qty(row.orders_rejected)}
+                          </Td>
+                          <Td align="right" className="tabular-nums font-medium text-gray-900">
+                            {money(row.order_value)}
+                          </Td>
+                          <Td align="right" className="tabular-nums">
+                            {attendanceRate === null ? '—' : (
+                              <span className={attendanceRate < 80 ? 'font-semibold text-amber-700' : ''}>
+                                {attendanceRate}%
+                              </span>
+                            )}
+                          </Td>
+                          <Td align="right" className="tabular-nums">{qty(row.followups_open)}</Td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </TableWrap>
@@ -250,6 +302,88 @@ export default async function ReportsPage({ searchParams }: Props) {
                           <span className={row.stock_on_hand === 0 ? 'text-red-600' : ''}>
                             {qty(row.stock_on_hand)}
                           </span>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableWrap>
+            )}
+          </>
+        )}
+
+        {tab === 'doctor' && (
+          <>
+            <CardHeader title="Business generated by doctor" />
+            <p className="border-b border-gray-100 px-5 py-2.5 text-[12px] leading-relaxed text-gray-500">
+              From submitted invoices against field orders placed for this doctor — not yet
+              admin-verified, a rough figure until then.
+            </p>
+            {doctorRows.length === 0 ? (
+              <EmptyState icon={BarChart3} title="No doctor orders in this period" />
+            ) : (
+              <TableWrap>
+                <table className="w-full min-w-[640px]">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <Th>Doctor</Th>
+                      <Th>City</Th>
+                      <Th align="right">Orders</Th>
+                      <Th align="right">Submitted value</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {doctorRows.map(row => (
+                      <tr key={row.doctor_id} className="hover:bg-gray-50/60">
+                        <Td>
+                          <span className="font-medium text-gray-900">{row.doctor_name}</span>
+                          <p className="mt-0.5 font-mono text-[11px] text-gray-400">{row.doctor_code}</p>
+                        </Td>
+                        <Td>{row.city ?? '—'}</Td>
+                        <Td align="right" className="tabular-nums">{qty(row.order_count)}</Td>
+                        <Td align="right" className="tabular-nums font-medium text-gray-900">
+                          {money(row.submitted_value)}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableWrap>
+            )}
+          </>
+        )}
+
+        {tab === 'chemist' && (
+          <>
+            <CardHeader title="Business generated by chemist" />
+            <p className="border-b border-gray-100 px-5 py-2.5 text-[12px] leading-relaxed text-gray-500">
+              From submitted invoices against field orders placed for this chemist — not yet
+              admin-verified, a rough figure until then.
+            </p>
+            {chemistRows.length === 0 ? (
+              <EmptyState icon={BarChart3} title="No chemist orders in this period" />
+            ) : (
+              <TableWrap>
+                <table className="w-full min-w-[640px]">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <Th>Chemist</Th>
+                      <Th>City</Th>
+                      <Th align="right">Orders</Th>
+                      <Th align="right">Submitted value</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {chemistRows.map(row => (
+                      <tr key={row.chemist_id} className="hover:bg-gray-50/60">
+                        <Td>
+                          <span className="font-medium text-gray-900">{row.chemist_name}</span>
+                          <p className="mt-0.5 font-mono text-[11px] text-gray-400">{row.chemist_code}</p>
+                        </Td>
+                        <Td>{row.city ?? '—'}</Td>
+                        <Td align="right" className="tabular-nums">{qty(row.order_count)}</Td>
+                        <Td align="right" className="tabular-nums font-medium text-gray-900">
+                          {money(row.submitted_value)}
                         </Td>
                       </tr>
                     ))}
@@ -333,6 +467,45 @@ export default async function ReportsPage({ searchParams }: Props) {
                         <Td align="right" className="tabular-nums">{qty(row.field_orders)}</Td>
                         <Td align="right" className="tabular-nums font-medium text-gray-900">
                           {money(row.order_value)}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableWrap>
+            )}
+          </>
+        )}
+
+        {tab === 'stock' && (
+          <>
+            <CardHeader title="Slow-moving stock" />
+            <p className="border-b border-gray-100 px-5 py-2.5 text-[12px] leading-relaxed text-gray-500">
+              In stock, with no sale in the last 90 days — a candidate list for a scheme, a
+              discount, or a closer look at why it isn&apos;t moving.
+            </p>
+            {slowMovingRows.length === 0 ? (
+              <EmptyState icon={BarChart3} title="Nothing slow-moving" description="Every in-stock product has sold within the last 90 days." />
+            ) : (
+              <TableWrap>
+                <table className="w-full min-w-[640px]">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <Th>Product</Th>
+                      <Th align="right">Stock on hand</Th>
+                      <Th>Last sold</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {slowMovingRows.map(row => (
+                      <tr key={row.product_id} className="hover:bg-gray-50/60">
+                        <Td>
+                          <span className="font-medium text-gray-900">{row.product_name}</span>
+                          <p className="mt-0.5 font-mono text-[11px] text-gray-400">{row.product_code}</p>
+                        </Td>
+                        <Td align="right" className="tabular-nums font-medium">{qty(row.stock_on_hand)}</Td>
+                        <Td className="text-gray-500">
+                          {row.last_sold_date ? formatDate(row.last_sold_date) : 'Never'}
                         </Td>
                       </tr>
                     ))}
