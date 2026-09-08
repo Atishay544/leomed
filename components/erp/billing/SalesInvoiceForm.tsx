@@ -137,7 +137,7 @@ export default function SalesInvoiceForm({
    * whenever the buyer or a line's paid quantity changes; skipped silently
    * until a buyer is actually chosen.
    */
-  async function resolveLine(uid: string, productId: string, paidQty: number) {
+  async function resolveLine(uid: string, productId: string, paidQty: number, batchId?: string) {
     if (!buyerId) return
     patch(uid, { priceLoading: true, priceError: null })
 
@@ -149,6 +149,7 @@ export default function SalesInvoiceForm({
       doctorId: buyerType === 'DOCTOR' ? buyerId : undefined,
       invoiceDate,
       paidQty,
+      batchId,
     })
 
     if (result.ok && result.data) {
@@ -195,14 +196,14 @@ export default function SalesInvoiceForm({
         }
       : row))
 
-    resolveLine(uid, product.id, 1)
+    resolveLine(uid, product.id, 1, batches[0]?.id)
   }
 
   // Re-price every line whenever the buyer changes — the same product can
   // have a different negotiated rate for a different customer.
   useEffect(() => {
     if (!buyerId) return
-    for (const line of lines) resolveLine(line.uid, line.product.id, line.quantity)
+    for (const line of lines) resolveLine(line.uid, line.product.id, line.quantity, line.batch_id)
     // Only the buyer identity should re-trigger this, not every line edit —
     // per-line quantity changes are resolved individually where they happen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -509,7 +510,16 @@ export default function SalesInvoiceForm({
                           <label className="mb-1 block text-[11px] text-gray-500">Batch (earliest expiry first)</label>
                           <select
                             value={line.batch_id}
-                            onChange={e => patch(line.uid, { batch_id: e.target.value })}
+                            onChange={e => {
+                              const batchId = e.target.value
+                              patch(line.uid, { batch_id: batchId })
+                              // A different batch can carry a different MRP
+                              // (revised since this batch was purchased), so
+                              // an MRP-basis rule or scheme can price it
+                              // differently — re-resolve, don't just swap
+                              // which batch stock gets deducted from.
+                              resolveLine(line.uid, line.product.id, line.quantity, batchId)
+                            }}
                             className={inputClass}
                           >
                             {line.batches.map(b => (
@@ -525,7 +535,7 @@ export default function SalesInvoiceForm({
                                  onChange={e => {
                                    const next = Math.max(1, parseInt(e.target.value, 10) || 1)
                                    patch(line.uid, { quantity: next })
-                                   resolveLine(line.uid, line.product.id, next)
+                                   resolveLine(line.uid, line.product.id, next, line.batch_id)
                                  }}
                                  className={inputClass} />
                         </div>
