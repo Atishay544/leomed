@@ -1,11 +1,17 @@
 import Link from 'next/link'
 import {
   ArrowRight, ClipboardList, IndianRupee, Receipt, Stethoscope, Store,
-  UserPlus, Warehouse, AlertTriangle,
+  UserPlus, Warehouse, AlertTriangle, TrendingUp, Percent, Wallet,
 } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
-import { currentMonthRange, getDashboardSummary, getMrPerformance } from '@/lib/erp/data/dashboard'
+import {
+  currentMonthRange, getDashboardSummary, getMrPerformance,
+  getGrossMarginSummary, getSalesAgingSummary, getPurchaseAgingSummary,
+  getOrderInvoiceConversion, getExpiredSaleSummary, getSchemeDiscountSummary,
+  getGstSummary, getExpensePeriodSummary,
+} from '@/lib/erp/data/dashboard'
 import { getStockSummary } from '@/lib/erp/data/inventory'
+import { getPayrollPeriod, getPayrollPeriodTotals } from '@/lib/erp/data/payroll'
 import { can } from '@/lib/erp/permissions'
 import { getErpSettings } from '@/lib/erp/data/settings'
 import { listMrs, listErpUsers } from '@/lib/erp/data/users'
@@ -29,6 +35,7 @@ interface Props {
 export default async function DashboardPage({ searchParams }: Props) {
   const session = await requireCapability('reports.read.all')
   const canSeeValue = can(session.role, 'inventory.valuation')
+  const canSeeSchemes = can(session.role, 'pricing.manage')
   const params = await searchParams
 
   const today = isoDate()
@@ -37,14 +44,34 @@ export default async function DashboardPage({ searchParams }: Props) {
   const isSingleDay = from === to
   const month = currentMonthRange()
 
-  const [summary, monthSummary, mrRows, settings, mrs, staff] = await Promise.all([
+  const [
+    summary, monthSummary, mrRows, settings, mrs, staff,
+    grossMargin, salesAging, purchaseAging, orderConversion, expiredSales,
+    schemeDiscount, gst, expensePeriod,
+  ] = await Promise.all([
     getDashboardSummary(from, to, params.mr, params.territory),
     getDashboardSummary(month.from, month.to),
     getMrPerformance(from, to),
     getErpSettings(),
     listMrs(),
     listErpUsers({ page: 1 }),
+    canSeeValue ? getGrossMarginSummary(from, to) : Promise.resolve(null),
+    getSalesAgingSummary(),
+    getPurchaseAgingSummary(),
+    getOrderInvoiceConversion(from, to),
+    getExpiredSaleSummary(from, to),
+    canSeeSchemes ? getSchemeDiscountSummary(from, to) : Promise.resolve(null),
+    getGstSummary(from, to),
+    getExpensePeriodSummary(month.from, month.to),
   ])
+
+  // HR cost roll-up (this month, same window as the other "This month" figures
+  // on this page) — payroll is period-keyed, not date-ranged, so it only has
+  // a figure once that month's payroll has actually been generated.
+  const payrollPeriod = await getPayrollPeriod(
+    Number(month.from.slice(0, 4)), Number(month.from.slice(5, 7)),
+  )
+  const payrollTotals = payrollPeriod ? await getPayrollPeriodTotals(payrollPeriod.id) : null
 
   const stock = await getStockSummary(settings.expiry_warning_days, canSeeValue)
 
@@ -287,6 +314,131 @@ export default async function DashboardPage({ searchParams }: Props) {
                 className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-medium text-emerald-700 hover:underline">
             Open purchases <ArrowRight size={13} />
           </Link>
+        </Card>
+      </div>
+
+      {/* 4 — Business health */}
+      <h2 className="mb-2.5 mt-6 text-[12px] font-semibold uppercase tracking-wide text-gray-500">
+        Business health
+      </h2>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {canSeeValue && grossMargin && (
+          <Card>
+            <div className="mb-2 flex items-center gap-2">
+              <TrendingUp size={14} className="text-emerald-700" />
+              <h3 className="text-[12.5px] font-semibold text-gray-800">Gross margin</h3>
+            </div>
+            <p className="text-[18px] font-bold tabular-nums text-gray-900">{moneyCompact(grossMargin.gross_margin)}</p>
+            <p className="mt-1 text-[11.5px] text-gray-500">
+              {grossMargin.margin_pct}% of {moneyCompact(grossMargin.sales_value)} sales
+            </p>
+          </Card>
+        )}
+
+        <Card>
+          <div className="mb-2 flex items-center gap-2">
+            <Percent size={14} className="text-emerald-700" />
+            <h3 className="text-[12.5px] font-semibold text-gray-800">Order → invoice</h3>
+          </div>
+          <p className="text-[18px] font-bold tabular-nums text-gray-900">{orderConversion.conversion_rate}%</p>
+          <p className="mt-1 text-[11.5px] text-gray-500">
+            {qty(orderConversion.submitted)} submitted · {qty(orderConversion.pending)} pending · {qty(orderConversion.rejected)} rejected
+          </p>
+        </Card>
+
+        <Card>
+          <div className="mb-2 flex items-center gap-2">
+            <Wallet size={14} className="text-emerald-700" />
+            <h3 className="text-[12.5px] font-semibold text-gray-800">GST (period)</h3>
+          </div>
+          <p className={`text-[18px] font-bold tabular-nums ${gst.net_payable > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+            {moneyCompact(Math.abs(gst.net_payable))} {gst.net_payable > 0 ? 'payable' : 'credit'}
+          </p>
+          <p className="mt-1 text-[11.5px] text-gray-500">
+            {moneyCompact(gst.output_tax)} output − {moneyCompact(gst.input_tax)} input
+          </p>
+        </Card>
+
+        {expiredSales.count > 0 && (
+          <Card>
+            <div className="mb-2 flex items-center gap-2">
+              <AlertTriangle size={14} className="text-red-600" />
+              <h3 className="text-[12.5px] font-semibold text-gray-800">Expired stock sold</h3>
+            </div>
+            <p className="text-[18px] font-bold tabular-nums text-red-700">{moneyCompact(expiredSales.value)}</p>
+            <p className="mt-1 text-[11.5px] text-gray-500">{qty(expiredSales.count)} authorised invoice{expiredSales.count === 1 ? '' : 's'}</p>
+          </Card>
+        )}
+
+        {canSeeSchemes && schemeDiscount && (
+          <Card>
+            <div className="mb-2 flex items-center gap-2">
+              <IndianRupee size={14} className="text-emerald-700" />
+              <h3 className="text-[12.5px] font-semibold text-gray-800">Scheme cost</h3>
+            </div>
+            <p className="text-[18px] font-bold tabular-nums text-gray-900">{moneyCompact(schemeDiscount.free_units_value)}</p>
+            <p className="mt-1 text-[11.5px] text-gray-500">
+              {qty(schemeDiscount.free_units_given)} free units · {qty(schemeDiscount.margin_scheme_lines)} margin-scheme lines
+            </p>
+          </Card>
+        )}
+
+        <Card>
+          <div className="mb-2 flex items-center gap-2">
+            <Wallet size={14} className="text-emerald-700" />
+            <h3 className="text-[12.5px] font-semibold text-gray-800">HR cost (this month)</h3>
+          </div>
+          {payrollTotals ? (
+            <>
+              <p className="text-[18px] font-bold tabular-nums text-gray-900">
+                {moneyCompact(payrollTotals.total_net_salary + expensePeriod.approved_value)}
+              </p>
+              <p className="mt-1 text-[11.5px] text-gray-500">
+                {moneyCompact(payrollTotals.total_net_salary)} payroll
+                {payrollTotals.total_incentives + payrollTotals.total_bonus > 0 &&
+                  ` (incl. ${moneyCompact(payrollTotals.total_incentives + payrollTotals.total_bonus)} incentives/bonus)`}
+                {' · '}{moneyCompact(expensePeriod.approved_value)} expenses
+              </p>
+            </>
+          ) : (
+            <p className="text-[12.5px] text-gray-500">Payroll not generated for this month yet.</p>
+          )}
+        </Card>
+
+        <Card>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-[12.5px] font-semibold text-gray-800">Receivables aging</h3>
+          </div>
+          {salesAging.length === 0 ? (
+            <p className="text-[12.5px] text-emerald-700">Nothing outstanding</p>
+          ) : (
+            <dl className="space-y-1 text-[12px]">
+              {salesAging.map(b => (
+                <div key={b.bucket} className="flex justify-between">
+                  <dt className="text-gray-500">{b.bucket} days</dt>
+                  <dd className="font-medium tabular-nums text-gray-900">{money(b.outstanding)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </Card>
+
+        <Card>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-[12.5px] font-semibold text-gray-800">Payables aging</h3>
+          </div>
+          {purchaseAging.length === 0 ? (
+            <p className="text-[12.5px] text-emerald-700">Nothing outstanding</p>
+          ) : (
+            <dl className="space-y-1 text-[12px]">
+              {purchaseAging.map(b => (
+                <div key={b.bucket} className="flex justify-between">
+                  <dt className="text-gray-500">{b.bucket} days</dt>
+                  <dd className="font-medium tabular-nums text-gray-900">{money(b.outstanding)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </Card>
       </div>
 

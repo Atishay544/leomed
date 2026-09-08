@@ -41,13 +41,14 @@ export interface PayrollPeriodTotals {
   employee_count: number
   total_net_salary: number
   total_incentives: number
+  total_bonus: number
   total_deductions: number
 }
 
 export async function getPayrollPeriodTotals(periodId: string): Promise<PayrollPeriodTotals> {
   const db = await erpDb()
   const { data } = await db.rpc('erp_payroll_period_totals', { p_period_id: periodId })
-  return (data ?? { employee_count: 0, total_net_salary: 0, total_incentives: 0, total_deductions: 0 }) as PayrollPeriodTotals
+  return (data ?? { employee_count: 0, total_net_salary: 0, total_incentives: 0, total_bonus: 0, total_deductions: 0 }) as PayrollPeriodTotals
 }
 
 export async function getPayrollPeriod(year: number, month: number): Promise<ErpPayrollPeriod | null> {
