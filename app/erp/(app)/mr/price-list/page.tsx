@@ -39,18 +39,19 @@ export default async function MrPriceListPage({ searchParams }: Props) {
 
       <Card padded={false}>
         <div className="border-b border-gray-100 px-4 py-3">
-          <SearchBar placeholder="Product, generic name, composition…" />
+          <SearchBar placeholder="Product, generic name, composition, uses…" />
         </div>
 
         {rows.length === 0 ? (
           <EmptyState icon={Tags} title="No products match" description="Try a different search." />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[820px]">
+            <table className="w-full min-w-[960px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Product</Th>
                   <Th>Composition</Th>
+                  <Th>Uses</Th>
                   <Th align="right">MRP</Th>
                   <Th align="right">Price to retailer</Th>
                   <Th align="right">Tax</Th>
@@ -70,6 +71,7 @@ export default async function MrPriceListPage({ searchParams }: Props) {
                       )}
                     </Td>
                     <Td className="max-w-xs text-[12.5px] text-gray-600">{p.composition || '—'}</Td>
+                    <Td className="max-w-xs text-[12.5px] text-gray-600">{p.uses || '—'}</Td>
                     <Td align="right" className="tabular-nums">{money(p.mrp)}</Td>
                     <Td align="right" className="tabular-nums">{money(p.retailer_price)}</Td>
                     <Td align="right" className="tabular-nums text-gray-500">{p.gst_rate}%</Td>

@@ -116,6 +116,11 @@ export default async function ProductsPage({ searchParams }: Props) {
                           {p.composition}
                         </p>
                       )}
+                      {p.uses && (
+                        <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-gray-400" title={p.uses}>
+                          Uses: {p.uses}
+                        </p>
+                      )}
                     </Td>
                     <Td>
                       {p.dosage_form ?? '—'}

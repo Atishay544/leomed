@@ -80,6 +80,8 @@ export const PRODUCT_FIELDS: FieldSpec[] = [
   { name: 'brand_name',    label: 'Brand name' },
   { name: 'composition',   label: 'Composition', type: 'textarea', span: 2, placeholder: 'e.g. Amoxicillin 500mg + Clavulanic acid 125mg',
     hint: 'Shown to MRs on the price reference screen for detailing.' },
+  { name: 'uses',          label: 'Uses', type: 'textarea', span: 2, placeholder: 'e.g. Fever, body pain, inflammation',
+    hint: 'What it\'s indicated for — shown to MRs alongside composition.' },
   { name: 'category',      label: 'Therapeutic category', placeholder: 'Antibiotic' },
   { name: 'dosage_form',   label: 'Dosage form', type: 'select', options: DOSAGE_FORMS },
   { name: 'strength',      label: 'Strength', placeholder: '625 mg' },
