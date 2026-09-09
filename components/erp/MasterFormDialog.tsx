@@ -36,6 +36,7 @@ export default function MasterFormDialog({
   trigger,
   initial,
   submitLabel = 'Save',
+  hiddenFields,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>
   fields: FieldSpec[]
@@ -46,6 +47,10 @@ export default function MasterFormDialog({
   /** Existing row values when editing; its `id` switches the action to update. */
   initial?: Record<string, unknown>
   submitLabel?: string
+  /** Extra fixed values submitted alongside the visible fields — e.g. an
+   *  mr_id the dialog is already scoped to, that the admin shouldn't have
+   *  to (or be able to) re-pick. */
+  hiddenFields?: Record<string, string>
 }) {
   const [open, setOpen] = useState(false)
 
@@ -116,6 +121,9 @@ export default function MasterFormDialog({
 
             <form action={formAction} className="flex min-h-0 flex-1 flex-col">
               {initial?.id ? <input type="hidden" name="id" value={String(initial.id)} /> : null}
+              {hiddenFields && Object.entries(hiddenFields).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                 {state.error && (

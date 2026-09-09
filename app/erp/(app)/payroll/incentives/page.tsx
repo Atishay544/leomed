@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Gift } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listPayrollPeriods, listPayrollRecordsForRole } from '@/lib/erp/data/payroll'
+import { getIncentiveSuggestion, type IncentiveSuggestion } from '@/lib/erp/data/incentives'
 import { PAYROLL_STATUS_LABELS, PAYROLL_STATUS_STYLES } from '@/lib/erp/format'
 import { ERP_ROLES } from '@/lib/erp/types'
 import { ROLE_LABELS } from '@/lib/erp/permissions'
@@ -63,6 +64,27 @@ export default async function PayrollIncentivesPage({ searchParams }: Props) {
   const editable = !['FINALIZED', 'PAID'].includes(period.status)
   const hasFilters = !!(params.period || params.role)
 
+  // A suggested incentive, from that MR's secondary sales (submitted field-
+  // order invoices) for this exact month, run through their flat rate or
+  // bracket ladder — only meaningful for MRs, since secondary sales is a
+  // field-force concept. Still just a suggestion: admin edits the amount
+  // and clicks Save like any other row, same as everywhere else this
+  // system offers a rough, admin-reviewed figure.
+  let suggestions: Map<string, IncentiveSuggestion> | undefined
+  if (role === 'MR' && records.length > 0) {
+    const lastDay = new Date(period.period_year, period.period_month, 0).getDate()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const from = `${period.period_year}-${pad(period.period_month)}-01`
+    const to = `${period.period_year}-${pad(period.period_month)}-${pad(lastDay)}`
+
+    const pairs = await Promise.all(
+      records.map(async r => [r.employee_id, await getIncentiveSuggestion(r.employee_id, from, to)] as const),
+    )
+    suggestions = new Map(
+      pairs.filter((p): p is [string, IncentiveSuggestion] => p[1] !== null),
+    )
+  }
+
   return (
     <>
       <PageHeader
@@ -99,7 +121,7 @@ export default async function PayrollIncentivesPage({ searchParams }: Props) {
         ) : records.length === 0 ? (
           <EmptyState icon={Gift} title="No payroll records for this role" description="Generate payroll for this month first, from the Payroll page." />
         ) : (
-          <BulkIncentiveBonusTable records={records} editable={editable} />
+          <BulkIncentiveBonusTable records={records} editable={editable} suggestions={suggestions} />
         )}
       </Card>
     </>

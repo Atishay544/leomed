@@ -131,6 +131,21 @@ export const BATCH_FIELDS: FieldSpec[] = [
 
 // ─── HR: attendance & leave ─────────────────────────────────────────────────
 
+/** One incentive bracket — mr_id is supplied separately as a hiddenField on
+ *  MasterFormDialog (company-wide dialogs omit it; per-MR dialogs fix it to
+ *  the MR the admin is currently editing). */
+export const INCENTIVE_TIER_FIELDS: FieldSpec[] = [
+  { name: 'min_amount', label: 'From (₹)', type: 'number', step: '0.01', min: '0', required: true },
+  { name: 'max_amount', label: 'To (₹) — blank means no upper limit', type: 'number', step: '0.01', min: '0' },
+  { name: 'percentage', label: 'Incentive %', type: 'number', step: '0.01', min: '0', max: '100', required: true },
+]
+
+/** A flat incentive rate for one MR — mr_id supplied as a hiddenField on
+ *  MasterFormDialog, fixed to whichever MR the admin is editing. */
+export const FLAT_INCENTIVE_FIELDS: FieldSpec[] = [
+  { name: 'flat_percentage', label: 'Flat incentive %', type: 'number', step: '0.01', min: '0', max: '100', required: true },
+]
+
 export const HOLIDAY_FIELDS: FieldSpec[] = [
   { name: 'holiday_date', label: 'Date',          type: 'date', required: true },
   { name: 'name',         label: 'Holiday name',  required: true },
