@@ -296,6 +296,26 @@ export async function setProductActive(id: string, active: boolean) {
 }
 
 /**
+ * Permanently removes a product row — distinct from setProductActive()'s
+ * deactivation, which is the normal way to retire one. erp_delete_product_
+ * permanently() refuses (with a specific, friendly message) if any batch,
+ * invoice or visit has ever referenced this product; only a product that
+ * was added by mistake or never actually used can be deleted this way.
+ */
+export async function deletePermanentlyProduct(id: string): Promise<ActionState> {
+  return runAction('Could not delete this product.', async () => {
+    await assertCapability(PRODUCT.capability)
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_product_permanently', { p_product_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this product.')
+
+    revalidatePath(PRODUCT.path)
+    return { ok: true }
+  })
+}
+
+/**
  * Opens a batch. Note what this does NOT accept: a quantity. Stock only ever
  * arrives through a purchase invoice or a recorded adjustment, so a new batch
  * starts empty by construction (spec §15, §16).

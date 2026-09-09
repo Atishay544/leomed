@@ -13,6 +13,7 @@ export interface FieldSpec {
   span?: 1 | 2
   step?: string
   min?: string
+  max?: string
   hint?: string
 }
 
@@ -32,7 +33,7 @@ export function Field({
   initial?: Record<string, unknown>
   fieldErrors?: Record<string, string[] | undefined>
 }) {
-  const { name, label, type = 'text', required, placeholder, options, span = 1, step, min, hint } = spec
+  const { name, label, type = 'text', required, placeholder, options, span = 1, step, min, max, hint } = spec
 
   if (type === 'pricing') {
     return (
@@ -95,6 +96,7 @@ export function Field({
           type={type}
           step={step}
           min={min}
+          max={max}
           required={required}
           placeholder={placeholder}
           defaultValue={defaultValue == null ? '' : String(defaultValue)}

@@ -177,6 +177,7 @@ export interface MrPriceReferenceRow {
   product_name: string
   generic_name: string | null
   composition: string | null
+  uses: string | null
   strength: string | null
   pack_size: string | null
   unit: string
@@ -202,13 +203,13 @@ export async function listMrPriceReference(q?: string, page = 1): Promise<PageRe
 
   let query = db
     .from('erp_products')
-    .select('id, product_name, generic_name, composition, strength, pack_size, unit, mrp, retailer_price, gst_rate', { count: 'exact' })
+    .select('id, product_name, generic_name, composition, uses, strength, pack_size, unit, mrp, retailer_price, gst_rate', { count: 'exact' })
     .eq('active', true)
     .order('product_name', { ascending: true })
     .range(from, to)
 
   const term = safeSearch(q)
-  if (term) query = query.or(ilikeAny(['product_name', 'generic_name', 'brand_name', 'composition'], term))
+  if (term) query = query.or(ilikeAny(['product_name', 'generic_name', 'brand_name', 'composition', 'uses'], term))
 
   const { data, count } = await query
   return toPage<MrPriceReferenceRow>(data as MrPriceReferenceRow[] | null, count, page)

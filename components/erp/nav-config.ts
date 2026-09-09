@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Stethoscope, Store, UserRound, Users, Package, Boxes,
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
   Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
-  CalendarDays, SlidersHorizontal, IndianRupee, Wallet, Tag, Gift, Tags, type LucideIcon,
+  CalendarDays, SlidersHorizontal, IndianRupee, Wallet, Tag, Gift, Tags, Percent, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -108,6 +108,7 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/payroll',            label: 'Payroll',            icon: IndianRupee,      capability: 'payroll.manage' },
       { href: '/erp/payroll/salaries',   label: 'Salaries',           icon: Wallet,           capability: 'payroll.manage' },
       { href: '/erp/payroll/incentives', label: 'Incentives & Bonus', icon: Gift,             capability: 'payroll.manage' },
+      { href: '/erp/payroll/incentive-rules', label: 'Incentive Rules', icon: Percent,        capability: 'payroll.manage' },
       { href: '/erp/expenses/admin',   label: 'Expenses',         icon: Receipt,            capability: 'expenses.manage' },
     ],
   },

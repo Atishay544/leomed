@@ -1,15 +1,17 @@
 import Link from 'next/link'
-import { Package } from 'lucide-react'
+import { Globe, Package } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listProducts, listStorefrontProductOptions, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { getStockTotalsForProducts } from '@/lib/erp/data/inventory'
 import { parsePage } from '@/lib/erp/data/query'
-import { saveProduct, setProductActive } from '@/lib/erp/actions/masters'
+import { saveProduct, setProductActive, deletePermanentlyProduct } from '@/lib/erp/actions/masters'
 import { can } from '@/lib/erp/permissions'
 import { money, qty } from '@/lib/erp/format'
+import { priceInclGst } from '@/lib/erp/pricing-preview'
 import { productFieldsWithStorefrontLink } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SearchBar from '@/components/erp/SearchBar'
 import Pagination from '@/components/erp/Pagination'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
@@ -74,17 +76,19 @@ export default async function ProductsPage({ searchParams }: Props) {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[960px]">
+            <table className="w-full min-w-[1280px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Code</Th>
                   <Th>Product</Th>
-                  <Th>Form / Pack</Th>
+                  <Th>Form / Pack / HSN</Th>
                   <Th>Category</Th>
                   <Th align="right">MRP</Th>
+                  {canWrite && <Th align="right">Purchase rate</Th>}
                   <Th align="right">Distributor</Th>
                   <Th align="right">Retailer</Th>
                   <Th align="right">GST</Th>
+                  <Th align="right">Reorder at</Th>
                   <Th align="right">Stock</Th>
                   {canWrite && <Th align="right">Actions</Th>}
                 </tr>
@@ -97,19 +101,48 @@ export default async function ProductsPage({ searchParams }: Props) {
                       <span className="font-medium text-gray-900">{p.product_name}</span>
                       {p.strength && <span className="ml-1 text-gray-500">{p.strength}</span>}
                       {!p.active && <Badge className="ml-2 bg-gray-100 text-gray-500 ring-gray-400/20">Inactive</Badge>}
-                      {p.generic_name && (
-                        <p className="mt-0.5 text-[11.5px] text-gray-400">{p.generic_name}</p>
+                      {p.storefront_product_id && (
+                        <span title="Listed on the storefront" className="ml-2 inline-flex items-center gap-0.5 text-[10.5px] text-blue-600">
+                          <Globe size={11} /> Listed
+                        </span>
+                      )}
+                      {(p.generic_name || p.brand_name) && (
+                        <p className="mt-0.5 text-[11.5px] text-gray-400">
+                          {[p.generic_name, p.brand_name && `Brand: ${p.brand_name}`].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                      {p.composition && (
+                        <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-gray-400" title={p.composition}>
+                          {p.composition}
+                        </p>
+                      )}
+                      {p.uses && (
+                        <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-gray-400" title={p.uses}>
+                          Uses: {p.uses}
+                        </p>
                       )}
                     </Td>
                     <Td>
                       {p.dosage_form ?? '—'}
                       {p.pack_size && <p className="mt-0.5 text-[11.5px] text-gray-400">{p.pack_size} / {p.unit}</p>}
+                      {p.hsn_code && <p className="mt-0.5 font-mono text-[10.5px] text-gray-400">HSN {p.hsn_code}</p>}
                     </Td>
                     <Td>{p.category ?? '—'}</Td>
                     <Td align="right" className="tabular-nums">{money(p.mrp)}</Td>
+                    {canWrite && (
+                      <Td align="right" className="tabular-nums">
+                        {money(p.purchase_rate)}
+                        <p className="mt-0.5 text-[10.5px] text-gray-400">
+                          incl. tax {money(priceInclGst(p.purchase_rate, p.gst_rate))}
+                        </p>
+                      </Td>
+                    )}
                     <Td align="right" className="tabular-nums font-medium text-gray-900">{money(p.distributor_price)}</Td>
                     <Td align="right" className="tabular-nums">{money(p.retailer_price)}</Td>
                     <Td align="right" className="tabular-nums">{p.gst_rate}%</Td>
+                    <Td align="right" className="tabular-nums">
+                      {p.min_stock_level > 0 ? `${qty(p.min_stock_level)} ${p.unit}` : '—'}
+                    </Td>
                     <Td align="right" className="tabular-nums">
                       {(() => {
                         const stock = stockTotals.get(p.id)
@@ -147,6 +180,11 @@ export default async function ProductsPage({ searchParams }: Props) {
                           <ToggleActiveButton
                             id={p.id} active={p.active}
                             action={setProductActive} noun="product"
+                          />
+                          <DeleteRowButton
+                            id={p.id}
+                            action={deletePermanentlyProduct}
+                            confirmText={`Permanently delete ${p.product_name}? This cannot be undone, and only works if it has no batches, invoices or visits recorded against it.`}
                           />
                         </div>
                       </Td>

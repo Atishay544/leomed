@@ -154,6 +154,7 @@ export const ErpProductSchema = z.object({
   generic_name:    optionalText(200),
   brand_name:      optionalText(200),
   composition:     optionalText(500),
+  uses:            optionalText(500),
   category:        optionalText(100),
   dosage_form:     optionalText(50),
   strength:        optionalText(50),
@@ -414,6 +415,24 @@ export const OrderInvoiceReviewSchema = z.object({
 export const FollowupUpdateSchema = z.object({
   followup_id: uuid,
   status:      z.enum(FOLLOWUP_STATUSES),
+})
+
+/** One incentive bracket. mr_id blank = a company-wide default bracket;
+ *  set = overrides the default for that one MR only. max_amount blank =
+ *  no upper bound. The database refuses two overlapping brackets in the
+ *  same scope (its own exclusion constraint), so a bad range surfaces as a
+ *  save error here rather than silently corrupting the ladder. */
+export const IncentiveTierSchema = z.object({
+  mr_id:      optionalUuid,
+  min_amount: money,
+  max_amount: z.union([money, z.literal('')]).transform(v => (v === '' ? undefined : v)).optional(),
+  percentage: z.coerce.number().min(0).max(100),
+})
+
+/** A flat incentive rate for one MR, bypassing tiers entirely while set. */
+export const MrFlatIncentiveSchema = z.object({
+  mr_id:           uuid,
+  flat_percentage: z.coerce.number().min(0).max(100),
 })
 
 export const TargetSchema = z.object({
