@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       uses:          productData.uses?.trim() || null,
       mrp:           productData.mrp != null && productData.mrp !== '' ? Number(productData.mrp) : null,
       pack_size:     productData.pack_size?.trim() || null,
+      unit:          productData.unit?.trim() || null,
       category_id:   productData.category_id || null,
       is_active:     productData.is_active ?? true,
       images:        productData.images ?? [],
@@ -87,6 +88,7 @@ export async function PATCH(req: NextRequest) {
   if (fields.uses          !== undefined) payload.uses          = fields.uses?.trim() || null
   if (fields.mrp           !== undefined) payload.mrp           = fields.mrp != null && fields.mrp !== '' ? Number(fields.mrp) : null
   if (fields.pack_size     !== undefined) payload.pack_size     = fields.pack_size?.trim() || null
+  if (fields.unit          !== undefined) payload.unit          = fields.unit?.trim() || null
   if (fields.category_id   !== undefined) payload.category_id   = fields.category_id || null
   if (fields.is_active     !== undefined) payload.is_active     = fields.is_active
   if (fields.images        !== undefined) payload.images        = fields.images
