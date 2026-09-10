@@ -17,7 +17,7 @@ export default function RecommendedProducts({ products }: { products: Product[] 
   return (
     <section className="mt-16 border-t border-gray-100 pt-10">
       <h2 className="text-xl font-bold text-gray-900 mb-6">You May Also Like</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
         {products.map(p => {
           const image = p.images?.[0]
           return (
@@ -27,11 +27,11 @@ export default function RecommendedProducts({ products }: { products: Product[] 
                 <div className="aspect-square bg-gray-50 relative overflow-hidden">
                   {image ? (
                     <Image src={image} alt={p.name} fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
                       className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <Package size={28} strokeWidth={1.5} />
+                      <Package size={20} strokeWidth={1.5} />
                     </div>
                   )}
                 </div>

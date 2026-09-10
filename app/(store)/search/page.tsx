@@ -94,19 +94,19 @@ export default async function SearchPage({ searchParams }: Props) {
           <h2 className="text-lg font-semibold mb-4">
             Products <span className="text-gray-400 font-normal text-sm">({products.length})</span>
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
             {products.map((p: any) => (
               <div key={p.id} className="group relative">
                 <Link href={`/products/${p.slug}`} className="block">
                   <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden mb-2 relative">
                     {p.images?.[0]
                       ? <Image src={p.images[0]} alt={p.name} fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
                           className="object-cover group-hover:scale-105 transition"
                           placeholder="blur"
                           blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
                       : <div className="w-full h-full flex items-center justify-center text-gray-300">
-                          <Package size={28} strokeWidth={1.5} />
+                          <Package size={20} strokeWidth={1.5} />
                         </div>}
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{p.name}</p>

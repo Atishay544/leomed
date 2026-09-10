@@ -136,7 +136,7 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
       <p className="text-sm text-gray-500 mb-5">{count} products</p>
 
       {products.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
           {products.map((p: any) => {
             const badge = p.merchandising_tag ? MERCHANDISING_LABELS[p.merchandising_tag] : null
             return (
@@ -146,12 +146,12 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                     {p.images?.[0]
                       ? <Image
                           src={p.images[0]} alt={p.name} fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
                           className="object-cover group-hover:scale-105 transition"
                           placeholder="blur"
                           blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
                       : <div className="w-full h-full flex items-center justify-center text-gray-300">
-                          <Package size={28} strokeWidth={1.5} />
+                          <Package size={20} strokeWidth={1.5} />
                         </div>}
                     {badge && (
                       <span className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
