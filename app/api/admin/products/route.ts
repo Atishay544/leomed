@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
       slug:          productData.slug?.trim(),
       description:   productData.description?.trim() || null,
       composition:   productData.composition?.trim() || null,
+      generic_name:  productData.generic_name?.trim() || null,
+      uses:          productData.uses?.trim() || null,
       category_id:   productData.category_id || null,
       is_active:     productData.is_active ?? true,
       images:        productData.images ?? [],
@@ -48,6 +50,15 @@ export async function POST(req: NextRequest) {
       await admin.from('product_health_concerns').insert(
         validIds.map((category_id: string) => ({ product_id: product.id, category_id }))
       )
+    }
+
+    // Link to Product Master (ERP) — the ERP side is the one place this
+    // relationship is stored (erp_products.storefront_product_id), so a
+    // new storefront product just claims it there.
+    if (productData.linked_erp_product_id) {
+      await admin.from('erp_products')
+        .update({ storefront_product_id: product.id })
+        .eq('id', productData.linked_erp_product_id)
     }
   }
 
@@ -70,6 +81,8 @@ export async function PATCH(req: NextRequest) {
   if (fields.slug          !== undefined) payload.slug          = fields.slug.trim()
   if (fields.description   !== undefined) payload.description   = fields.description?.trim() || null
   if (fields.composition   !== undefined) payload.composition   = fields.composition?.trim() || null
+  if (fields.generic_name  !== undefined) payload.generic_name  = fields.generic_name?.trim() || null
+  if (fields.uses          !== undefined) payload.uses          = fields.uses?.trim() || null
   if (fields.category_id   !== undefined) payload.category_id   = fields.category_id || null
   if (fields.is_active     !== undefined) payload.is_active     = fields.is_active
   if (fields.images        !== undefined) payload.images        = fields.images
@@ -93,6 +106,18 @@ export async function PATCH(req: NextRequest) {
     await admin.from('product_health_concerns').insert(
       validHealthConcernIds.map((category_id: string) => ({ product_id: id, category_id }))
     )
+  }
+
+  // Link to Product Master (ERP) — clear whatever ERP product currently
+  // claims this storefront product, then let the new selection (if any)
+  // claim it. Handles setting, changing and clearing the link in one pass.
+  if (fields.linked_erp_product_id !== undefined) {
+    await admin.from('erp_products').update({ storefront_product_id: null }).eq('storefront_product_id', id)
+    if (fields.linked_erp_product_id) {
+      await admin.from('erp_products')
+        .update({ storefront_product_id: id })
+        .eq('id', fields.linked_erp_product_id)
+    }
   }
 
   revalidateTag('products'); revalidateTag('admin-products'); revalidateTag('admin-dashboard')

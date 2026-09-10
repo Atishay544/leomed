@@ -9,9 +9,12 @@ export default async function NewProductPage() {
   await requireAdmin()
   const supabase = createAdminClient()
 
-  const [{ data: categories }, { data: healthConcerns }] = await Promise.all([
+  const [{ data: categories }, { data: healthConcerns }, { data: erpProducts }] = await Promise.all([
     supabase.from('categories').select('id, name').eq('taxonomy', 'product').order('name'),
     supabase.from('categories').select('id, name').eq('taxonomy', 'health_concern').order('name'),
+    supabase.from('erp_products')
+      .select('id, product_name, product_code, generic_name, category, composition, uses')
+      .eq('active', true).order('product_name'),
   ])
 
   return (
@@ -21,7 +24,7 @@ export default async function NewProductPage() {
         <span className="text-gray-300">/</span>
         <h1 className="text-2xl font-bold text-gray-900">New Product</h1>
       </div>
-      <ProductForm categories={categories ?? []} healthConcerns={healthConcerns ?? []} />
+      <ProductForm categories={categories ?? []} healthConcerns={healthConcerns ?? []} erpProducts={erpProducts ?? []} />
     </div>
   )
 }
