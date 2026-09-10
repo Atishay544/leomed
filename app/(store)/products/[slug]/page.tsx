@@ -39,7 +39,7 @@ const getProductBySlug = unstable_cache(
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, slug, description, composition, images, video_url, category_id, is_active, categories!products_category_id_fkey(name, slug)')
+      .select('id, name, slug, description, composition, generic_name, uses, images, video_url, category_id, is_active, categories!products_category_id_fkey(name, slug)')
       .eq('slug', slug)
       .maybeSingle()
     if (error) console.error('[product page] product query:', error.message)
@@ -213,9 +213,14 @@ export default async function ProductDetailPage({ params }: Props) {
             </Link>
           )}
 
-          <h1 className="text-2xl lg:text-3xl font-bold leading-snug text-gray-900">
-            {product.name}
-          </h1>
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold leading-snug text-gray-900">
+              {product.name}
+            </h1>
+            {product.generic_name && (
+              <p className="text-sm text-gray-400 mt-1">{product.generic_name}</p>
+            )}
+          </div>
 
           {/* Composition */}
           {product.composition && (
@@ -223,6 +228,16 @@ export default async function ProductDetailPage({ params }: Props) {
               <h2 className="text-sm font-semibold text-gray-900 mb-2">Composition</h2>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
                 {product.composition}
+              </p>
+            </div>
+          )}
+
+          {/* Uses */}
+          {product.uses && (
+            <div className="border-t border-gray-100 pt-4">
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">Uses</h2>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                {product.uses}
               </p>
             </div>
           )}

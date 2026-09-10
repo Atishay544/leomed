@@ -94,7 +94,7 @@ export default function ImageUploader({ value, onChange, maxImages = 5 }: Props)
               onDragOver={e => multi && e.preventDefault()}
               className={`relative group w-24 h-24 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 ${multi ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              <Image src={url} alt={`Product image ${i + 1}`} fill className="object-cover" />
+              <Image src={url} alt={`Product image ${i + 1}`} fill className="object-contain" />
               {/* Reorder handle — multi-image only */}
               {multi && (
                 <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5">
