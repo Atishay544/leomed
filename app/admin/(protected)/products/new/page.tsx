@@ -13,7 +13,7 @@ export default async function NewProductPage() {
     supabase.from('categories').select('id, name').eq('taxonomy', 'product').order('name'),
     supabase.from('categories').select('id, name').eq('taxonomy', 'health_concern').order('name'),
     supabase.from('erp_products')
-      .select('id, product_name, product_code, generic_name, category, composition, uses, mrp, pack_size')
+      .select('id, product_name, product_code, generic_name, category, composition, uses, mrp, pack_size, unit')
       .eq('active', true).order('product_name'),
   ])
 

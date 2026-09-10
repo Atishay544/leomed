@@ -9,6 +9,8 @@ interface Product {
   images: string[] | null
   mrp?: number | null
   pack_size?: string | null
+  unit?: string | null
+  composition?: string | null
 }
 
 export default function RecommendedProducts({ products }: { products: Product[] }) {
@@ -17,7 +19,7 @@ export default function RecommendedProducts({ products }: { products: Product[] 
   return (
     <section className="mt-16 border-t border-gray-100 pt-10">
       <h2 className="text-xl font-bold text-gray-900 mb-6">You May Also Like</h2>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-5">
         {products.map(p => {
           const image = p.images?.[0]
           return (
@@ -39,11 +41,16 @@ export default function RecommendedProducts({ products }: { products: Product[] 
                   <p className="text-xs font-medium line-clamp-2 text-gray-800 leading-snug">
                     {p.name}
                   </p>
-                  {p.pack_size && (
-                    <p className="text-[10px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  {(p.pack_size || p.unit) && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {[p.pack_size, p.unit].filter(Boolean).join(' · ')}
+                    </p>
                   )}
                   {p.mrp != null && (
                     <p className="text-[11px] font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
+                  {p.composition && (
+                    <p className="text-[10px] text-gray-400 line-clamp-1 mt-0.5">{p.composition}</p>
                   )}
                 </div>
               </Link>

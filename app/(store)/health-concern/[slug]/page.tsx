@@ -71,7 +71,7 @@ const getHealthConcernProducts = unstable_cache(
     const offset = (page - 1) * PAGE_SIZE
     const { data: products } = await supabase
       .from('products')
-      .select('id,name,slug,images,merchandising_tag,mrp,pack_size')
+      .select('id,name,slug,images,merchandising_tag,mrp,pack_size,unit,composition')
       .in('id', productIds)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -136,7 +136,7 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
       <p className="text-sm text-gray-500 mb-5">{count} products</p>
 
       {products.length > 0 ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-5">
           {products.map((p: any) => {
             const badge = p.merchandising_tag ? MERCHANDISING_LABELS[p.merchandising_tag] : null
             return (
@@ -160,11 +160,16 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                     )}
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{p.name}</p>
-                  {p.pack_size && (
-                    <p className="text-[11px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  {(p.pack_size || p.unit) && (
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {[p.pack_size, p.unit].filter(Boolean).join(' · ')}
+                    </p>
                   )}
                   {p.mrp != null && (
                     <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
+                  {p.composition && (
+                    <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{p.composition}</p>
                   )}
                 </Link>
               </div>
