@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Package } from 'lucide-react'
 import { MERCHANDISING_LABELS } from '@/lib/utils'
 import ProductFilters from './ProductFilters'
 import MobileFilterDrawer from './MobileFilterDrawer'
@@ -43,7 +44,7 @@ const getProductsPage = unstable_cache(
 
     let query = supabase
       .from('products')
-      .select('id,name,slug,images,merchandising_tag,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
+      .select('id,name,slug,images,merchandising_tag,mrp,pack_size,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1)
@@ -144,7 +145,9 @@ function ProductCard({ product }: { product: any }) {
                 className="object-cover group-hover:scale-105 transition"
                 placeholder="blur"
                 blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
-            : <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">📦</div>
+            : <div className="w-full h-full flex items-center justify-center text-gray-300">
+                <Package size={28} strokeWidth={1.5} />
+              </div>
           }
           {badge && (
             <span className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
@@ -153,6 +156,12 @@ function ProductCard({ product }: { product: any }) {
           )}
         </div>
         <p className="text-sm font-medium line-clamp-2">{product.name}</p>
+        {product.pack_size && (
+          <p className="text-[11px] text-gray-400 mt-0.5">{product.pack_size}</p>
+        )}
+        {product.mrp != null && (
+          <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(product.mrp).toFixed(2)}</p>
+        )}
       </Link>
     </div>
   )

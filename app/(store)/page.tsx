@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Package } from 'lucide-react'
 import { AnimatedGrid, AnimatedItem } from './AnimatedSectionDynamic'
 import AnnouncementBar from '@/components/storefront/AnnouncementBar'
 import FeaturedCards from '@/components/storefront/FeaturedCards'
@@ -73,7 +74,7 @@ const getStaticHomeData = unstable_cache(
   { revalidate: 600, tags: ['banners', 'categories'] }
 )
 
-type CategoryProduct = { id: string; name: string; slug: string; images: string[] | null; composition: string | null; description: string | null; category_id: string | null }
+type CategoryProduct = { id: string; name: string; slug: string; images: string[] | null; composition: string | null; description: string | null; category_id: string | null; mrp: number | null; pack_size: string | null }
 
 const PRODUCTS_PER_CATEGORY = 4
 
@@ -88,7 +89,7 @@ const getCategoryProducts = unstable_cache(
     const supabase = createPublicClient()
     const { data } = await supabase
       .from('products')
-      .select('id,name,slug,images,composition,description,category_id')
+      .select('id,name,slug,images,composition,description,category_id,mrp,pack_size')
       .eq('is_active', true)
       .in('category_id', categoryIds)
       .order('created_at', { ascending: false })
@@ -240,13 +241,21 @@ function CategoryProductCard({ product }: { product: CategoryProduct }) {
               className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 text-5xl">📦</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-300">
+              <Package size={32} strokeWidth={1.5} />
+            </div>
           )}
         </div>
         <div className="p-3.5 space-y-1">
           <p className="text-sm font-semibold line-clamp-2 text-gray-900 group-hover:text-emerald-700 transition-colors leading-snug">
             {product.name}
           </p>
+          {product.pack_size && (
+            <p className="text-xs text-gray-400">{product.pack_size}</p>
+          )}
+          {product.mrp != null && (
+            <p className="text-sm font-semibold text-gray-800">MRP ₹{Number(product.mrp).toFixed(2)}</p>
+          )}
           {product.composition && (
             <p className="text-xs text-gray-500 line-clamp-2">{product.composition}</p>
           )}

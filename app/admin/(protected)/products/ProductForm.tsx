@@ -15,6 +15,8 @@ interface Product {
   composition: string | null
   generic_name?: string | null
   uses?: string | null
+  mrp?: number | null
+  pack_size?: string | null
   category_id: string | null
   is_active: boolean
   images: string[]
@@ -32,6 +34,8 @@ interface ErpProductOption {
   category: string | null
   composition: string | null
   uses: string | null
+  mrp: number | null
+  pack_size: string | null
 }
 
 interface Props {
@@ -66,6 +70,8 @@ export default function ProductForm({
   const [composition, setComposition] = useState(product?.composition ?? '')
   const [genericName, setGenericName] = useState(product?.generic_name ?? '')
   const [uses, setUses]             = useState(product?.uses ?? '')
+  const [mrp, setMrp]               = useState(product?.mrp != null ? String(product.mrp) : '')
+  const [packSize, setPackSize]     = useState(product?.pack_size ?? '')
   const [categoryId, setCategoryId] = useState(product?.category_id ?? '')
   const [isActive, setIsActive]     = useState(product?.is_active ?? true)
   const [images, setImages]         = useState<string[]>(product?.images ?? [])
@@ -89,6 +95,8 @@ export default function ProductForm({
     setComposition(erp.composition ?? '')
     setGenericName(erp.generic_name ?? '')
     setUses(erp.uses ?? '')
+    setMrp(erp.mrp != null ? String(erp.mrp) : '')
+    setPackSize(erp.pack_size ?? '')
 
     if (erp.category) {
       const match = categories.find(c => c.name.toLowerCase() === erp.category!.toLowerCase())
@@ -122,6 +130,8 @@ export default function ProductForm({
       composition:   composition.trim() || null,
       generic_name:  genericName.trim() || null,
       uses:          uses.trim() || null,
+      mrp:           mrp.trim() ? Number(mrp) : null,
+      pack_size:     packSize.trim() || null,
       category_id:   categoryId || null,
       is_active:     isActive,
       images,
@@ -171,8 +181,8 @@ export default function ProductForm({
                 ))}
               </select>
               <p className="text-[11px] text-gray-400">
-                Connecting fills in Generic Name, Uses and Composition below from the ERP product
-                master — still editable before you save.
+                Connecting fills in Generic Name, Uses, Composition, MRP and Pack Size below from
+                the ERP product master — still editable before you save.
               </p>
               {justPropagated && (
                 <p className="text-[11px] text-emerald-600 font-medium">Fields below were filled from the linked product.</p>
@@ -207,6 +217,21 @@ export default function ProductForm({
                 <label className={LABEL}>Generic Name</label>
                 <input type="text" value={genericName} onChange={e => setGenericName(e.target.value)}
                   placeholder="e.g. Paracetamol"
+                  className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>MRP (₹)</label>
+                <input type="number" min="0" step="0.01" value={mrp}
+                  onChange={e => setMrp(e.target.value)}
+                  onFocus={e => e.target.select()}
+                  placeholder="e.g. 45.00"
+                  className={INPUT} />
+                <p className="text-[11px] text-gray-400 mt-1">Shown on the public product page — informational, not a checkout price.</p>
+              </div>
+              <div>
+                <label className={LABEL}>Pack Size</label>
+                <input type="text" value={packSize} onChange={e => setPackSize(e.target.value)}
+                  placeholder="e.g. Strip of 10 tablets"
                   className={INPUT} />
               </div>
               <div className="sm:col-span-2">

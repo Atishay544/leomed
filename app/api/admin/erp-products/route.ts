@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await admin
     .from('erp_products')
-    .select('id, product_name, product_code, generic_name, category, composition, uses')
+    .select('id, product_name, product_code, generic_name, category, composition, uses, mrp, pack_size')
     .eq('active', true)
     .order('product_name', { ascending: true })
 

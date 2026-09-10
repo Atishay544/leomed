@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Image from 'next/image'
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Package, Play } from 'lucide-react'
 
 interface Props {
   images: string[]
@@ -21,8 +21,8 @@ export default function ProductGallery({ images, name, videoUrl }: Props) {
 
   if (slides.length === 0) {
     return (
-      <div className="aspect-3/4 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-300 text-8xl select-none">
-        📦
+      <div className="aspect-3/4 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-300 select-none">
+        <Package size={56} strokeWidth={1.25} />
       </div>
     )
   }
