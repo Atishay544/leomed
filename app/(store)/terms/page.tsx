@@ -92,7 +92,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Returns and Refunds</h2>
-          <p>Returns and refunds are governed by our <Link href="/refund-policy" className="text-black underline underline-offset-2">Refund &amp; Returns Policy</Link>, which forms part of these terms.</p>
+          <p>This website is an informational product catalogue — orders are not placed or paid for here. Purchases, deliveries, returns and refunds are arranged directly between distributors, retailers and customers through their own commercial channels.</p>
         </section>
 
         <section>
