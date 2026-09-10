@@ -11,8 +11,6 @@ const staticLinks = {
   Support: [
     { label: 'Contact Us', href: '/contact' },
     { label: 'FAQs', href: '/faq' },
-    { label: 'Refund & Returns', href: '/refund-policy' },
-    { label: 'Shipping Info', href: '/shipping-policy' },
   ],
   Legal: [
     { label: 'Privacy Policy', href: '/privacy-policy' },
@@ -34,7 +32,7 @@ export default function Footer({ categories = [] }: { categories?: Category[] })
           <Link href="/" className="inline-block mb-3">
             <span className="text-xl font-extrabold tracking-tight text-white">Leomed Pharma</span>
           </Link>
-          <p className="text-sm leading-relaxed">Your trusted online pharmacy for OTC medicines & wellness essentials.</p>
+          <p className="text-sm leading-relaxed">Manufacturing OTC medicines & wellness essentials — partnering with distributors, chemists and doctors across India.</p>
           <div className="flex gap-3 mt-4">
             {socials.map(s => (
               <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"

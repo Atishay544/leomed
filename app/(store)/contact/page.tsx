@@ -79,8 +79,6 @@ export default function ContactPage() {
           <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-600 space-y-1">
             <p className="font-medium text-gray-900 mb-2">Quick Links</p>
             <Link href="/faq" className="block hover:text-black transition">→ FAQs</Link>
-            <Link href="/refund-policy" className="block hover:text-black transition">→ Refund Policy</Link>
-            <Link href="/shipping-policy" className="block hover:text-black transition">→ Shipping Policy</Link>
           </div>
         </div>
 
