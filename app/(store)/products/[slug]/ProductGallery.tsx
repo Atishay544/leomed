@@ -54,7 +54,7 @@ export default function ProductGallery({ images, name, videoUrl }: Props) {
                   alt={`${name} ${i + 1}`}
                   width={72}
                   height={72}
-                  className="object-cover w-full h-full"
+                  className="object-contain w-full h-full"
                 />
               )}
             </button>
@@ -78,7 +78,7 @@ export default function ProductGallery({ images, name, videoUrl }: Props) {
               src={current.src}
               alt={`${name} — ${active + 1}`}
               fill
-              className="object-cover"
+              className="object-contain"
               priority={active === 0}
             />
           )}
