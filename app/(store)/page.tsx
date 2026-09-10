@@ -159,7 +159,7 @@ export default async function HomePage() {
         return (
           <section key={cat.id} className="max-w-350 mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <SectionHeader title={cat.name} href={`/category/${cat.slug}`} linkLabel="View all →" />
-            <AnimatedGrid className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4 mt-6">
+            <AnimatedGrid className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-5 mt-6">
               {products.map(p => (
                 <AnimatedItem key={p.id}>
                   <CategoryProductCard product={p} />

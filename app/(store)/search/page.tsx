@@ -94,7 +94,7 @@ export default async function SearchPage({ searchParams }: Props) {
           <h2 className="text-lg font-semibold mb-4">
             Products <span className="text-gray-400 font-normal text-sm">({products.length})</span>
           </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-5">
             {products.map((p: any) => (
               <div key={p.id} className="group relative">
                 <Link href={`/products/${p.slug}`} className="block">

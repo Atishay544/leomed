@@ -8,11 +8,11 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in
 
 export const metadata: Metadata = {
   title: 'Frequently Asked Questions',
-  description: 'Find answers to common questions about orders, shipping, returns, payments, and your account at Leomed Pharma.',
+  description: 'Find answers to common questions about our products, distributor network, and how to get in touch with Leomed Pharma.',
   alternates: { canonical: `${BASE_URL}/faq` },
   openGraph: {
     title: 'FAQ — Leomed Pharma',
-    description: 'Find answers to common questions about orders, shipping, returns, payments, and your account.',
+    description: 'Find answers to common questions about our products, distributor network, and how to get in touch.',
     url: `${BASE_URL}/faq`,
     type: 'website',
     siteName: 'Leomed Pharma',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary',
     title: 'FAQ — Leomed Pharma',
-    description: 'Find answers to common questions about orders, shipping, returns, payments, and your account.',
+    description: 'Find answers to common questions about our products, distributor network, and how to get in touch.',
   },
 }
 

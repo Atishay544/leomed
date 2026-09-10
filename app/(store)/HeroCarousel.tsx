@@ -47,23 +47,10 @@ export default function HeroCarousel({ banners }: { banners: Banner[] }) {
     return () => clearInterval(t)
   }, [count, next])
 
-  // ── Fallback (no banners) ─────────────────────────────────────────────────
-  if (count === 0) {
-    return (
-      <section className="relative w-full overflow-hidden text-white max-h-[88vh] min-h-60" style={{ aspectRatio: '2048 / 1143' }}>
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, #1f6b46 0%, #145c3a 55%, #0a1f14 100%)' }} />
-        <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-6 py-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] mb-4 opacity-60">Leomed Pharma</p>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight">OTC Medicines &amp; Wellness</h1>
-          <p className="text-base md:text-lg mb-8 opacity-70 max-w-lg mx-auto">Genuine products, distributed pan-India</p>
-          <Link href="/products"
-            className="inline-flex items-center gap-2 border-2 border-white/80 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-white hover:text-emerald-800 transition-all duration-300 active:scale-95">
-            Browse Catalogue
-          </Link>
-        </div>
-      </section>
-    )
-  }
+  // ── No banners set — nothing to show. No hardcoded marketing copy here;
+  // the hero is entirely admin-managed, so it simply stays empty until a
+  // banner is added rather than silently substituting its own content. ──
+  if (count === 0) return null
 
   const slide = banners[current]
   const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
