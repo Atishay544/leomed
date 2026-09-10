@@ -13,6 +13,8 @@ interface Product {
   slug: string
   description: string | null
   composition: string | null
+  generic_name?: string | null
+  uses?: string | null
   category_id: string | null
   is_active: boolean
   images: string[]
@@ -20,11 +22,28 @@ interface Product {
   merchandising_tag?: string | null
 }
 
+/** One ERP Product Master row, exactly the fields propagated into the
+ *  storefront listing the moment it's linked. */
+interface ErpProductOption {
+  id: string
+  product_name: string
+  product_code: string
+  generic_name: string | null
+  category: string | null
+  composition: string | null
+  uses: string | null
+}
+
 interface Props {
   product?: Product
   categories: Category[]
   healthConcerns?: Category[]
   initialHealthConcernIds?: string[]
+  erpProducts?: ErpProductOption[]
+  /** The ERP product currently linked to this storefront product, if any —
+   *  looked up from erp_products.storefront_product_id server-side, since
+   *  that's the one place this relationship is stored. */
+  linkedErpProductId?: string | null
 }
 
 function slugify(str: string) {
@@ -34,7 +53,10 @@ function slugify(str: string) {
 const INPUT = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900'
 const LABEL = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'
 
-export default function ProductForm({ product, categories, healthConcerns = [], initialHealthConcernIds = [] }: Props) {
+export default function ProductForm({
+  product, categories, healthConcerns = [], initialHealthConcernIds = [],
+  erpProducts = [], linkedErpProductId = null,
+}: Props) {
   const router = useRouter()
   const isEdit = !!product
 
@@ -42,12 +64,42 @@ export default function ProductForm({ product, categories, healthConcerns = [], 
   const [slug, setSlug]             = useState(product?.slug ?? '')
   const [description, setDesc]      = useState(product?.description ?? '')
   const [composition, setComposition] = useState(product?.composition ?? '')
+  const [genericName, setGenericName] = useState(product?.generic_name ?? '')
+  const [uses, setUses]             = useState(product?.uses ?? '')
   const [categoryId, setCategoryId] = useState(product?.category_id ?? '')
   const [isActive, setIsActive]     = useState(product?.is_active ?? true)
   const [images, setImages]         = useState<string[]>(product?.images ?? [])
   const [videoUrl, setVideoUrl]     = useState<string | null>(product?.video_url ?? null)
   const [merchandisingTag, setMerchandisingTag] = useState(product?.merchandising_tag ?? '')
   const [healthConcernIds, setHealthConcernIds] = useState<string[]>(initialHealthConcernIds)
+  const [linkedErpId, setLinkedErpId] = useState(linkedErpProductId ?? '')
+  const [justPropagated, setJustPropagated] = useState(false)
+  const [erpCategoryHint, setErpCategoryHint] = useState<string | null>(null)
+
+  /** Fills composition/generic name/uses from the linked ERP product, and
+   *  tries an exact (case-insensitive) name match for category — ERP's
+   *  category is free text, the storefront's is a real taxonomy, so this is
+   *  a convenience, not a guarantee; the ERP category is shown as a hint
+   *  either way so the admin can pick the right one when it doesn't match. */
+  function linkErpProduct(erpId: string) {
+    setLinkedErpId(erpId)
+    const erp = erpProducts.find(p => p.id === erpId)
+    if (!erp) { setErpCategoryHint(null); return }
+
+    setComposition(erp.composition ?? '')
+    setGenericName(erp.generic_name ?? '')
+    setUses(erp.uses ?? '')
+
+    if (erp.category) {
+      const match = categories.find(c => c.name.toLowerCase() === erp.category!.toLowerCase())
+      if (match) setCategoryId(match.id)
+      setErpCategoryHint(erp.category)
+    } else {
+      setErpCategoryHint(null)
+    }
+
+    setJustPropagated(true)
+  }
 
   function toggleHealthConcern(id: string) {
     setHealthConcernIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -68,12 +120,15 @@ export default function ProductForm({ product, categories, healthConcerns = [], 
       slug:          slug.trim(),
       description:   description.trim() || null,
       composition:   composition.trim() || null,
+      generic_name:  genericName.trim() || null,
+      uses:          uses.trim() || null,
       category_id:   categoryId || null,
       is_active:     isActive,
       images,
       video_url:     videoUrl || null,
       merchandising_tag: merchandisingTag || null,
       health_concern_ids: healthConcernIds,
+      linked_erp_product_id: linkedErpId || null,
     }
 
     const res = await fetch('/api/admin/products', {
@@ -105,6 +160,26 @@ export default function ProductForm({ product, categories, healthConcerns = [], 
         {/* ── LEFT COLUMN ── */}
         <div className="space-y-5">
 
+          {/* Link to Product Master (ERP) */}
+          {erpProducts.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-2">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Link to Product Master</h2>
+              <select value={linkedErpId} onChange={e => linkErpProduct(e.target.value)} className={INPUT}>
+                <option value="">— Not linked —</option>
+                {erpProducts.map(p => (
+                  <option key={p.id} value={p.id}>{p.product_name} ({p.product_code})</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-gray-400">
+                Connecting fills in Generic Name, Uses and Composition below from the ERP product
+                master — still editable before you save.
+              </p>
+              {justPropagated && (
+                <p className="text-[11px] text-emerald-600 font-medium">Fields below were filled from the linked product.</p>
+              )}
+            </div>
+          )}
+
           {/* Basic Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Basic Info</h2>
@@ -129,11 +204,23 @@ export default function ProductForm({ product, categories, healthConcerns = [], 
                 )}
               </div>
               <div className="sm:col-span-2">
+                <label className={LABEL}>Generic Name</label>
+                <input type="text" value={genericName} onChange={e => setGenericName(e.target.value)}
+                  placeholder="e.g. Paracetamol"
+                  className={INPUT} />
+              </div>
+              <div className="sm:col-span-2">
                 <label className={LABEL}>Composition</label>
                 <textarea value={composition} onChange={e => setComposition(e.target.value)} rows={3}
                   placeholder="Active ingredients, e.g. Paracetamol IP 500mg"
                   className={INPUT + ' resize-none'} />
                 <p className="text-[11px] text-gray-400 mt-1">Shown on the public product page.</p>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={LABEL}>Uses</label>
+                <textarea value={uses} onChange={e => setUses(e.target.value)} rows={3}
+                  placeholder="e.g. Fever, body pain, inflammation"
+                  className={INPUT + ' resize-none'} />
               </div>
               <div className="sm:col-span-2">
                 <label className={LABEL}>Description</label>
@@ -155,6 +242,12 @@ export default function ProductForm({ product, categories, healthConcerns = [], 
                   <option value="">None</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                {erpCategoryHint && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    ERP category: <span className="font-medium text-gray-500">{erpCategoryHint}</span>
+                    {' '}— pick the closest match above if it wasn&apos;t selected automatically.
+                  </p>
+                )}
               </div>
               <div>
                 <label className={LABEL}>Merchandising Badge</label>
