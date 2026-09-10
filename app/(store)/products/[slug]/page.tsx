@@ -39,7 +39,7 @@ const getProductBySlug = unstable_cache(
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, slug, description, composition, generic_name, uses, images, video_url, category_id, is_active, categories!products_category_id_fkey(name, slug)')
+      .select('id, name, slug, description, composition, generic_name, uses, mrp, pack_size, images, video_url, category_id, is_active, categories!products_category_id_fkey(name, slug)')
       .eq('slug', slug)
       .maybeSingle()
     if (error) console.error('[product page] product query:', error.message)
@@ -60,7 +60,7 @@ const getRecommendedProducts = unstable_cache(
     const supabase = createPublicClient()
     const { data: fromCategory } = await supabase
       .from('products')
-      .select('id, name, slug, images')
+      .select('id, name, slug, images, mrp, pack_size')
       .eq('is_active', true)
       .eq('category_id', categoryId ?? '')
       .neq('id', productId)
@@ -71,7 +71,7 @@ const getRecommendedProducts = unstable_cache(
 
     const { data: fallback } = await supabase
       .from('products')
-      .select('id, name, slug, images')
+      .select('id, name, slug, images, mrp, pack_size')
       .eq('is_active', true)
       .neq('id', productId)
       .order('created_at', { ascending: false })
@@ -219,6 +219,16 @@ export default async function ProductDetailPage({ params }: Props) {
             </h1>
             {product.generic_name && (
               <p className="text-sm text-gray-400 mt-1">{product.generic_name}</p>
+            )}
+            {(product.pack_size || product.mrp != null) && (
+              <div className="flex items-center gap-3 mt-3">
+                {product.mrp != null && (
+                  <span className="text-lg font-bold text-gray-900">MRP ₹{Number(product.mrp).toFixed(2)}</span>
+                )}
+                {product.pack_size && (
+                  <span className="text-sm text-gray-500">{product.pack_size}</span>
+                )}
+              </div>
             )}
           </div>
 

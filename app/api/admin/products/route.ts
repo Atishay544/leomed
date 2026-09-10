@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
       composition:   productData.composition?.trim() || null,
       generic_name:  productData.generic_name?.trim() || null,
       uses:          productData.uses?.trim() || null,
+      mrp:           productData.mrp != null && productData.mrp !== '' ? Number(productData.mrp) : null,
+      pack_size:     productData.pack_size?.trim() || null,
       category_id:   productData.category_id || null,
       is_active:     productData.is_active ?? true,
       images:        productData.images ?? [],
@@ -83,6 +85,8 @@ export async function PATCH(req: NextRequest) {
   if (fields.composition   !== undefined) payload.composition   = fields.composition?.trim() || null
   if (fields.generic_name  !== undefined) payload.generic_name  = fields.generic_name?.trim() || null
   if (fields.uses          !== undefined) payload.uses          = fields.uses?.trim() || null
+  if (fields.mrp           !== undefined) payload.mrp           = fields.mrp != null && fields.mrp !== '' ? Number(fields.mrp) : null
+  if (fields.pack_size     !== undefined) payload.pack_size     = fields.pack_size?.trim() || null
   if (fields.category_id   !== undefined) payload.category_id   = fields.category_id || null
   if (fields.is_active     !== undefined) payload.is_active     = fields.is_active
   if (fields.images        !== undefined) payload.images        = fields.images

@@ -4,6 +4,7 @@ import { createPublicClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Package } from 'lucide-react'
 import { MERCHANDISING_LABELS } from '@/lib/utils'
 
 export const revalidate = 3600
@@ -70,7 +71,7 @@ const getHealthConcernProducts = unstable_cache(
     const offset = (page - 1) * PAGE_SIZE
     const { data: products } = await supabase
       .from('products')
-      .select('id,name,slug,images,merchandising_tag')
+      .select('id,name,slug,images,merchandising_tag,mrp,pack_size')
       .in('id', productIds)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -149,7 +150,9 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                           className="object-cover group-hover:scale-105 transition"
                           placeholder="blur"
                           blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
-                      : <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300">📦</div>}
+                      : <div className="w-full h-full flex items-center justify-center text-gray-300">
+                          <Package size={28} strokeWidth={1.5} />
+                        </div>}
                     {badge && (
                       <span className={`absolute bottom-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
                         {badge.label}
@@ -157,6 +160,12 @@ export default async function HealthConcernPage({ params, searchParams }: Props)
                     )}
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{p.name}</p>
+                  {p.pack_size && (
+                    <p className="text-[11px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  )}
+                  {p.mrp != null && (
+                    <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
                 </Link>
               </div>
             )

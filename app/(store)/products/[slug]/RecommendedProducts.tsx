@@ -1,11 +1,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { Package } from 'lucide-react'
 
 interface Product {
   id: string
   name: string
   slug: string
   images: string[] | null
+  mrp?: number | null
+  pack_size?: string | null
 }
 
 export default function RecommendedProducts({ products }: { products: Product[] }) {
@@ -27,13 +30,21 @@ export default function RecommendedProducts({ products }: { products: Product[] 
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                       className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">📦</div>
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <Package size={28} strokeWidth={1.5} />
+                    </div>
                   )}
                 </div>
                 <div className="p-3">
                   <p className="text-xs font-medium line-clamp-2 text-gray-800 leading-snug">
                     {p.name}
                   </p>
+                  {p.pack_size && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  )}
+                  {p.mrp != null && (
+                    <p className="text-[11px] font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
                 </div>
               </Link>
             </div>

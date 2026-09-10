@@ -2,7 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Search } from 'lucide-react'
+import { Package, Search } from 'lucide-react'
 import SearchInput from './SearchInput'
 
 interface Props { searchParams: Promise<{ q?: string }> }
@@ -22,7 +22,7 @@ const getSearchResults = unstable_cache(
     const [{ data: prods }, { data: cats }] = await Promise.all([
       supabase
         .from('products')
-        .select('id,name,slug,images')
+        .select('id,name,slug,images,mrp,pack_size')
         .eq('is_active', true)
         .ilike('name', `%${term}%`)
         .limit(24),
@@ -105,9 +105,17 @@ export default async function SearchPage({ searchParams }: Props) {
                           className="object-cover group-hover:scale-105 transition"
                           placeholder="blur"
                           blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
-                      : <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300">📦</div>}
+                      : <div className="w-full h-full flex items-center justify-center text-gray-300">
+                          <Package size={28} strokeWidth={1.5} />
+                        </div>}
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{p.name}</p>
+                  {p.pack_size && (
+                    <p className="text-[11px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  )}
+                  {p.mrp != null && (
+                    <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
                 </Link>
               </div>
             ))}
