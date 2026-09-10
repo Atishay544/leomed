@@ -22,7 +22,7 @@ const getSearchResults = unstable_cache(
     const [{ data: prods }, { data: cats }] = await Promise.all([
       supabase
         .from('products')
-        .select('id,name,slug,images,mrp,pack_size')
+        .select('id,name,slug,images,mrp,pack_size,unit,composition')
         .eq('is_active', true)
         .ilike('name', `%${term}%`)
         .limit(24),
@@ -110,11 +110,16 @@ export default async function SearchPage({ searchParams }: Props) {
                         </div>}
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{p.name}</p>
-                  {p.pack_size && (
-                    <p className="text-[11px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  {(p.pack_size || p.unit) && (
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {[p.pack_size, p.unit].filter(Boolean).join(' · ')}
+                    </p>
                   )}
                   {p.mrp != null && (
                     <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
+                  {p.composition && (
+                    <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{p.composition}</p>
                   )}
                 </Link>
               </div>

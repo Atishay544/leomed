@@ -9,6 +9,8 @@ interface Product {
   images: string[] | null
   mrp?: number | null
   pack_size?: string | null
+  unit?: string | null
+  composition?: string | null
 }
 
 export default function RecommendedProducts({ products }: { products: Product[] }) {
@@ -39,11 +41,16 @@ export default function RecommendedProducts({ products }: { products: Product[] 
                   <p className="text-xs font-medium line-clamp-2 text-gray-800 leading-snug">
                     {p.name}
                   </p>
-                  {p.pack_size && (
-                    <p className="text-[10px] text-gray-400 mt-0.5">{p.pack_size}</p>
+                  {(p.pack_size || p.unit) && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {[p.pack_size, p.unit].filter(Boolean).join(' · ')}
+                    </p>
                   )}
                   {p.mrp != null && (
                     <p className="text-[11px] font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                  )}
+                  {p.composition && (
+                    <p className="text-[10px] text-gray-400 line-clamp-1 mt-0.5">{p.composition}</p>
                   )}
                 </div>
               </Link>
