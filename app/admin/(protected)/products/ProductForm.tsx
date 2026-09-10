@@ -178,7 +178,15 @@ export default function ProductForm({
           {/* Link to Product Master (ERP) */}
           {erpProducts.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-2">
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Link to Product Master</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Link to Product Master</h2>
+                {linkedErpId && (
+                  <button type="button" onClick={() => linkErpProduct(linkedErpId)}
+                    className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 shrink-0">
+                    Sync from Product Master
+                  </button>
+                )}
+              </div>
               <select value={linkedErpId} onChange={e => linkErpProduct(e.target.value)} className={INPUT}>
                 <option value="">— Not linked —</option>
                 {erpProducts.map(p => (
@@ -187,7 +195,9 @@ export default function ProductForm({
               </select>
               <p className="text-[11px] text-gray-400">
                 Connecting fills in Generic Name, Uses, Composition, MRP, Pack Size and Unit below
-                from the ERP product master — still editable before you save.
+                from the ERP product master — still editable before you save. Use &quot;Sync from
+                Product Master&quot; above to re-pull the latest values for a product that&apos;s
+                already linked.
               </p>
               {justPropagated && (
                 <p className="text-[11px] text-emerald-600 font-medium">Fields below were filled from the linked product.</p>
