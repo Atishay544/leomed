@@ -1,6 +1,6 @@
 import 'server-only'
 import PDFDocument from 'pdfkit'
-import { formatDate, money, qty } from './format'
+import { amountInWords, formatDate, pdfMoney, qty } from './format'
 import { gstSplit } from './invoice-math'
 
 /**
@@ -14,6 +14,18 @@ export interface InvoicePdfCompany {
   gstNumber: string | null
   drugLicense: string | null
   address: string | null
+  phone: string | null
+  email: string | null
+  logoUrl: string | null
+}
+
+export interface InvoicePdfBankAccount {
+  bankName: string
+  accountHolderName: string
+  accountNumber: string
+  ifscCode: string
+  branch: string | null
+  upiId: string | null
 }
 
 export interface InvoicePdfParty {
@@ -32,8 +44,10 @@ export interface InvoicePdfItem {
   productCode: string | null
   strength: string | null
   unit: string
+  hsnCode: string | null
   batchNumber: string | null
   expiryDate: string | null
+  mrp: number | null
   quantity: number
   freeQuantity: number
   rate: number
@@ -57,9 +71,24 @@ export interface InvoicePdfData {
   expiredSaleReason: string | null
   items: InvoicePdfItem[]
   party: InvoicePdfParty
+  bankAccount: InvoicePdfBankAccount | null
 }
 
-export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePdfCompany): Promise<Buffer> {
+export async function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePdfCompany): Promise<Buffer> {
+  // Fetched up front, outside the pdfkit stream — a slow or failed fetch
+  // must never leave a half-written PDF, and doc.image() needs bytes, not
+  // a URL. If this fails for any reason the invoice still generates, just
+  // without a logo.
+  let logoBuffer: Buffer | null = null
+  if (company.logoUrl) {
+    try {
+      const res = await fetch(company.logoUrl)
+      if (res.ok) logoBuffer = Buffer.from(await res.arrayBuffer())
+    } catch {
+      logoBuffer = null
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 40 })
     const chunks: Buffer[] = []
@@ -68,20 +97,44 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     doc.on('error', reject)
 
     // ─── Header ───────────────────────────────────────────────────────────
-    doc.fontSize(17).font('Helvetica-Bold').fillColor('#0f5132').text(company.name.toUpperCase())
+    const headerTop = doc.y
+    let logoDrawn = false
+    if (logoBuffer) {
+      try {
+        doc.image(logoBuffer, 40, headerTop, { fit: [64, 64] })
+        logoDrawn = true
+      } catch {
+        logoDrawn = false // corrupt/unsupported image bytes — skip, never fail the invoice over it
+      }
+    }
+    const textX = logoDrawn ? 116 : 40
+
+    doc.fontSize(17).font('Helvetica-Bold').fillColor('#0f5132').text(company.name.toUpperCase(), textX, headerTop)
     doc.fontSize(8.5).font('Helvetica').fillColor('#555')
-    if (company.address) doc.text(company.address)
+    if (company.address) doc.text(company.address, textX, doc.y)
     const regLine = [
       company.gstNumber && `GSTIN: ${company.gstNumber}`,
       company.drugLicense && `Drug Licence: ${company.drugLicense}`,
     ].filter(Boolean).join('   ·   ')
-    if (regLine) doc.text(regLine)
+    if (regLine) doc.text(regLine, textX, doc.y)
+    const contactLine = [
+      company.phone && `Phone: ${company.phone}`,
+      company.email && `Email: ${company.email}`,
+    ].filter(Boolean).join('   ·   ')
+    if (contactLine) doc.text(contactLine, textX, doc.y)
+
+    // Clear the logo box too, whichever block (logo or text) runs taller.
+    if (logoDrawn) doc.y = Math.max(doc.y, headerTop + 68)
 
     doc.moveDown(0.5)
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#111').text('TAX INVOICE', { align: 'right' })
     doc.fontSize(9).font('Helvetica').fillColor('#333')
     doc.text(`Invoice No: ${data.invoiceNumber}`, { align: 'right' })
     doc.text(`Date: ${formatDate(data.invoiceDate)}`, { align: 'right' })
+    const placeOfSupply = data.party.state ?? data.party.city
+    if (placeOfSupply) {
+      doc.text(`Place of Supply: ${placeOfSupply} (${data.isInterstate ? 'Inter-State' : 'Intra-State'})`, { align: 'right' })
+    }
     doc.moveDown(0.5)
     doc.strokeColor('#ddd').moveTo(40, doc.y).lineTo(555, doc.y).stroke()
     doc.moveDown(0.5)
@@ -107,44 +160,52 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     }
 
     // ─── Line items ───────────────────────────────────────────────────────
-    const colX = { product: 40, batch: 210, qty: 300, rate: 345, disc: 395, gst: 435, total: 475 }
+    // Columns sum to exactly 515pt (40 -> 555), matching the page's usable
+    // width — HSN and MRP are standard on a pharma GST tax invoice.
+    const colX = { product: 40, hsn: 158, batch: 192, qty: 260, mrp: 298, rate: 346, disc: 394, gst: 426, total: 458 }
+    const colW = { product: 118, hsn: 34, batch: 68, qty: 38, mrp: 48, rate: 48, disc: 32, gst: 32, total: 97 }
     const tableTop = doc.y
 
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#fff')
+    doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#fff')
     doc.rect(40, tableTop, 515, 16).fill('#0f5132')
     doc.fillColor('#fff')
-    doc.text('Product', colX.product + 3, tableTop + 4, { width: 165 })
-    doc.text('Batch / Exp', colX.batch + 3, tableTop + 4, { width: 85 })
-    doc.text('Qty', colX.qty + 3, tableTop + 4, { width: 40, align: 'right' })
-    doc.text('Rate', colX.rate + 3, tableTop + 4, { width: 45, align: 'right' })
-    doc.text('Disc%', colX.disc + 3, tableTop + 4, { width: 35, align: 'right' })
-    doc.text('GST%', colX.gst + 3, tableTop + 4, { width: 35, align: 'right' })
-    doc.text('Amount', colX.total + 3, tableTop + 4, { width: 78, align: 'right' })
+    doc.text('Product', colX.product + 3, tableTop + 4, { width: colW.product - 3 })
+    doc.text('HSN', colX.hsn + 3, tableTop + 4, { width: colW.hsn - 3 })
+    doc.text('Batch/Exp', colX.batch + 3, tableTop + 4, { width: colW.batch - 3 })
+    doc.text('Qty', colX.qty + 3, tableTop + 4, { width: colW.qty - 3, align: 'right' })
+    doc.text('MRP', colX.mrp + 3, tableTop + 4, { width: colW.mrp - 3, align: 'right' })
+    doc.text('Rate', colX.rate + 3, tableTop + 4, { width: colW.rate - 3, align: 'right' })
+    doc.text('Disc%', colX.disc + 3, tableTop + 4, { width: colW.disc - 3, align: 'right' })
+    doc.text('GST%', colX.gst + 3, tableTop + 4, { width: colW.gst - 3, align: 'right' })
+    doc.text('Amount', colX.total + 3, tableTop + 4, { width: colW.total - 3, align: 'right' })
 
     let y = tableTop + 16
-    doc.font('Helvetica').fontSize(8)
+    doc.font('Helvetica').fontSize(7.5)
     for (const item of data.items) {
       const rowHeight = 24
       if (y + rowHeight > 780) { doc.addPage(); y = 40 }
 
       doc.fillColor('#111')
       const productLabel = `${item.productName}${item.strength ? ' ' + item.strength : ''}`
-      doc.text(productLabel, colX.product + 3, y, { width: 165 })
-      doc.fillColor('#888').fontSize(7).text(item.productCode ?? '', colX.product + 3, y + 10, { width: 165 })
+      doc.text(productLabel, colX.product + 3, y, { width: colW.product - 3 })
+      doc.fillColor('#888').fontSize(6.5).text(item.productCode ?? '', colX.product + 3, y + 10, { width: colW.product - 3 })
 
-      doc.fillColor('#333').fontSize(8)
-      doc.text(item.batchNumber ?? '—', colX.batch + 3, y, { width: 85 })
-      if (item.expiryDate) doc.fontSize(7).fillColor('#888').text(`Exp ${formatDate(item.expiryDate)}`, colX.batch + 3, y + 10, { width: 85 })
+      doc.fontSize(7.5).fillColor('#333')
+      doc.text(item.hsnCode ?? '—', colX.hsn + 3, y, { width: colW.hsn - 3 })
 
-      doc.fontSize(8).fillColor('#111')
-      doc.text(`${qty(item.quantity)} ${item.unit}`, colX.qty + 3, y, { width: 40, align: 'right' })
-      if (item.freeQuantity > 0) doc.fontSize(7).fillColor('#0f5132').text(`+${qty(item.freeQuantity)} free`, colX.qty + 3, y + 10, { width: 40, align: 'right' })
+      doc.text(item.batchNumber ?? '—', colX.batch + 3, y, { width: colW.batch - 3 })
+      if (item.expiryDate) doc.fontSize(6.5).fillColor('#888').text(`Exp ${formatDate(item.expiryDate)}`, colX.batch + 3, y + 10, { width: colW.batch - 3 })
 
-      doc.fontSize(8).fillColor('#111')
-      doc.text(money(item.rate), colX.rate + 3, y, { width: 45, align: 'right' })
-      doc.text(item.discountPercent > 0 ? `${item.discountPercent}%` : '—', colX.disc + 3, y, { width: 35, align: 'right' })
-      doc.text(`${item.gstRate}%`, colX.gst + 3, y, { width: 35, align: 'right' })
-      doc.font('Helvetica-Bold').text(money(item.lineTotal), colX.total + 3, y, { width: 78, align: 'right' })
+      doc.fontSize(7.5).fillColor('#111')
+      doc.text(`${qty(item.quantity)} ${item.unit}`, colX.qty + 3, y, { width: colW.qty - 3, align: 'right' })
+      if (item.freeQuantity > 0) doc.fontSize(6.5).fillColor('#0f5132').text(`+${qty(item.freeQuantity)} free`, colX.qty + 3, y + 10, { width: colW.qty - 3, align: 'right' })
+
+      doc.fontSize(7.5).fillColor('#111')
+      doc.text(item.mrp != null && item.mrp > 0 ? pdfMoney(item.mrp) : '—', colX.mrp + 3, y, { width: colW.mrp - 3, align: 'right' })
+      doc.text(pdfMoney(item.rate), colX.rate + 3, y, { width: colW.rate - 3, align: 'right' })
+      doc.text(item.discountPercent > 0 ? `${item.discountPercent}%` : '—', colX.disc + 3, y, { width: colW.disc - 3, align: 'right' })
+      doc.text(`${item.gstRate}%`, colX.gst + 3, y, { width: colW.gst - 3, align: 'right' })
+      doc.font('Helvetica-Bold').text(pdfMoney(item.lineTotal), colX.total + 3, y, { width: colW.total - 3, align: 'right' })
       doc.font('Helvetica')
 
       y += rowHeight
@@ -166,22 +227,28 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
       doc.moveDown(0.35)
     }
 
-    totalRow('Subtotal', money(data.subtotal))
-    if (data.discount > 0) totalRow('Discount', `− ${money(data.discount)}`)
+    totalRow('Subtotal', pdfMoney(data.subtotal))
+    if (data.discount > 0) totalRow('Discount', `- ${pdfMoney(data.discount)}`)
     if (data.isInterstate) {
-      totalRow('IGST', money(tax.igst))
+      totalRow('IGST', pdfMoney(tax.igst))
     } else {
-      totalRow('CGST', money(tax.cgst))
-      totalRow('SGST', money(tax.sgst))
+      totalRow('CGST', pdfMoney(tax.cgst))
+      totalRow('SGST', pdfMoney(tax.sgst))
     }
     doc.strokeColor('#ddd').moveTo(totalsX, doc.y).lineTo(555, doc.y).stroke()
     doc.moveDown(0.3)
-    totalRow('Grand Total', money(data.grandTotal), true)
-    totalRow('Received', money(data.amountPaid))
+    totalRow('Grand Total', pdfMoney(data.grandTotal), true)
+    totalRow('Received', pdfMoney(data.amountPaid))
     const due = data.grandTotal - data.amountPaid
-    if (due > 0) totalRow('Outstanding', money(due))
+    if (due > 0) totalRow('Outstanding', pdfMoney(due))
 
-    doc.moveDown(1)
+    // ─── Amount in words ─────────────────────────────────────────────────
+    doc.moveDown(0.5)
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#111')
+    doc.text('Amount in Words: ', 40, doc.y, { continued: true, width: 515 })
+    doc.font('Helvetica').fillColor('#333').text(amountInWords(data.grandTotal))
+
+    doc.moveDown(0.8)
     doc.fontSize(9).font('Helvetica-Bold').fillColor(due > 0 ? '#b91c1c' : '#0f5132')
     doc.text(`Payment status: ${data.paymentStatus}`, 40)
 
@@ -190,7 +257,40 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
       doc.fontSize(8.5).font('Helvetica').fillColor('#555').text(`Remarks: ${data.remarks}`, 40, doc.y, { width: 515 })
     }
 
-    doc.moveDown(1)
+    // ─── Bank details for payment ───────────────────────────────────────
+    if (data.bankAccount) {
+      doc.moveDown(0.8)
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f5132').text('Bank Details for Payment', 40, doc.y)
+      doc.font('Helvetica').fontSize(8).fillColor('#333')
+      doc.text(`${data.bankAccount.bankName}${data.bankAccount.branch ? ' — ' + data.bankAccount.branch : ''}`, 40, doc.y)
+      doc.text(`A/c Name: ${data.bankAccount.accountHolderName}`, 40, doc.y)
+      doc.text(`A/c No: ${data.bankAccount.accountNumber}   IFSC: ${data.bankAccount.ifscCode}`, 40, doc.y)
+      if (data.bankAccount.upiId) doc.text(`UPI: ${data.bankAccount.upiId}`, 40, doc.y)
+    }
+
+    // ─── Declaration & signatory ────────────────────────────────────────
+    // Standard elements of a professional pharma-company tax invoice.
+    // Kept together on one page — if there's not enough room left, start a
+    // fresh page for it rather than letting it get cut off at the bottom.
+    let blockY = doc.y + 20
+    if (blockY > 700) { doc.addPage(); blockY = 40 }
+
+    doc.fontSize(7.5).font('Helvetica').fillColor('#555')
+    doc.text(
+      'Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
+      40, blockY, { width: 320 },
+    )
+    doc.text(
+      'E. & O.E. Goods once sold are not returnable except for damaged, expired, or wrongly supplied stock, as per company policy.',
+      40, blockY + 26, { width: 320 },
+    )
+
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#111')
+    doc.text(`For ${company.name}`, 400, blockY, { width: 155, align: 'right' })
+    doc.font('Helvetica').fontSize(8).fillColor('#333')
+    doc.text('Authorised Signatory', 400, blockY + 45, { width: 155, align: 'right' })
+
+    doc.y = blockY + 65
     doc.fontSize(7.5).fillColor('#999').text(
       'This is a computer-generated invoice.',
       40, doc.y,

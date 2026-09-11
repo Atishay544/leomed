@@ -1,6 +1,6 @@
 import 'server-only'
 import PDFDocument from 'pdfkit'
-import { money } from './format'
+import { pdfMoney } from './format'
 import type { ErpPayrollItem, ErpPayrollRecord } from './types'
 
 /**
@@ -103,18 +103,18 @@ export function generatePayslipPdf(
     const deductionItems = items.filter(i => i.item_type === 'DEDUCTION')
 
     const earningRows: [string, string][] = [
-      ['Fixed salary (prorated)', money(record.fixed_salary * record.payable_days / (record.working_days || 1))],
-      ['Basic salary (reference)', money(record.basic_salary)],
-      ['Allowances (reference)', money(record.allowances)],
-      ...earnings.map((i): [string, string] => [i.label, money(i.amount)]),
+      ['Fixed salary (prorated)', pdfMoney(record.fixed_salary * record.payable_days / (record.working_days || 1))],
+      ['Basic salary (reference)', pdfMoney(record.basic_salary)],
+      ['Allowances (reference)', pdfMoney(record.allowances)],
+      ...earnings.map((i): [string, string] => [i.label, pdfMoney(i.amount)]),
     ]
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111').text('Earnings')
     drawTwoColumnTable(doc, earningRows)
     doc.moveDown(0.5)
 
     const deductionRows: [string, string][] = [
-      ['Standard deductions', money(record.standard_deductions)],
-      ...deductionItems.map((i): [string, string] => [i.label, money(i.amount)]),
+      ['Standard deductions', pdfMoney(record.standard_deductions)],
+      ...deductionItems.map((i): [string, string] => [i.label, pdfMoney(i.amount)]),
     ]
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111').text('Deductions')
     drawTwoColumnTable(doc, deductionRows)
@@ -125,7 +125,7 @@ export function generatePayslipPdf(
 
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#0f5132')
     doc.text('Net Payable Salary', 50, doc.y, { continued: true })
-    doc.text(money(record.net_salary), { align: 'right' })
+    doc.text(pdfMoney(record.net_salary), { align: 'right' })
     doc.moveDown(1)
 
     doc.fontSize(9).font('Helvetica').fillColor('#555')

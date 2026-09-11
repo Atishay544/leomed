@@ -147,6 +147,15 @@ export const SupplierSchema = z.object({
   payment_terms:       optionalText(100),
 })
 
+export const BankAccountSchema = z.object({
+  bank_name:           requiredText('Bank name', 150),
+  account_holder_name: requiredText('Account holder name', 150),
+  account_number:      requiredText('Account number', 34),
+  ifsc_code:           requiredText('IFSC code', 11).transform(v => v.toUpperCase()),
+  branch:              optionalText(150),
+  upi_id:              optionalText(100),
+})
+
 // ─── Product master ─────────────────────────────────────────────────────────
 
 export const ErpProductSchema = z.object({
@@ -457,6 +466,8 @@ export const SettingsSchema = z.object({
   company_gst_number:         optionalText(20),
   company_drug_license:       optionalText(50),
   company_address:            optionalText(500),
+  company_phone:              phone,
+  company_email:              email,
   expiry_warning_days:        z.coerce.number().int().min(1).max(730),
   mr_edit_window_hours:       z.coerce.number().int().min(0).max(720),
   allow_expired_sale:         z.coerce.boolean().default(false),
@@ -681,6 +692,7 @@ export type DoctorInput             = z.infer<typeof DoctorSchema>
 export type ChemistInput            = z.infer<typeof ChemistSchema>
 export type DistributorInput        = z.infer<typeof DistributorSchema>
 export type SupplierInput           = z.infer<typeof SupplierSchema>
+export type BankAccountInput        = z.infer<typeof BankAccountSchema>
 export type ErpProductInput         = z.infer<typeof ErpProductSchema>
 export type ProductBatchInput       = z.infer<typeof ProductBatchSchema>
 export type DoctorVisitInput        = z.infer<typeof DoctorVisitSchema>

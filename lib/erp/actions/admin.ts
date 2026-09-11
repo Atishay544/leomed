@@ -228,3 +228,18 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     return { ok: true }
   })
 }
+
+/** Uploading a new logo (via /api/erp/upload-company-logo) already replaces
+ *  this outright — this is only for clearing it back to no logo. */
+export async function removeCompanyLogo(): Promise<ActionState> {
+  return runAction('Could not remove the logo.', async () => {
+    await assertCapability('settings.manage')
+
+    const db = await erpDb()
+    const { error } = await db.from('erp_settings').update({ company_logo_url: null }).eq('id', 1)
+    if (error) return friendlyDbError(error, 'Could not remove the logo.')
+
+    revalidatePath('/erp', 'layout')
+    return { ok: true }
+  })
+}

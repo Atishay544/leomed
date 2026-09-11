@@ -29,6 +29,67 @@ export function qty(value: number | null | undefined): string {
   return NUM.format(value ?? 0)
 }
 
+const INR_PLAIN = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Same figure as money(), for use inside a PDF (invoice/payslip) instead of
+ *  on screen. pdfkit's built-in Helvetica only supports WinAnsi/Latin-1, which
+ *  has no ₹ glyph — it silently renders as a stray mark instead of a rupee
+ *  sign, so PDFs spell it out as "Rs." rather than using the ₹ symbol. */
+export function pdfMoney(value: number | string | null | undefined): string {
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  return `Rs. ${INR_PLAIN.format(Number.isFinite(n as number) ? (n as number) : 0)}`
+}
+
+const ONES = [
+  '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+  'Seventeen', 'Eighteen', 'Nineteen',
+]
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+function twoDigitWords(n: number): string {
+  if (n < 20) return ONES[n]
+  const tens = Math.floor(n / 10)
+  const ones = n % 10
+  return TENS[tens] + (ones ? ' ' + ONES[ones] : '')
+}
+
+function threeDigitWords(n: number): string {
+  const hundreds = Math.floor(n / 100)
+  const rest = n % 100
+  return (hundreds ? ONES[hundreds] + ' Hundred' + (rest ? ' ' : '') : '') + (rest ? twoDigitWords(rest) : '')
+}
+
+/** Indian-numbering (crore/lakh/thousand) amount in words, for the
+ *  "Amount in Words" line on a printed invoice — a standard element of an
+ *  Indian tax invoice. */
+export function amountInWords(value: number | string | null | undefined): string {
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  const abs = Math.abs(Number.isFinite(n as number) ? (n as number) : 0)
+  const rounded = Math.round(abs * 100) / 100
+  const rupees = Math.floor(rounded)
+  const paise = Math.round((rounded - rupees) * 100)
+
+  function rupeesWords(num: number): string {
+    if (num === 0) return 'Zero'
+    const crore = Math.floor(num / 1_00_00_000); num %= 1_00_00_000
+    const lakh = Math.floor(num / 1_00_000); num %= 1_00_000
+    const thousand = Math.floor(num / 1_000); num %= 1_000
+    const hundred = num
+
+    const parts: string[] = []
+    if (crore) parts.push(threeDigitWords(crore) + ' Crore')
+    if (lakh) parts.push(threeDigitWords(lakh) + ' Lakh')
+    if (thousand) parts.push(threeDigitWords(thousand) + ' Thousand')
+    if (hundred) parts.push(threeDigitWords(hundred))
+    return parts.join(' ')
+  }
+
+  let words = `Rupees ${rupeesWords(rupees)}`
+  if (paise > 0) words += ` and ${twoDigitWords(paise)} Paise`
+  return words + ' Only'
+}
+
 /** Formats a date-only column without timezone drift.
  *  `new Date('2026-09-04')` is parsed as UTC midnight, which renders as the
  *  3rd in any timezone behind UTC — so the parts are read directly instead. */

@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { saveSettings } from '@/lib/erp/actions/admin'
 import { IDLE } from '@/lib/erp/actions/shared'
 import type { ErpSettings } from '@/lib/erp/types'
+import CompanyLogoUploader from './CompanyLogoUploader'
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-[13px] text-gray-900 ' +
@@ -50,6 +51,7 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-[14px] font-semibold text-gray-900">Company</h2>
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+          <CompanyLogoUploader currentUrl={settings.company_logo_url} />
           <div className="sm:col-span-2">
             <label htmlFor="company_name" className="mb-1 block text-[12px] font-medium text-gray-700">
               Company name
@@ -71,6 +73,20 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
             <input id="company_drug_license" name="company_drug_license"
                    defaultValue={settings.company_drug_license ?? ''} className={inputClass} />
           </div>
+          <div>
+            <label htmlFor="company_phone" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Phone
+            </label>
+            <input id="company_phone" name="company_phone" type="tel"
+                   defaultValue={settings.company_phone ?? ''} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="company_email" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Email
+            </label>
+            <input id="company_email" name="company_email" type="email"
+                   defaultValue={settings.company_email ?? ''} className={inputClass} />
+          </div>
           <div className="sm:col-span-2">
             <label htmlFor="company_address" className="mb-1 block text-[12px] font-medium text-gray-700">
               Address
@@ -79,6 +95,9 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
                       defaultValue={settings.company_address ?? ''} className={inputClass} />
           </div>
         </div>
+        <p className="mt-3 text-[11.5px] text-gray-400">
+          Company name, GST number, drug licence, phone and email appear on every printed sales invoice.
+        </p>
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
