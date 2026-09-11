@@ -19,7 +19,7 @@ export default function RecommendedProducts({ products }: { products: Product[] 
   return (
     <section className="mt-16 border-t border-gray-100 pt-10">
       <h2 className="text-xl font-bold text-gray-900 mb-6">You May Also Like</h2>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-5">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-8">
         {products.map(p => {
           const image = p.images?.[0]
           return (
