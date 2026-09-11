@@ -414,6 +414,7 @@ export interface ErpSettings {
   company_address: string | null
   company_phone: string | null
   company_email: string | null
+  company_logo_url: string | null
   selected_bank_account_id: string | null
   expiry_warning_days: number
   mr_edit_window_hours: number

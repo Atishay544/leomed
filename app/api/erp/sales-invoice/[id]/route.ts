@@ -107,6 +107,7 @@ export async function GET(
     address: settings.company_address,
     phone: settings.company_phone,
     email: settings.company_email,
+    logoUrl: settings.company_logo_url,
   })
 
   return new NextResponse(new Uint8Array(pdf), {

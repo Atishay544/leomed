@@ -13,6 +13,7 @@ const DEFAULTS: ErpSettings = {
   company_address: null,
   company_phone: null,
   company_email: null,
+  company_logo_url: null,
   selected_bank_account_id: null,
   expiry_warning_days: 90,
   mr_edit_window_hours: 24,

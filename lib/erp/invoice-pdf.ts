@@ -16,6 +16,7 @@ export interface InvoicePdfCompany {
   address: string | null
   phone: string | null
   email: string | null
+  logoUrl: string | null
 }
 
 export interface InvoicePdfBankAccount {
@@ -73,7 +74,21 @@ export interface InvoicePdfData {
   bankAccount: InvoicePdfBankAccount | null
 }
 
-export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePdfCompany): Promise<Buffer> {
+export async function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePdfCompany): Promise<Buffer> {
+  // Fetched up front, outside the pdfkit stream — a slow or failed fetch
+  // must never leave a half-written PDF, and doc.image() needs bytes, not
+  // a URL. If this fails for any reason the invoice still generates, just
+  // without a logo.
+  let logoBuffer: Buffer | null = null
+  if (company.logoUrl) {
+    try {
+      const res = await fetch(company.logoUrl)
+      if (res.ok) logoBuffer = Buffer.from(await res.arrayBuffer())
+    } catch {
+      logoBuffer = null
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 40 })
     const chunks: Buffer[] = []
@@ -82,19 +97,34 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     doc.on('error', reject)
 
     // ─── Header ───────────────────────────────────────────────────────────
-    doc.fontSize(17).font('Helvetica-Bold').fillColor('#0f5132').text(company.name.toUpperCase())
+    const headerTop = doc.y
+    let logoDrawn = false
+    if (logoBuffer) {
+      try {
+        doc.image(logoBuffer, 40, headerTop, { fit: [64, 64] })
+        logoDrawn = true
+      } catch {
+        logoDrawn = false // corrupt/unsupported image bytes — skip, never fail the invoice over it
+      }
+    }
+    const textX = logoDrawn ? 116 : 40
+
+    doc.fontSize(17).font('Helvetica-Bold').fillColor('#0f5132').text(company.name.toUpperCase(), textX, headerTop)
     doc.fontSize(8.5).font('Helvetica').fillColor('#555')
-    if (company.address) doc.text(company.address)
+    if (company.address) doc.text(company.address, textX, doc.y)
     const regLine = [
       company.gstNumber && `GSTIN: ${company.gstNumber}`,
       company.drugLicense && `Drug Licence: ${company.drugLicense}`,
     ].filter(Boolean).join('   ·   ')
-    if (regLine) doc.text(regLine)
+    if (regLine) doc.text(regLine, textX, doc.y)
     const contactLine = [
       company.phone && `Phone: ${company.phone}`,
       company.email && `Email: ${company.email}`,
     ].filter(Boolean).join('   ·   ')
-    if (contactLine) doc.text(contactLine)
+    if (contactLine) doc.text(contactLine, textX, doc.y)
+
+    // Clear the logo box too, whichever block (logo or text) runs taller.
+    if (logoDrawn) doc.y = Math.max(doc.y, headerTop + 68)
 
     doc.moveDown(0.5)
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#111').text('TAX INVOICE', { align: 'right' })
