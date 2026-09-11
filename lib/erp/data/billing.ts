@@ -136,8 +136,8 @@ export async function getSalesInvoice(id: string) {
        erp_sales_invoice_items(
          id, quantity, free_quantity, sale_rate, discount_percent, gst_rate,
          taxable_amount, tax_amount, line_total,
-         erp_products(product_name, product_code, strength, unit),
-         erp_product_batches(batch_number, expiry_date)),
+         erp_products(product_name, product_code, strength, unit, hsn_code),
+         erp_product_batches(batch_number, expiry_date, mrp)),
        erp_sales_receipts(
          id, receipt_date, amount, payment_method, reference_number, remarks, created_at,
          erp_users!erp_sales_receipts_created_by_fkey(name)),

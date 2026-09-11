@@ -1,6 +1,6 @@
 import 'server-only'
 import PDFDocument from 'pdfkit'
-import { formatDate, money, qty } from './format'
+import { amountInWords, formatDate, money, qty } from './format'
 import { gstSplit } from './invoice-math'
 
 /**
@@ -32,8 +32,10 @@ export interface InvoicePdfItem {
   productCode: string | null
   strength: string | null
   unit: string
+  hsnCode: string | null
   batchNumber: string | null
   expiryDate: string | null
+  mrp: number | null
   quantity: number
   freeQuantity: number
   rate: number
@@ -82,6 +84,10 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     doc.fontSize(9).font('Helvetica').fillColor('#333')
     doc.text(`Invoice No: ${data.invoiceNumber}`, { align: 'right' })
     doc.text(`Date: ${formatDate(data.invoiceDate)}`, { align: 'right' })
+    const placeOfSupply = data.party.state ?? data.party.city
+    if (placeOfSupply) {
+      doc.text(`Place of Supply: ${placeOfSupply} (${data.isInterstate ? 'Inter-State' : 'Intra-State'})`, { align: 'right' })
+    }
     doc.moveDown(0.5)
     doc.strokeColor('#ddd').moveTo(40, doc.y).lineTo(555, doc.y).stroke()
     doc.moveDown(0.5)
@@ -107,44 +113,52 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     }
 
     // ─── Line items ───────────────────────────────────────────────────────
-    const colX = { product: 40, batch: 210, qty: 300, rate: 345, disc: 395, gst: 435, total: 475 }
+    // Columns sum to exactly 515pt (40 -> 555), matching the page's usable
+    // width — HSN and MRP are standard on a pharma GST tax invoice.
+    const colX = { product: 40, hsn: 158, batch: 192, qty: 260, mrp: 298, rate: 346, disc: 394, gst: 426, total: 458 }
+    const colW = { product: 118, hsn: 34, batch: 68, qty: 38, mrp: 48, rate: 48, disc: 32, gst: 32, total: 97 }
     const tableTop = doc.y
 
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#fff')
+    doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#fff')
     doc.rect(40, tableTop, 515, 16).fill('#0f5132')
     doc.fillColor('#fff')
-    doc.text('Product', colX.product + 3, tableTop + 4, { width: 165 })
-    doc.text('Batch / Exp', colX.batch + 3, tableTop + 4, { width: 85 })
-    doc.text('Qty', colX.qty + 3, tableTop + 4, { width: 40, align: 'right' })
-    doc.text('Rate', colX.rate + 3, tableTop + 4, { width: 45, align: 'right' })
-    doc.text('Disc%', colX.disc + 3, tableTop + 4, { width: 35, align: 'right' })
-    doc.text('GST%', colX.gst + 3, tableTop + 4, { width: 35, align: 'right' })
-    doc.text('Amount', colX.total + 3, tableTop + 4, { width: 78, align: 'right' })
+    doc.text('Product', colX.product + 3, tableTop + 4, { width: colW.product - 3 })
+    doc.text('HSN', colX.hsn + 3, tableTop + 4, { width: colW.hsn - 3 })
+    doc.text('Batch/Exp', colX.batch + 3, tableTop + 4, { width: colW.batch - 3 })
+    doc.text('Qty', colX.qty + 3, tableTop + 4, { width: colW.qty - 3, align: 'right' })
+    doc.text('MRP', colX.mrp + 3, tableTop + 4, { width: colW.mrp - 3, align: 'right' })
+    doc.text('Rate', colX.rate + 3, tableTop + 4, { width: colW.rate - 3, align: 'right' })
+    doc.text('Disc%', colX.disc + 3, tableTop + 4, { width: colW.disc - 3, align: 'right' })
+    doc.text('GST%', colX.gst + 3, tableTop + 4, { width: colW.gst - 3, align: 'right' })
+    doc.text('Amount', colX.total + 3, tableTop + 4, { width: colW.total - 3, align: 'right' })
 
     let y = tableTop + 16
-    doc.font('Helvetica').fontSize(8)
+    doc.font('Helvetica').fontSize(7.5)
     for (const item of data.items) {
       const rowHeight = 24
       if (y + rowHeight > 780) { doc.addPage(); y = 40 }
 
       doc.fillColor('#111')
       const productLabel = `${item.productName}${item.strength ? ' ' + item.strength : ''}`
-      doc.text(productLabel, colX.product + 3, y, { width: 165 })
-      doc.fillColor('#888').fontSize(7).text(item.productCode ?? '', colX.product + 3, y + 10, { width: 165 })
+      doc.text(productLabel, colX.product + 3, y, { width: colW.product - 3 })
+      doc.fillColor('#888').fontSize(6.5).text(item.productCode ?? '', colX.product + 3, y + 10, { width: colW.product - 3 })
 
-      doc.fillColor('#333').fontSize(8)
-      doc.text(item.batchNumber ?? '—', colX.batch + 3, y, { width: 85 })
-      if (item.expiryDate) doc.fontSize(7).fillColor('#888').text(`Exp ${formatDate(item.expiryDate)}`, colX.batch + 3, y + 10, { width: 85 })
+      doc.fontSize(7.5).fillColor('#333')
+      doc.text(item.hsnCode ?? '—', colX.hsn + 3, y, { width: colW.hsn - 3 })
 
-      doc.fontSize(8).fillColor('#111')
-      doc.text(`${qty(item.quantity)} ${item.unit}`, colX.qty + 3, y, { width: 40, align: 'right' })
-      if (item.freeQuantity > 0) doc.fontSize(7).fillColor('#0f5132').text(`+${qty(item.freeQuantity)} free`, colX.qty + 3, y + 10, { width: 40, align: 'right' })
+      doc.text(item.batchNumber ?? '—', colX.batch + 3, y, { width: colW.batch - 3 })
+      if (item.expiryDate) doc.fontSize(6.5).fillColor('#888').text(`Exp ${formatDate(item.expiryDate)}`, colX.batch + 3, y + 10, { width: colW.batch - 3 })
 
-      doc.fontSize(8).fillColor('#111')
-      doc.text(money(item.rate), colX.rate + 3, y, { width: 45, align: 'right' })
-      doc.text(item.discountPercent > 0 ? `${item.discountPercent}%` : '—', colX.disc + 3, y, { width: 35, align: 'right' })
-      doc.text(`${item.gstRate}%`, colX.gst + 3, y, { width: 35, align: 'right' })
-      doc.font('Helvetica-Bold').text(money(item.lineTotal), colX.total + 3, y, { width: 78, align: 'right' })
+      doc.fontSize(7.5).fillColor('#111')
+      doc.text(`${qty(item.quantity)} ${item.unit}`, colX.qty + 3, y, { width: colW.qty - 3, align: 'right' })
+      if (item.freeQuantity > 0) doc.fontSize(6.5).fillColor('#0f5132').text(`+${qty(item.freeQuantity)} free`, colX.qty + 3, y + 10, { width: colW.qty - 3, align: 'right' })
+
+      doc.fontSize(7.5).fillColor('#111')
+      doc.text(item.mrp != null && item.mrp > 0 ? money(item.mrp) : '—', colX.mrp + 3, y, { width: colW.mrp - 3, align: 'right' })
+      doc.text(money(item.rate), colX.rate + 3, y, { width: colW.rate - 3, align: 'right' })
+      doc.text(item.discountPercent > 0 ? `${item.discountPercent}%` : '—', colX.disc + 3, y, { width: colW.disc - 3, align: 'right' })
+      doc.text(`${item.gstRate}%`, colX.gst + 3, y, { width: colW.gst - 3, align: 'right' })
+      doc.font('Helvetica-Bold').text(money(item.lineTotal), colX.total + 3, y, { width: colW.total - 3, align: 'right' })
       doc.font('Helvetica')
 
       y += rowHeight
@@ -181,7 +195,13 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     const due = data.grandTotal - data.amountPaid
     if (due > 0) totalRow('Outstanding', money(due))
 
-    doc.moveDown(1)
+    // ─── Amount in words ─────────────────────────────────────────────────
+    doc.moveDown(0.5)
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#111')
+    doc.text('Amount in Words: ', 40, doc.y, { continued: true, width: 515 })
+    doc.font('Helvetica').fillColor('#333').text(amountInWords(data.grandTotal))
+
+    doc.moveDown(0.8)
     doc.fontSize(9).font('Helvetica-Bold').fillColor(due > 0 ? '#b91c1c' : '#0f5132')
     doc.text(`Payment status: ${data.paymentStatus}`, 40)
 
@@ -190,7 +210,29 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
       doc.fontSize(8.5).font('Helvetica').fillColor('#555').text(`Remarks: ${data.remarks}`, 40, doc.y, { width: 515 })
     }
 
-    doc.moveDown(1)
+    // ─── Declaration & signatory ────────────────────────────────────────
+    // Standard elements of a professional pharma-company tax invoice.
+    // Kept together on one page — if there's not enough room left, start a
+    // fresh page for it rather than letting it get cut off at the bottom.
+    let blockY = doc.y + 20
+    if (blockY > 700) { doc.addPage(); blockY = 40 }
+
+    doc.fontSize(7.5).font('Helvetica').fillColor('#555')
+    doc.text(
+      'Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
+      40, blockY, { width: 320 },
+    )
+    doc.text(
+      'E. & O.E. Goods once sold are not returnable except for damaged, expired, or wrongly supplied stock, as per company policy.',
+      40, blockY + 26, { width: 320 },
+    )
+
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#111')
+    doc.text(`For ${company.name}`, 400, blockY, { width: 155, align: 'right' })
+    doc.font('Helvetica').fontSize(8).fillColor('#333')
+    doc.text('Authorised Signatory', 400, blockY + 45, { width: 155, align: 'right' })
+
+    doc.y = blockY + 65
     doc.fontSize(7.5).fillColor('#999').text(
       'This is a computer-generated invoice.',
       40, doc.y,
