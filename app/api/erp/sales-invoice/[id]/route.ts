@@ -3,6 +3,7 @@ import { getErpSession } from '@/lib/erp/auth'
 import { can } from '@/lib/erp/permissions'
 import { getSalesInvoice } from '@/lib/erp/data/billing'
 import { getErpSettings } from '@/lib/erp/data/settings'
+import { getSelectedBankAccount } from '@/lib/erp/data/bank-accounts'
 import { generateSalesInvoicePdf, type InvoicePdfData } from '@/lib/erp/invoice-pdf'
 
 /** Streams one sales invoice as a printable PDF bill. Gated by
@@ -83,14 +84,29 @@ export async function GET(
       gstRate: Number(item.gst_rate),
       lineTotal: Number(item.line_total),
     })),
+    bankAccount: null,
   }
 
   const settings = await getErpSettings()
+  const bankAccount = await getSelectedBankAccount(settings.selected_bank_account_id)
+  if (bankAccount) {
+    data.bankAccount = {
+      bankName: bankAccount.bank_name,
+      accountHolderName: bankAccount.account_holder_name,
+      accountNumber: bankAccount.account_number,
+      ifscCode: bankAccount.ifsc_code,
+      branch: bankAccount.branch,
+      upiId: bankAccount.upi_id,
+    }
+  }
+
   const pdf = await generateSalesInvoicePdf(data, {
     name: settings.company_name,
     gstNumber: settings.company_gst_number,
     drugLicense: settings.company_drug_license,
     address: settings.company_address,
+    phone: settings.company_phone,
+    email: settings.company_email,
   })
 
   return new NextResponse(new Uint8Array(pdf), {

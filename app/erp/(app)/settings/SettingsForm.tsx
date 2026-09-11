@@ -71,6 +71,20 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
             <input id="company_drug_license" name="company_drug_license"
                    defaultValue={settings.company_drug_license ?? ''} className={inputClass} />
           </div>
+          <div>
+            <label htmlFor="company_phone" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Phone
+            </label>
+            <input id="company_phone" name="company_phone" type="tel"
+                   defaultValue={settings.company_phone ?? ''} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="company_email" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Email
+            </label>
+            <input id="company_email" name="company_email" type="email"
+                   defaultValue={settings.company_email ?? ''} className={inputClass} />
+          </div>
           <div className="sm:col-span-2">
             <label htmlFor="company_address" className="mb-1 block text-[12px] font-medium text-gray-700">
               Address
@@ -79,6 +93,9 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
                       defaultValue={settings.company_address ?? ''} className={inputClass} />
           </div>
         </div>
+        <p className="mt-3 text-[11.5px] text-gray-400">
+          Company name, GST number, drug licence, phone and email appear on every printed sales invoice.
+        </p>
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

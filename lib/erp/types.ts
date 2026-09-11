@@ -412,11 +412,29 @@ export interface ErpSettings {
   company_gst_number: string | null
   company_drug_license: string | null
   company_address: string | null
+  company_phone: string | null
+  company_email: string | null
+  selected_bank_account_id: string | null
   expiry_warning_days: number
   mr_edit_window_hours: number
   allow_expired_sale: boolean
   financial_year_start_month: number
   low_stock_multiplier: number
+}
+
+/** A bank account on file — admin can keep several; whichever one is
+ *  selected on erp_settings is the one printed on sales invoices. */
+export interface BankAccount {
+  id: string
+  bank_name: string
+  account_holder_name: string
+  account_number: string
+  ifsc_code: string
+  branch: string | null
+  upi_id: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
 }
 
 /** The signed-in staff member, as resolved by lib/erp/auth.ts. */

@@ -63,6 +63,15 @@ export const SUPPLIER_FIELDS: FieldSpec[] = [
   { name: 'state',               label: 'State' },
 ]
 
+export const BANK_ACCOUNT_FIELDS: FieldSpec[] = [
+  { name: 'bank_name',           label: 'Bank name', required: true, span: 2, placeholder: 'HDFC Bank' },
+  { name: 'account_holder_name', label: 'Account holder name', required: true, span: 2 },
+  { name: 'account_number',      label: 'Account number', required: true },
+  { name: 'ifsc_code',           label: 'IFSC code', required: true, placeholder: 'HDFC0001234' },
+  { name: 'branch',              label: 'Branch' },
+  { name: 'upi_id',              label: 'UPI ID', placeholder: 'leomedpharma@okhdfcbank' },
+]
+
 const DOSAGE_FORMS = [
   'Tablet', 'Capsule', 'Syrup', 'Suspension', 'Injection', 'Ointment',
   'Cream', 'Gel', 'Drops', 'Powder', 'Sachet', 'Spray', 'Lotion',

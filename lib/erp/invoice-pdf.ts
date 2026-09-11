@@ -14,6 +14,17 @@ export interface InvoicePdfCompany {
   gstNumber: string | null
   drugLicense: string | null
   address: string | null
+  phone: string | null
+  email: string | null
+}
+
+export interface InvoicePdfBankAccount {
+  bankName: string
+  accountHolderName: string
+  accountNumber: string
+  ifscCode: string
+  branch: string | null
+  upiId: string | null
 }
 
 export interface InvoicePdfParty {
@@ -59,6 +70,7 @@ export interface InvoicePdfData {
   expiredSaleReason: string | null
   items: InvoicePdfItem[]
   party: InvoicePdfParty
+  bankAccount: InvoicePdfBankAccount | null
 }
 
 export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePdfCompany): Promise<Buffer> {
@@ -78,6 +90,11 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
       company.drugLicense && `Drug Licence: ${company.drugLicense}`,
     ].filter(Boolean).join('   ·   ')
     if (regLine) doc.text(regLine)
+    const contactLine = [
+      company.phone && `Phone: ${company.phone}`,
+      company.email && `Email: ${company.email}`,
+    ].filter(Boolean).join('   ·   ')
+    if (contactLine) doc.text(contactLine)
 
     doc.moveDown(0.5)
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#111').text('TAX INVOICE', { align: 'right' })
@@ -208,6 +225,17 @@ export function generateSalesInvoicePdf(data: InvoicePdfData, company: InvoicePd
     if (data.remarks) {
       doc.moveDown(0.5)
       doc.fontSize(8.5).font('Helvetica').fillColor('#555').text(`Remarks: ${data.remarks}`, 40, doc.y, { width: 515 })
+    }
+
+    // ─── Bank details for payment ───────────────────────────────────────
+    if (data.bankAccount) {
+      doc.moveDown(0.8)
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#0f5132').text('Bank Details for Payment', 40, doc.y)
+      doc.font('Helvetica').fontSize(8).fillColor('#333')
+      doc.text(`${data.bankAccount.bankName}${data.bankAccount.branch ? ' — ' + data.bankAccount.branch : ''}`, 40, doc.y)
+      doc.text(`A/c Name: ${data.bankAccount.accountHolderName}`, 40, doc.y)
+      doc.text(`A/c No: ${data.bankAccount.accountNumber}   IFSC: ${data.bankAccount.ifscCode}`, 40, doc.y)
+      if (data.bankAccount.upiId) doc.text(`UPI: ${data.bankAccount.upiId}`, 40, doc.y)
     }
 
     // ─── Declaration & signatory ────────────────────────────────────────

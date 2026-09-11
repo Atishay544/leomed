@@ -5,7 +5,7 @@ import type { z } from 'zod'
 import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import {
-  ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
+  BankAccountSchema, ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
   ProductBatchSchema, SupplierSchema,
 } from '../schemas'
 import type { Capability } from '../permissions'
@@ -210,6 +210,39 @@ export async function saveSupplier(_prev: ActionState, formData: FormData) {
 
 export async function setSupplierActive(id: string, active: boolean) {
   return setMasterActive(SUPPLIER, id, active)
+}
+
+// ─── Bank accounts ──────────────────────────────────────────────────────────
+// Admin can keep several on file (different banks/branches); whichever one
+// is "selected" via selectBankAccount() below is the one printed on sales
+// invoices — a single admin-wide choice, not a per-invoice one.
+
+const BANK_ACCOUNT: MasterConfig = {
+  table: 'erp_bank_accounts',
+  capability: 'settings.manage',
+  path: '/erp/settings',
+  label: 'bank account',
+}
+
+export async function saveBankAccount(_prev: ActionState, formData: FormData) {
+  return saveMaster(BANK_ACCOUNT, BankAccountSchema, formData)
+}
+
+export async function setBankAccountActive(id: string, active: boolean) {
+  return setMasterActive(BANK_ACCOUNT, id, active)
+}
+
+export async function selectBankAccount(id: string): Promise<ActionState> {
+  return runAction('Could not update the selected bank account.', async () => {
+    await assertCapability(BANK_ACCOUNT.capability)
+    const db = await erpDb()
+    const { error } = await db.from('erp_settings').update({ selected_bank_account_id: id }).eq('id', 1)
+    if (error) return friendlyDbError(error, 'Could not update the selected bank account.')
+
+    revalidatePath(BANK_ACCOUNT.path)
+    revalidatePath('/erp', 'layout')
+    return { ok: true }
+  })
 }
 
 // ─── Products & batches ─────────────────────────────────────────────────────
