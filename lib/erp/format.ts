@@ -29,6 +29,17 @@ export function qty(value: number | null | undefined): string {
   return NUM.format(value ?? 0)
 }
 
+const INR_PLAIN = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Same figure as money(), for use inside a PDF (invoice/payslip) instead of
+ *  on screen. pdfkit's built-in Helvetica only supports WinAnsi/Latin-1, which
+ *  has no ₹ glyph — it silently renders as a stray mark instead of a rupee
+ *  sign, so PDFs spell it out as "Rs." rather than using the ₹ symbol. */
+export function pdfMoney(value: number | string | null | undefined): string {
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  return `Rs. ${INR_PLAIN.format(Number.isFinite(n as number) ? (n as number) : 0)}`
+}
+
 const ONES = [
   '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
   'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',

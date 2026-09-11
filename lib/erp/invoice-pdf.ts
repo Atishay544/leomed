@@ -1,6 +1,6 @@
 import 'server-only'
 import PDFDocument from 'pdfkit'
-import { amountInWords, formatDate, money, qty } from './format'
+import { amountInWords, formatDate, pdfMoney, qty } from './format'
 import { gstSplit } from './invoice-math'
 
 /**
@@ -201,11 +201,11 @@ export async function generateSalesInvoicePdf(data: InvoicePdfData, company: Inv
       if (item.freeQuantity > 0) doc.fontSize(6.5).fillColor('#0f5132').text(`+${qty(item.freeQuantity)} free`, colX.qty + 3, y + 10, { width: colW.qty - 3, align: 'right' })
 
       doc.fontSize(7.5).fillColor('#111')
-      doc.text(item.mrp != null && item.mrp > 0 ? money(item.mrp) : '—', colX.mrp + 3, y, { width: colW.mrp - 3, align: 'right' })
-      doc.text(money(item.rate), colX.rate + 3, y, { width: colW.rate - 3, align: 'right' })
+      doc.text(item.mrp != null && item.mrp > 0 ? pdfMoney(item.mrp) : '—', colX.mrp + 3, y, { width: colW.mrp - 3, align: 'right' })
+      doc.text(pdfMoney(item.rate), colX.rate + 3, y, { width: colW.rate - 3, align: 'right' })
       doc.text(item.discountPercent > 0 ? `${item.discountPercent}%` : '—', colX.disc + 3, y, { width: colW.disc - 3, align: 'right' })
       doc.text(`${item.gstRate}%`, colX.gst + 3, y, { width: colW.gst - 3, align: 'right' })
-      doc.font('Helvetica-Bold').text(money(item.lineTotal), colX.total + 3, y, { width: colW.total - 3, align: 'right' })
+      doc.font('Helvetica-Bold').text(pdfMoney(item.lineTotal), colX.total + 3, y, { width: colW.total - 3, align: 'right' })
       doc.font('Helvetica')
 
       y += rowHeight
@@ -227,20 +227,20 @@ export async function generateSalesInvoicePdf(data: InvoicePdfData, company: Inv
       doc.moveDown(0.35)
     }
 
-    totalRow('Subtotal', money(data.subtotal))
-    if (data.discount > 0) totalRow('Discount', `− ${money(data.discount)}`)
+    totalRow('Subtotal', pdfMoney(data.subtotal))
+    if (data.discount > 0) totalRow('Discount', `- ${pdfMoney(data.discount)}`)
     if (data.isInterstate) {
-      totalRow('IGST', money(tax.igst))
+      totalRow('IGST', pdfMoney(tax.igst))
     } else {
-      totalRow('CGST', money(tax.cgst))
-      totalRow('SGST', money(tax.sgst))
+      totalRow('CGST', pdfMoney(tax.cgst))
+      totalRow('SGST', pdfMoney(tax.sgst))
     }
     doc.strokeColor('#ddd').moveTo(totalsX, doc.y).lineTo(555, doc.y).stroke()
     doc.moveDown(0.3)
-    totalRow('Grand Total', money(data.grandTotal), true)
-    totalRow('Received', money(data.amountPaid))
+    totalRow('Grand Total', pdfMoney(data.grandTotal), true)
+    totalRow('Received', pdfMoney(data.amountPaid))
     const due = data.grandTotal - data.amountPaid
-    if (due > 0) totalRow('Outstanding', money(due))
+    if (due > 0) totalRow('Outstanding', pdfMoney(due))
 
     // ─── Amount in words ─────────────────────────────────────────────────
     doc.moveDown(0.5)
