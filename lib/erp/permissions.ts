@@ -76,6 +76,10 @@ export const CAPABILITIES = [
   'targets.manage',
   'reports.read.all',
   'settings.manage',
+  // Offer letters — compensation data on a candidate who isn't even a staff
+  // member yet, and the flow that eventually creates one (users.manage).
+  // ADMIN-only, deliberately held by no other role below.
+  'offers.manage',
 
   // HR: attendance — every non-admin employee checks in; ADMIN deliberately
   // never holds 'attendance.checkin' in spirit (enforced in the RPCs and in

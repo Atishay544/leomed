@@ -14,6 +14,12 @@ export type ErpRole = (typeof ERP_ROLES)[number]
 export const CUSTOMER_TYPES = ['DOCTOR', 'CHEMIST'] as const
 export type CustomerType = (typeof CUSTOMER_TYPES)[number]
 
+export const OFFER_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'CONVERTED'] as const
+export type OfferStatus = (typeof OFFER_STATUSES)[number]
+
+export const OFFER_COMPONENT_CATEGORIES = ['EARNING', 'DEDUCTION', 'VARIABLE'] as const
+export type OfferComponentCategory = (typeof OFFER_COMPONENT_CATEGORIES)[number]
+
 export const DOCTOR_STATUSES = ['NEW', 'EXISTING'] as const
 export type DoctorStatus = (typeof DOCTOR_STATUSES)[number]
 
@@ -416,11 +422,48 @@ export interface ErpSettings {
   company_email: string | null
   company_logo_url: string | null
   selected_bank_account_id: string | null
+  hr_signatory_name: string | null
+  hr_signatory_title: string | null
   expiry_warning_days: number
   mr_edit_window_hours: number
   allow_expired_sale: boolean
   financial_year_start_month: number
   low_stock_multiplier: number
+}
+
+/** One line of an offer letter's compensation breakup — EARNING rows sum to
+ *  "Total Guaranteed Compensation", + DEDUCTION rows (e.g. employer PF) to
+ *  "Total Fixed Compensation", + VARIABLE rows (e.g. an MR's target
+ *  incentive) to "Target Total Compensation". */
+export interface OfferLetterComponent {
+  id: string
+  offer_letter_id: string
+  component_name: string
+  category: OfferComponentCategory
+  monthly_amount: number
+  annual_amount: number
+  sort_order: number
+}
+
+export interface OfferLetter {
+  id: string
+  offer_number: string
+  candidate_name: string
+  candidate_address: string | null
+  candidate_email: string | null
+  candidate_phone: string | null
+  designation: string
+  role: ErpRole
+  department: string | null
+  territory: string | null
+  reports_to: string | null
+  offer_date: string
+  joining_date: string | null
+  remarks: string | null
+  status: OfferStatus
+  converted_employee_id: string | null
+  created_at: string
+  updated_at: string
 }
 
 /** A bank account on file — admin can keep several; whichever one is

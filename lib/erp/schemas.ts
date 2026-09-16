@@ -2,8 +2,8 @@ import { z } from 'zod'
 import {
   ATTENDANCE_STATUSES, BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS,
   DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
-  FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, PAYROLL_ITEM_TYPES,
-  SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
+  FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, OFFER_COMPONENT_CATEGORIES, OFFER_STATUSES,
+  PAYMENT_METHODS, PAYROLL_ITEM_TYPES, SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
 } from './types'
 
 /**
@@ -87,6 +87,37 @@ export const ErpUserCreateSchema = z.object({
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
   message: 'An MR code is required for medical representatives',
   path: ['mr_code'],
+})
+
+// ─── Offer letters ──────────────────────────────────────────────────────────
+
+export const OfferLetterComponentSchema = z.object({
+  component_name: requiredText('Component name', 100),
+  category:        z.enum(OFFER_COMPONENT_CATEGORIES),
+  monthly_amount:  money,
+  annual_amount:   money,
+})
+
+export const OfferLetterSchema = z.object({
+  id:                optionalUuid,
+  candidate_name:    requiredText('Candidate name', 150),
+  candidate_address: optionalText(500),
+  candidate_email:   email,
+  candidate_phone:   phone,
+  designation:       requiredText('Designation', 100),
+  role:              z.enum(ERP_ROLES),
+  department:        optionalText(100),
+  territory:         optionalText(100),
+  reports_to:        optionalUuid,
+  offer_date:        dateString,
+  joining_date:      optionalDate,
+  remarks:           optionalText(2000),
+  components:        z.array(OfferLetterComponentSchema).max(30),
+})
+
+export const OfferStatusSchema = z.object({
+  id:     uuid,
+  status: z.enum(OFFER_STATUSES),
 })
 
 // ─── Customer masters ───────────────────────────────────────────────────────
@@ -468,6 +499,8 @@ export const SettingsSchema = z.object({
   company_address:            optionalText(500),
   company_phone:              phone,
   company_email:              email,
+  hr_signatory_name:          optionalText(150),
+  hr_signatory_title:         optionalText(150),
   expiry_warning_days:        z.coerce.number().int().min(1).max(730),
   mr_edit_window_hours:       z.coerce.number().int().min(0).max(720),
   allow_expired_sale:         z.coerce.boolean().default(false),
@@ -722,3 +755,6 @@ export type ExpenseReviewInput        = z.infer<typeof ExpenseReviewSchema>
 export type PricingRuleInput          = z.infer<typeof PricingRuleSchema>
 export type SchemeInput               = z.infer<typeof SchemeSchema>
 export type SchemeStatusInput         = z.infer<typeof SchemeStatusSchema>
+export type OfferLetterInput          = z.infer<typeof OfferLetterSchema>
+export type OfferLetterComponentInput = z.infer<typeof OfferLetterComponentSchema>
+export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>

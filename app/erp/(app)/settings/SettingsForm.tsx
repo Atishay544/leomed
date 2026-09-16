@@ -101,6 +101,29 @@ export default function SettingsForm({ settings }: { settings: ErpSettings }) {
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-[14px] font-semibold text-gray-900">HR</h2>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="hr_signatory_name" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Offer letter signatory — name
+            </label>
+            <input id="hr_signatory_name" name="hr_signatory_name"
+                   defaultValue={settings.hr_signatory_name ?? ''} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="hr_signatory_title" className="mb-1 block text-[12px] font-medium text-gray-700">
+              Offer letter signatory — title
+            </label>
+            <input id="hr_signatory_title" name="hr_signatory_title" placeholder="e.g. HR Manager"
+                   defaultValue={settings.hr_signatory_title ?? ''} className={inputClass} />
+          </div>
+        </div>
+        <p className="mt-3 text-[11.5px] text-gray-400">
+          Printed under &quot;For {settings.company_name}&quot; on every generated offer letter.
+        </p>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-[14px] font-semibold text-gray-900">Stock &amp; expiry</h2>
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
           <div>
