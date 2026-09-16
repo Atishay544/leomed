@@ -17,7 +17,7 @@ export type CustomerType = (typeof CUSTOMER_TYPES)[number]
 export const OFFER_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'CONVERTED'] as const
 export type OfferStatus = (typeof OFFER_STATUSES)[number]
 
-export const OFFER_COMPONENT_CATEGORIES = ['EARNING', 'DEDUCTION', 'VARIABLE'] as const
+export const OFFER_COMPONENT_CATEGORIES = ['EARNING', 'DEDUCTION'] as const
 export type OfferComponentCategory = (typeof OFFER_COMPONENT_CATEGORIES)[number]
 
 export const DOCTOR_STATUSES = ['NEW', 'EXISTING'] as const
@@ -459,6 +459,10 @@ export interface OfferLetter {
   reports_to: string | null
   offer_date: string
   joining_date: string | null
+  /** Free text HR writes into the letter's opening paragraphs describing
+   *  incentive/variable-pay eligibility — deliberately not a row in the
+   *  compensation breakup, since it's conditional, not guaranteed. */
+  incentive_terms: string | null
   remarks: string | null
   status: OfferStatus
   converted_employee_id: string | null

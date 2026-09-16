@@ -17,7 +17,7 @@ export const metadata = { title: 'Offer Letter' }
 const ROLE_OPTIONS = ERP_ROLES.map(r => ({ value: r, label: ROLE_LABELS[r] }))
 
 const CATEGORY_LABELS: Record<string, string> = {
-  EARNING: 'Earning', DEDUCTION: 'Deduction', VARIABLE: 'Variable / incentive',
+  EARNING: 'Earning', DEDUCTION: 'Deduction',
 }
 
 const CONVERT_FIELDS: FieldSpec[] = [
@@ -44,7 +44,6 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
 
   const earning  = offer.components.filter(c => c.category === 'EARNING')
   const deduction = offer.components.filter(c => c.category === 'DEDUCTION')
-  const variable  = offer.components.filter(c => c.category === 'VARIABLE')
   const sum = (rows: typeof offer.components, key: 'monthly_amount' | 'annual_amount') =>
     rows.reduce((s, r) => s + Number(r[key]), 0)
 
@@ -52,8 +51,6 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
   const guaranteedAnnual  = sum(earning, 'annual_amount')
   const fixedMonthly = guaranteedMonthly + sum(deduction, 'monthly_amount')
   const fixedAnnual  = guaranteedAnnual + sum(deduction, 'annual_amount')
-  const targetMonthly = fixedMonthly + sum(variable, 'monthly_amount')
-  const targetAnnual  = fixedAnnual + sum(variable, 'annual_amount')
 
   return (
     <>
@@ -176,14 +173,16 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
                 <span className="text-gray-500">Total Fixed Compensation</span>
                 <span className="font-medium text-gray-900">{money(fixedMonthly)}/mo · {money(fixedAnnual)}/yr</span>
               </div>
-              {targetAnnual !== fixedAnnual && (
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700">Target Total Compensation</span>
-                  <span className="text-[13px] font-bold text-gray-900">{money(targetMonthly)}/mo · {money(targetAnnual)}/yr</span>
-                </div>
-              )}
             </div>
           </Card>
+
+          {offer.incentive_terms && (
+            <Card>
+              <h2 className="mb-2 text-[13px] font-semibold text-gray-800">Incentive / Variable Pay Terms</h2>
+              <p className="text-[12.5px] leading-relaxed text-gray-700">{offer.incentive_terms}</p>
+              <p className="mt-2 text-[11px] text-gray-400">Printed in the letter&apos;s opening paragraphs, not in Annexure I.</p>
+            </Card>
+          )}
 
           {offer.remarks && (
             <Card>

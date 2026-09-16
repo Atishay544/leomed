@@ -37,7 +37,6 @@ const inputClass =
 const CATEGORY_LABELS: Record<OfferComponentCategory, string> = {
   EARNING:   'Earning',
   DEDUCTION: 'Deduction (e.g. PF)',
-  VARIABLE:  'Variable / incentive',
 }
 
 const ROLE_OPTIONS = ERP_ROLES.map(r => ({ value: r, label: ROLE_LABELS[r] }))
@@ -77,6 +76,7 @@ export default function OfferLetterForm({
   const [reportsTo, setReportsTo]               = useState(initial?.reports_to ?? '')
   const [offerDate, setOfferDate]               = useState(initial?.offer_date ?? new Date().toISOString().slice(0, 10))
   const [joiningDate, setJoiningDate]           = useState(initial?.joining_date ?? '')
+  const [incentiveTerms, setIncentiveTerms]     = useState(initial?.incentive_terms ?? '')
   const [remarks, setRemarks]                   = useState(initial?.remarks ?? '')
   const [rows, setRows]                         = useState<ComponentRow[]>(() => toRows(initial))
 
@@ -102,12 +102,11 @@ export default function OfferLetterForm({
       const monthly = Number(r.monthly_amount) || 0
       const annual = Number(r.annual_amount) || 0
       if (r.category === 'EARNING') { acc.guaranteedMonthly += monthly; acc.guaranteedAnnual += annual }
-      if (r.category !== 'VARIABLE') { acc.fixedMonthly += monthly; acc.fixedAnnual += annual }
-      acc.targetMonthly += monthly
-      acc.targetAnnual += annual
+      acc.fixedMonthly += monthly
+      acc.fixedAnnual += annual
       return acc
     },
-    { guaranteedMonthly: 0, guaranteedAnnual: 0, fixedMonthly: 0, fixedAnnual: 0, targetMonthly: 0, targetAnnual: 0 },
+    { guaranteedMonthly: 0, guaranteedAnnual: 0, fixedMonthly: 0, fixedAnnual: 0 },
   )
 
   function handleSubmit(e: React.FormEvent) {
@@ -133,6 +132,7 @@ export default function OfferLetterForm({
       reports_to: reportsTo || undefined,
       offer_date: offerDate,
       joining_date: joiningDate || undefined,
+      incentive_terms: incentiveTerms.trim() || undefined,
       remarks: remarks.trim() || undefined,
       components: validRows.map(r => ({
         component_name: r.component_name.trim(),
@@ -233,6 +233,16 @@ export default function OfferLetterForm({
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-[14px] font-semibold text-gray-900">Incentive / Variable Pay Terms (optional)</h2>
+        <textarea value={incentiveTerms} onChange={e => setIncentiveTerms(e.target.value)} rows={3} disabled={locked}
+                  placeholder="e.g. an MR's incentive structure, target and eligibility conditions — printed in the letter's opening paragraphs, not the fixed compensation breakup below."
+                  className={inputClass} />
+        <p className="mt-1 text-[11px] text-gray-400">
+          Describe incentive eligibility here, not as a row below — it&apos;s conditional/variable pay, never part of the guaranteed compensation table.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[14px] font-semibold text-gray-900">Compensation Breakup</h2>
           {!locked && (
@@ -280,12 +290,6 @@ export default function OfferLetterForm({
             <span className="text-gray-500">Total Fixed Compensation</span>
             <span className="font-medium text-gray-900">{money(totals.fixedMonthly)}/mo · {money(totals.fixedAnnual)}/yr</span>
           </div>
-          {totals.targetAnnual !== totals.fixedAnnual && (
-            <div className="flex justify-between">
-              <span className="text-gray-500">Target Total Compensation (incl. variable)</span>
-              <span className="font-semibold text-gray-900">{money(totals.targetMonthly)}/mo · {money(totals.targetAnnual)}/yr</span>
-            </div>
-          )}
         </div>
       </div>
 

@@ -31,6 +31,7 @@ export async function GET(
     territory: offer.territory,
     reportsToName: offer.reports_to_name,
     joiningDate: offer.joining_date,
+    incentiveTerms: offer.incentive_terms,
     remarks: offer.remarks,
     components: offer.components.map(c => ({
       name: c.component_name,

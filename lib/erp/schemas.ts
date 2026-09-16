@@ -111,6 +111,7 @@ export const OfferLetterSchema = z.object({
   reports_to:        optionalUuid,
   offer_date:        dateString,
   joining_date:      optionalDate,
+  incentive_terms:   optionalText(2000),
   remarks:           optionalText(2000),
   components:        z.array(OfferLetterComponentSchema).max(30),
 })

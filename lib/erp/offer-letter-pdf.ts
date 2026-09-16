@@ -13,7 +13,7 @@ import { formatDate, pdfMoney } from './format'
 
 export interface OfferLetterPdfComponent {
   name: string
-  category: 'EARNING' | 'DEDUCTION' | 'VARIABLE'
+  category: 'EARNING' | 'DEDUCTION'
   monthly: number
   annual: number
 }
@@ -28,6 +28,9 @@ export interface OfferLetterPdfData {
   territory: string | null
   reportsToName: string | null
   joiningDate: string | null
+  /** Free text on incentive/variable-pay eligibility — printed in the
+   *  letter's opening paragraphs, deliberately never a row in Annexure I. */
+  incentiveTerms: string | null
   remarks: string | null
   components: OfferLetterPdfComponent[]
 }
@@ -45,7 +48,6 @@ export interface OfferLetterPdfCompany {
 const CATEGORY_LABEL: Record<OfferLetterPdfComponent['category'], string> = {
   EARNING:   'Earning',
   DEDUCTION: 'Deduction',
-  VARIABLE:  'Variable / Incentive',
 }
 
 export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: OfferLetterPdfCompany): Promise<Buffer> {
@@ -122,15 +124,16 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     )
     doc.moveDown(0.6)
 
-    const variableRows = data.components.filter(c => c.category === 'VARIABLE')
-    doc.text(
-      'Your compensation is detailed in Annexure I to this letter.' +
-      (variableRows.length > 0
-        ? ` In addition to your fixed compensation, you will be eligible for ${variableRows.map(c => c.name).join(', ')}, subject to performance and the Company's policy in effect from time to time.`
-        : ''),
-      { width: 515, align: 'justify' },
-    )
-    doc.moveDown(0.8)
+    doc.text('Your fixed compensation is detailed in Annexure I to this letter.', { width: 515, align: 'justify' })
+    doc.moveDown(0.6)
+
+    // Incentive/variable pay is HR's own free text, kept in these opening
+    // paragraphs — deliberately never a row in Annexure I's fixed-pay table.
+    if (data.incentiveTerms) {
+      doc.font('Helvetica-Bold').fillColor('#111').text('Incentive: ', 40, doc.y, { continued: true, width: 515 })
+      doc.font('Helvetica').fillColor('#333').text(data.incentiveTerms)
+      doc.moveDown(0.6)
+    }
 
     // ─── Terms & Conditions ───────────────────────────────────────────────
     doc.fontSize(9.5).font('Helvetica-Bold').fillColor('#0f5132').text('Terms and Conditions')
@@ -222,7 +225,6 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
 
     const earning  = data.components.filter(c => c.category === 'EARNING')
     const deduction = data.components.filter(c => c.category === 'DEDUCTION')
-    const variable  = data.components.filter(c => c.category === 'VARIABLE')
     const sum = (rows: OfferLetterPdfComponent[], key: 'monthly' | 'annual') =>
       rows.reduce((s, r) => s + r[key], 0)
 
@@ -230,8 +232,6 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     const guaranteedAnnual  = sum(earning, 'annual')
     const fixedMonthly = guaranteedMonthly + sum(deduction, 'monthly')
     const fixedAnnual  = guaranteedAnnual + sum(deduction, 'annual')
-    const targetMonthly = fixedMonthly + sum(variable, 'monthly')
-    const targetAnnual  = fixedAnnual + sum(variable, 'annual')
 
     doc.y = y + 6
     const summaryRow = (label: string, monthly: number, annual: number, bold = false) => {
@@ -247,7 +247,6 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     doc.moveDown(0.3)
     summaryRow('Total Guaranteed Compensation', guaranteedMonthly, guaranteedAnnual, true)
     if (deduction.length > 0) summaryRow('Total Fixed Compensation', fixedMonthly, fixedAnnual, true)
-    if (variable.length > 0) summaryRow('Target Total Compensation', targetMonthly, targetAnnual, true)
 
     doc.moveDown(1)
     doc.fontSize(7.5).font('Helvetica').fillColor('#999').text(
