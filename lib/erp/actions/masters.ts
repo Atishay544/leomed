@@ -5,8 +5,8 @@ import type { z } from 'zod'
 import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import {
-  BankAccountSchema, ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
-  ProductBatchSchema, SupplierSchema,
+  AreaSchema, BankAccountSchema, ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
+  ProductBatchSchema, SupplierSchema, TerritorySchema,
 } from '../schemas'
 import type { Capability } from '../permissions'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
@@ -210,6 +210,42 @@ export async function saveSupplier(_prev: ActionState, formData: FormData) {
 
 export async function setSupplierActive(id: string, active: boolean) {
   return setMasterActive(SUPPLIER, id, active)
+}
+
+// ─── Territories & areas ────────────────────────────────────────────────────
+// Additive geography hierarchy — see the migration for why this doesn't
+// touch the existing free-text territory columns. Admin-only: who covers
+// what, and which distributor owns which territory, is an org-structure
+// call, not routine master data.
+
+const TERRITORY: MasterConfig = {
+  table: 'erp_territories',
+  capability: 'territories.manage',
+  path: '/erp/masters/territories',
+  label: 'territory',
+}
+
+export async function saveTerritory(_prev: ActionState, formData: FormData) {
+  return saveMaster(TERRITORY, TerritorySchema, formData)
+}
+
+export async function setTerritoryActive(id: string, active: boolean) {
+  return setMasterActive(TERRITORY, id, active)
+}
+
+const AREA: MasterConfig = {
+  table: 'erp_areas',
+  capability: 'territories.manage',
+  path: '/erp/masters/areas',
+  label: 'area',
+}
+
+export async function saveArea(_prev: ActionState, formData: FormData) {
+  return saveMaster(AREA, AreaSchema, formData)
+}
+
+export async function setAreaActive(id: string, active: boolean) {
+  return setMasterActive(AREA, id, active)
 }
 
 // ─── Bank accounts ──────────────────────────────────────────────────────────

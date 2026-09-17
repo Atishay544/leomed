@@ -168,6 +168,30 @@ export interface Distributor {
   updated_at: string
 }
 
+/** A real geography master, additive to (not a replacement of) the
+ *  free-text erp_users.territory / erp_distributors.territory strings —
+ *  see the migration for why. One distributor per territory (a distributor
+ *  can cover many territories); a territory groups multiple Areas, each
+ *  independently assigned to one MR. */
+export interface Territory {
+  id: string
+  name: string
+  distributor_id: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Area {
+  id: string
+  name: string
+  territory_id: string
+  mr_id: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Supplier {
   id: string
   supplier_code: string

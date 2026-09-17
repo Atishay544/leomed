@@ -80,6 +80,11 @@ export const CAPABILITIES = [
   // member yet, and the flow that eventually creates one (users.manage).
   // ADMIN-only, deliberately held by no other role below.
   'offers.manage',
+  // Territories & areas — who covers what, and which distributor owns
+  // which territory, is a field-force/org-structure decision, not routine
+  // master data entry (unlike masters.write, which ACCOUNTANT also holds
+  // for distributors/suppliers). ADMIN-only, held by no other role below.
+  'territories.manage',
 
   // HR: attendance — every non-admin employee checks in; ADMIN deliberately
   // never holds 'attendance.checkin' in spirit (enforced in the RPCs and in

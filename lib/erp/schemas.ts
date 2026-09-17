@@ -181,6 +181,17 @@ export const SupplierSchema = z.object({
   payment_terms:       optionalText(100),
 })
 
+export const TerritorySchema = z.object({
+  name:           requiredText('Territory name', 100),
+  distributor_id: optionalUuid,
+})
+
+export const AreaSchema = z.object({
+  name:         requiredText('Area name', 100),
+  territory_id: uuid,
+  mr_id:        optionalUuid,
+})
+
 export const BankAccountSchema = z.object({
   bank_name:           requiredText('Bank name', 150),
   account_holder_name: requiredText('Account holder name', 150),
@@ -761,3 +772,5 @@ export type SchemeStatusInput         = z.infer<typeof SchemeStatusSchema>
 export type OfferLetterInput          = z.infer<typeof OfferLetterSchema>
 export type OfferLetterComponentInput = z.infer<typeof OfferLetterComponentSchema>
 export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>
+export type TerritoryInput            = z.infer<typeof TerritorySchema>
+export type AreaInput                 = z.infer<typeof AreaSchema>

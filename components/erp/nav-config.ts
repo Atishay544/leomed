@@ -3,7 +3,7 @@ import {
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
   Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
   CalendarDays, SlidersHorizontal, IndianRupee, Wallet, Tag, Gift, Tags, Percent, FileText,
-  type LucideIcon,
+  MapPin, MapPinned, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -71,6 +71,8 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/masters/chemists',     label: 'Chemists',     icon: Store,     capability: 'masters.read' },
       { href: '/erp/masters/distributors', label: 'Distributors', icon: Truck,     capability: 'masters.read' },
       { href: '/erp/masters/suppliers',    label: 'Suppliers',    icon: Factory,   capability: 'billing.purchase.read' },
+      { href: '/erp/masters/territories',  label: 'Territories',  icon: MapPin,    capability: 'territories.manage' },
+      { href: '/erp/masters/areas',        label: 'Areas',        icon: MapPinned, capability: 'territories.manage' },
     ],
   },
   {
