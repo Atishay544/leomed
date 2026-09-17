@@ -28,6 +28,7 @@ const CONVERT_FIELDS: FieldSpec[] = [
     hint: 'At least 8 characters. Share it securely and ask them to change it.',
   },
   { name: 'role',      label: 'System role', type: 'select', options: ROLE_OPTIONS, required: true },
+  { name: 'designation', label: 'Designation', hint: 'Pre-filled from the offer — adjust if it changed since' },
   { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
   { name: 'employee_code', label: 'Employee ID' },
   { name: 'phone',     label: 'Phone', type: 'tel' },
@@ -130,6 +131,7 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
                     email: offer.candidate_email ?? '',
                     phone: offer.candidate_phone ?? '',
                     role: offer.role,
+                    designation: offer.designation,
                     territory: offer.territory ?? '',
                     department: offer.department ?? '',
                   }}

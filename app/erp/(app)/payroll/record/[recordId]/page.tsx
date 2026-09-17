@@ -47,7 +47,7 @@ export default async function PayrollRecordPage({ params }: Props) {
               <div>
                 <h1 className="text-lg font-bold text-gray-900">{record.employee_name}</h1>
                 <p className="mt-0.5 text-[12.5px] text-gray-500">
-                  {record.designation}{record.department && ` · ${record.department}`}
+                  {record.job_title ?? record.designation}{record.department && ` · ${record.department}`}
                   {period && ` · ${MONTHS[period.period_month - 1]} ${period.period_year}`}
                 </p>
               </div>

@@ -94,6 +94,11 @@ export interface ErpUser {
   reports_to: string | null
   active: boolean
   department: string | null
+  /** Real job title (e.g. "Territory Manager", "Area Sales Manager") — a
+   *  document/HR detail, distinct from `role` which drives permissions and
+   *  must stay a closed set. Carried over automatically when an offer
+   *  letter is converted to an employee. */
+  designation: string | null
   employee_code: string | null
   week_off_days: number[] | null
   created_at: string
@@ -645,7 +650,11 @@ export interface ErpPayrollRecord {
   payroll_period_id: string
   employee_id: string
   employee_name: string
+  /** Despite the name, this snapshots ROLE at generation time (e.g. "MR"),
+   *  not a real job title — kept exactly as-is since payroll's role
+   *  filtering depends on it. The genuine job title snapshot is job_title. */
   designation: string | null
+  job_title: string | null
   department: string | null
   working_days: number
   present_days: number

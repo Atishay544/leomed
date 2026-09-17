@@ -73,6 +73,7 @@ export async function createErpUser(_prev: ActionState, formData: FormData): Pro
       mr_code:       profile.mr_code ?? null,
       territory:     profile.territory ?? null,
       department:    profile.department ?? null,
+      designation:   profile.designation ?? null,
       employee_code: profile.employee_code ?? null,
     })
 
@@ -108,6 +109,7 @@ export async function updateErpUser(_prev: ActionState, formData: FormData): Pro
         mr_code:       parsed.data.mr_code ?? null,
         territory:     parsed.data.territory ?? null,
         department:    parsed.data.department ?? null,
+        designation:   parsed.data.designation ?? null,
         employee_code: parsed.data.employee_code ?? null,
         active:        parsed.data.active,
       })

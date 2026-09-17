@@ -26,6 +26,7 @@ const CREATE_FIELDS: FieldSpec[] = [
     hint: 'At least 8 characters. Share it securely and ask them to change it.',
   },
   { name: 'role',      label: 'Role', type: 'select', options: ROLE_OPTIONS, required: true },
+  { name: 'designation', label: 'Designation', hint: 'Real job title, e.g. Territory Manager — separate from Role above' },
   { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
   { name: 'employee_code', label: 'Employee ID', hint: 'For non-MR staff, e.g. EMP0042' },
   { name: 'phone',     label: 'Phone', type: 'tel' },
@@ -38,6 +39,7 @@ const EDIT_FIELDS: FieldSpec[] = [
   { name: 'email',     label: 'Email', type: 'email', required: true, span: 2,
     hint: 'Changing this here does not change their sign-in address.' },
   { name: 'role',      label: 'Role', type: 'select', options: ROLE_OPTIONS, required: true },
+  { name: 'designation', label: 'Designation', hint: 'Real job title, e.g. Territory Manager — separate from Role above' },
   { name: 'mr_code',   label: 'MR code' },
   { name: 'employee_code', label: 'Employee ID' },
   { name: 'phone',     label: 'Phone', type: 'tel' },
@@ -136,6 +138,7 @@ export default async function StaffPage({ searchParams }: Props) {
                       <Badge className={ROLE_STYLES[user.role] ?? ROLE_STYLES.VIEWER}>
                         {ROLE_LABELS[user.role]}
                       </Badge>
+                      {user.designation && <p className="mt-0.5 text-[11.5px] text-gray-500">{user.designation}</p>}
                     </Td>
                     <Td className="font-mono text-[12px]">{user.mr_code ?? '—'}</Td>
                     <Td className="font-mono text-[12px]">{user.employee_code ?? '—'}</Td>

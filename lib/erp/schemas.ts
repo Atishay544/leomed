@@ -64,6 +64,7 @@ export const ErpUserSchema = z.object({
   mr_code:       optionalText(20),
   territory:     optionalText(100),
   department:    optionalText(100),
+  designation:   optionalText(100),
   employee_code: optionalText(30),
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
@@ -82,6 +83,7 @@ export const ErpUserCreateSchema = z.object({
   mr_code:       optionalText(20),
   territory:     optionalText(100),
   department:    optionalText(100),
+  designation:   optionalText(100),
   employee_code: optionalText(30),
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
