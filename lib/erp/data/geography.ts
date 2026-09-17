@@ -27,10 +27,16 @@ export async function listTerritories(includeInactive = false): Promise<Territor
     .order('name', { ascending: true })
   if (!includeInactive) query = query.eq('active', true)
 
-  const [{ data }, { data: areaRows }] = await Promise.all([
+  const [{ data, error }, { data: areaRows }] = await Promise.all([
     query,
     db.from('erp_areas').select('territory_id'),
   ])
+  // A query error here (e.g. a pending migration not yet run, so a joined
+  // column/relationship doesn't exist yet) must not look identical to "no
+  // territories exist" — that silent difference is exactly what made a real
+  // territory disappear from both this list and the Areas form's dropdown
+  // without any visible error.
+  if (error) console.error('[erp] listTerritories failed', error.message)
 
   const counts = new Map<string, number>()
   for (const a of areaRows ?? []) {
@@ -71,7 +77,8 @@ export async function listAreas(params: { territoryId?: string; includeInactive?
   if (!params.includeInactive) query = query.eq('active', true)
   if (params.territoryId) query = query.eq('territory_id', params.territoryId)
 
-  const { data } = await query
+  const { data, error } = await query
+  if (error) console.error('[erp] listAreas failed', error.message)
   if (!data || data.length === 0) return []
 
   // Names for whichever MR/distributor a territory's own default points
@@ -115,12 +122,13 @@ export async function listAreas(params: { territoryId?: string; includeInactive?
  *  offer letters). */
 export async function listActiveMRs(): Promise<{ id: string; name: string }[]> {
   const db = await erpDb()
-  const { data } = await db
+  const { data, error } = await db
     .from('erp_users')
     .select('id, name')
     .eq('active', true)
     .eq('role', 'MR')
     .order('name', { ascending: true })
+  if (error) console.error('[erp] listActiveMRs failed', error.message)
   return (data ?? []) as { id: string; name: string }[]
 }
 
@@ -131,11 +139,12 @@ export async function listActiveMRs(): Promise<{ id: string; name: string }[]> {
  *  them. */
 export async function listAllMRs(): Promise<{ id: string; name: string; active: boolean }[]> {
   const db = await erpDb()
-  const { data } = await db
+  const { data, error } = await db
     .from('erp_users')
     .select('id, name, active')
     .eq('role', 'MR')
     .order('name', { ascending: true })
+  if (error) console.error('[erp] listAllMRs failed', error.message)
   return (data ?? []) as { id: string; name: string; active: boolean }[]
 }
 
@@ -145,11 +154,12 @@ export async function listAllMRs(): Promise<{ id: string; name: string; active: 
  *  directly. */
 export async function listActiveDistributorsForDropdown(): Promise<{ id: string; distributor_name: string }[]> {
   const db = await erpDb()
-  const { data } = await db
+  const { data, error } = await db
     .from('erp_distributors')
     .select('id, distributor_name')
     .eq('active', true)
     .order('distributor_name', { ascending: true })
+  if (error) console.error('[erp] listActiveDistributorsForDropdown failed', error.message)
   return (data ?? []) as { id: string; distributor_name: string }[]
 }
 
@@ -157,9 +167,10 @@ export async function listActiveDistributorsForDropdown(): Promise<{ id: string;
  *  listAllMRs(), for the "reassign FROM" side. */
 export async function listAllDistributorsForDropdown(): Promise<{ id: string; distributor_name: string; active: boolean }[]> {
   const db = await erpDb()
-  const { data } = await db
+  const { data, error } = await db
     .from('erp_distributors')
     .select('id, distributor_name, active')
     .order('distributor_name', { ascending: true })
+  if (error) console.error('[erp] listAllDistributorsForDropdown failed', error.message)
   return (data ?? []) as { id: string; distributor_name: string; active: boolean }[]
 }
