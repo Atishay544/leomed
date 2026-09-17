@@ -125,6 +125,10 @@ export const OfferStatusSchema = z.object({
 
 // ─── Customer masters ───────────────────────────────────────────────────────
 
+// area/territory (free text) are retired from the write path — location is
+// now captured structurally via area_id only (see master-fields.ts). The
+// columns themselves stay in the database, untouched, for any pre-existing
+// record that hasn't been mapped to an area yet.
 export const DoctorSchema = z.object({
   doctor_name:    requiredText('Doctor name', 150),
   specialization: optionalText(100),
@@ -133,9 +137,7 @@ export const DoctorSchema = z.object({
   email,
   address:        optionalText(500),
   city:           optionalText(100),
-  area:           optionalText(100),
-  territory:      optionalText(100),
-  area_id:        optionalUuid,
+  area_id:        uuid,
   clinic_name:    optionalText(150),
   notes:          optionalText(1000),
 })
@@ -147,9 +149,7 @@ export const ChemistSchema = z.object({
   email,
   address:             optionalText(500),
   city:                optionalText(100),
-  area:                optionalText(100),
-  territory:           optionalText(100),
-  area_id:             optionalUuid,
+  area_id:             uuid,
   gst_number:          optionalText(20),
   drug_license_number: optionalText(50),
   notes:               optionalText(1000),

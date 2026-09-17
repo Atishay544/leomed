@@ -7,12 +7,13 @@ import type { FieldSpec } from './form/Field'
  * this is the presentation.
  */
 
-/** The free-text `area`/`territory` fields below predate the structured
- *  Territory/Area masters and are kept only as display labels — no report
- *  reads them anymore. `area_id` is what drives area/territory-wise
- *  reporting (erp_area_performance/erp_territory_performance), so it needs
- *  the live list of areas for its dropdown — hence a function, called at
- *  each page's render time, rather than a static array. */
+/** Doctors/chemists are located by the structured Area (which itself belongs
+ *  to a Territory) — not by the old free-text area/territory fields, which
+ *  are retired from every form here to avoid the two ever disagreeing.
+ *  `city` stays: it has no structured equivalent and isn't part of the
+ *  area/territory model. `area_id` needs the live list of areas for its
+ *  dropdown, hence a function, called at each page's render time, rather
+ *  than a static array. */
 export function buildDoctorFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
   return [
     { name: 'doctor_name',    label: 'Doctor name', required: true, placeholder: 'Dr. Rajesh Kumar', span: 2 },
@@ -22,15 +23,13 @@ export function buildDoctorFields(areaOptions: { value: string; label: string }[
     { name: 'phone',          label: 'Phone', type: 'tel', placeholder: '98765 43210' },
     { name: 'email',          label: 'Email', type: 'email' },
     { name: 'address',        label: 'Address', type: 'textarea', span: 2 },
+    { name: 'city',           label: 'City' },
     {
-      name: 'area_id', label: 'Area (for area/territory reports)', type: 'select', span: 2,
-      options: [{ value: '', label: '— Not mapped —' }, ...areaOptions],
-      hint: 'Powers area- and territory-wise reporting. Manage the list under Masters → Areas.',
+      name: 'area_id', label: 'Area', type: 'select', required: true,
+      options: [{ value: '', label: '— Select area —' }, ...areaOptions],
+      hint: 'Determines this doctor\'s territory for reports. Manage the list under Masters → Areas.',
     },
-    { name: 'area',      label: 'Area (free text)', hint: 'Legacy label only — does not affect reports.' },
-    { name: 'city',      label: 'City' },
-    { name: 'territory', label: 'Territory (free text)', hint: 'Legacy label only — pick Area above for reports.' },
-    { name: 'notes',     label: 'Notes', type: 'textarea', span: 2 },
+    { name: 'notes',          label: 'Notes', type: 'textarea', span: 2 },
   ]
 }
 
@@ -43,15 +42,13 @@ export function buildChemistFields(areaOptions: { value: string; label: string }
     { name: 'gst_number',          label: 'GST number' },
     { name: 'drug_license_number', label: 'Drug licence number', span: 2 },
     { name: 'address',             label: 'Address', type: 'textarea', span: 2 },
+    { name: 'city',                label: 'City' },
     {
-      name: 'area_id', label: 'Area (for area/territory reports)', type: 'select', span: 2,
-      options: [{ value: '', label: '— Not mapped —' }, ...areaOptions],
-      hint: 'Powers area- and territory-wise reporting. Manage the list under Masters → Areas.',
+      name: 'area_id', label: 'Area', type: 'select', required: true,
+      options: [{ value: '', label: '— Select area —' }, ...areaOptions],
+      hint: 'Determines this chemist\'s territory for reports. Manage the list under Masters → Areas.',
     },
-    { name: 'area',      label: 'Area (free text)', hint: 'Legacy label only — does not affect reports.' },
-    { name: 'city',      label: 'City' },
-    { name: 'territory', label: 'Territory (free text)', hint: 'Legacy label only — pick Area above for reports.' },
-    { name: 'notes',     label: 'Notes', type: 'textarea', span: 2 },
+    { name: 'notes',                label: 'Notes', type: 'textarea', span: 2 },
   ]
 }
 

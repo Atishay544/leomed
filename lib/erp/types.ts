@@ -115,11 +115,16 @@ export interface Doctor {
   email: string | null
   address: string | null
   city: string | null
+  /** Retired from every form and no longer read by any report — a doctor's
+   *  location is now the structured area_id below. Kept only because the
+   *  column still exists for whichever pre-migration record hasn't been
+   *  mapped to an area yet. */
   area: string | null
   territory: string | null
-  /** Structured area — drives area/territory-wise reporting. `area` and
-   *  `territory` above are legacy free text kept only as display labels;
-   *  see erp_territory_performance()/erp_area_performance(). */
+  /** The doctor's location — drives area/territory-wise reporting; see
+   *  erp_territory_performance()/erp_area_performance(). Required on every
+   *  new/edited doctor going forward (see DoctorSchema); null only means a
+   *  pre-existing record hasn't been mapped yet. */
   area_id: string | null
   clinic_name: string | null
   notes: string | null
@@ -140,9 +145,10 @@ export interface Chemist {
   email: string | null
   address: string | null
   city: string | null
+  /** Retired — see the matching note on Doctor.area. */
   area: string | null
   territory: string | null
-  /** Structured area — see the matching note on Doctor.area_id. */
+  /** The chemist's location — see the matching note on Doctor.area_id. */
   area_id: string | null
   gst_number: string | null
   drug_license_number: string | null

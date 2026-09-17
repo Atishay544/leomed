@@ -77,14 +77,15 @@ export default async function DoctorsPage({ searchParams }: Props) {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[880px]">
+            <table className="w-full min-w-[960px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Code</Th>
                   <Th>Doctor</Th>
                   <Th>Specialisation</Th>
                   <Th>Clinic</Th>
-                  <Th>Area / City</Th>
+                  <Th>Area</Th>
+                  <Th>City</Th>
                   <Th>Phone</Th>
                   <Th align="right">Actions</Th>
                 </tr>
@@ -117,14 +118,10 @@ export default async function DoctorsPage({ searchParams }: Props) {
                             <p className="mt-0.5 text-[11.5px] text-gray-400">{doctor.territory_name}</p>
                           </>
                         ) : (
-                          <>
-                            {[doctor.area, doctor.city].filter(Boolean).join(', ') || '—'}
-                            {doctor.territory && (
-                              <p className="mt-0.5 text-[11.5px] text-gray-400">{doctor.territory} (unmapped)</p>
-                            )}
-                          </>
+                          <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Not mapped</Badge>
                         )}
                       </Td>
+                      <Td>{doctor.city ?? '—'}</Td>
                       <Td className="tabular-nums">{doctor.phone ?? '—'}</Td>
                       <Td align="right">
                         <div className="flex items-center justify-end gap-2">

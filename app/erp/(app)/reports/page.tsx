@@ -487,6 +487,9 @@ export default async function ReportsPage({ searchParams }: Props) {
         {tab === 'territory' && (
           <>
             <CardHeader title="Activity by territory" />
+            <p className="border-b border-gray-100 px-5 pb-3.5 text-[12px] text-gray-500">
+              Grouped by the doctor/chemist&rsquo;s own mapped area. Anyone not yet mapped under Masters → Doctors/Chemists shows up under &ldquo;Unassigned&rdquo;.
+            </p>
             {territoryRows.length === 0 ? (
               <EmptyState icon={BarChart3} title="No territory activity in this period" />
             ) : (

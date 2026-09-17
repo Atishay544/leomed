@@ -1,12 +1,14 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
+import { listAreas } from '@/lib/erp/data/geography'
 import ChemistVisitForm from '@/components/erp/visits/ChemistVisitForm'
 
 export const metadata = { title: 'New Chemist Visit' }
 
 export default async function NewChemistVisitPage() {
   await requireCapability('visits.create')
+  const areas = await listAreas()
 
   return (
     <>
@@ -21,7 +23,7 @@ export default async function NewChemistVisitPage() {
       </div>
 
       <div className="mx-auto max-w-3xl">
-        <ChemistVisitForm />
+        <ChemistVisitForm areas={areas} />
       </div>
     </>
   )

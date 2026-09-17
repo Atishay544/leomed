@@ -68,13 +68,14 @@ export default async function ChemistsPage({ searchParams }: Props) {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[880px]">
+            <table className="w-full min-w-[960px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Code</Th>
                   <Th>Store</Th>
                   <Th>Owner</Th>
-                  <Th>Area / City</Th>
+                  <Th>Area</Th>
+                  <Th>City</Th>
                   <Th>Phone</Th>
                   <Th>GST</Th>
                   <Th align="right">Actions</Th>
@@ -104,14 +105,10 @@ export default async function ChemistsPage({ searchParams }: Props) {
                             <p className="mt-0.5 text-[11.5px] text-gray-400">{chemist.territory_name}</p>
                           </>
                         ) : (
-                          <>
-                            {[chemist.area, chemist.city].filter(Boolean).join(', ') || '—'}
-                            {chemist.territory && (
-                              <p className="mt-0.5 text-[11.5px] text-gray-400">{chemist.territory} (unmapped)</p>
-                            )}
-                          </>
+                          <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Not mapped</Badge>
                         )}
                       </Td>
+                      <Td>{chemist.city ?? '—'}</Td>
                       <Td className="tabular-nums">{chemist.phone ?? '—'}</Td>
                       <Td className="font-mono text-[11.5px]">{chemist.gst_number ?? '—'}</Td>
                       <Td align="right">

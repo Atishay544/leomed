@@ -140,14 +140,17 @@ export async function getDistributorPerformance(
   return (data ?? []) as unknown as DistributorPerformanceRow[]
 }
 
-/** Grouped by the visited doctor's/chemist's own area → territory (falling
- *  back to their legacy free-text `territory` field, then 'Unassigned', for
- *  anyone not yet mapped to a structured area) — NOT by the MR's own
- *  territory. See the design note in erp_territory_performance()'s migration:
- *  an MR can now be responsible for areas across more than one territory, so
- *  attributing via the MR would be ambiguous; the customer's own location is
- *  always unambiguous. MR-wise performance (getMrPerformance) is the
- *  separate, still mr_id-grouped dimension for "who is doing the work". */
+/** Grouped by the visited doctor's/chemist's own area → territory — purely
+ *  the structured model, no legacy free-text fallback (see 20260918000004:
+ *  mixing the two risked two same-named-but-drifted "territories" showing up
+ *  as separate rows, which is the exact confusion this feature replaces).
+ *  Anyone not yet mapped to an area buckets under 'Unassigned' until an
+ *  admin/MR edits that record. This is NOT the MR's own territory — see the
+ *  design note in erp_territory_performance()'s migration: an MR can now be
+ *  responsible for areas across more than one territory, so attributing via
+ *  the MR would be ambiguous; the customer's own location is always
+ *  unambiguous. MR-wise performance (getMrPerformance) is the separate,
+ *  still mr_id-grouped dimension for "who is doing the work". */
 export interface TerritoryPerformanceRow {
   territory: string
   mr_count: number
