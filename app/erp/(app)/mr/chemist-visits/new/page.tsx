@@ -1,14 +1,17 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
-import { listAreas } from '@/lib/erp/data/geography'
+import { listAreasForMr } from '@/lib/erp/data/geography'
 import ChemistVisitForm from '@/components/erp/visits/ChemistVisitForm'
 
 export const metadata = { title: 'New Chemist Visit' }
 
 export default async function NewChemistVisitPage() {
-  await requireCapability('visits.create')
-  const areas = await listAreas()
+  const session = await requireCapability('visits.create')
+  // Scoped to areas this MR is actually assigned to — see the note on
+  // listAreasForMr(). A newly-created chemist can only be placed somewhere
+  // they cover; existing chemists remain visitable regardless of area.
+  const areas = await listAreasForMr(session.id)
 
   return (
     <>

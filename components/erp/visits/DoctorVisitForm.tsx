@@ -258,10 +258,16 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
         title="Which doctor?"
         subtitle="Search the master, or add someone you're meeting for the first time."
       >
+        {areas.length === 0 && (
+          <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
+            You don&apos;t have any areas assigned yet, so a new doctor can&apos;t be added right now — ask your admin/HR to assign you to an area. You can still log a visit to an existing doctor below.
+          </p>
+        )}
         <CustomerPicker
           noun="doctor"
           nameFieldName="doctor_name"
           newFields={NEW_DOCTOR_FIELDS}
+          canCreate={areas.length > 0}
           value={doctor}
           onChange={setDoctor}
           error={fieldErrors.doctor_id?.[0]}
