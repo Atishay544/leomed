@@ -135,6 +135,7 @@ export const DoctorSchema = z.object({
   city:           optionalText(100),
   area:           optionalText(100),
   territory:      optionalText(100),
+  area_id:        optionalUuid,
   clinic_name:    optionalText(150),
   notes:          optionalText(1000),
 })
@@ -148,6 +149,7 @@ export const ChemistSchema = z.object({
   city:                optionalText(100),
   area:                optionalText(100),
   territory:           optionalText(100),
+  area_id:             optionalUuid,
   gst_number:          optionalText(20),
   drug_license_number: optionalText(50),
   notes:               optionalText(1000),

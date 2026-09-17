@@ -4,7 +4,7 @@ import { requireCapability } from '@/lib/erp/auth'
 import { can } from '@/lib/erp/permissions'
 import {
   currentMonthRange, getDistributorPerformance, getMrPerformance,
-  getProductPerformance, getTerritoryPerformance,
+  getProductPerformance, getTerritoryPerformance, getAreaPerformance,
   getDoctorPerformance, getChemistPerformance, getSlowMovingProducts,
 } from '@/lib/erp/data/dashboard'
 import { listAttendance } from '@/lib/erp/data/attendance'
@@ -30,6 +30,7 @@ const ALL_TABS = [
   { key: 'chemist',     label: 'Chemists',       capability: 'reports.read.all' },
   { key: 'distributor', label: 'Distributors',   capability: 'reports.read.all' },
   { key: 'territory',   label: 'Territories',    capability: 'reports.read.all' },
+  { key: 'area',        label: 'Areas',          capability: 'reports.read.all' },
   { key: 'stock',       label: 'Stock health',   capability: 'inventory.read' },
   { key: 'attendance',  label: 'Attendance',     capability: 'attendance.read.all' },
   { key: 'leave',       label: 'Leave',          capability: 'leave.manage' },
@@ -63,13 +64,14 @@ export default async function ReportsPage({ searchParams }: Props) {
 
   // Only the active tab's query runs — no point aggregating a dozen reports
   // to show one.
-  const [mrRows, productRows, doctorRows, chemistRows, distributorRows, territoryRows, slowMovingRows] = await Promise.all([
+  const [mrRows, productRows, doctorRows, chemistRows, distributorRows, territoryRows, areaRows, slowMovingRows] = await Promise.all([
     tab === 'mr'          ? getMrPerformance(from, to)          : Promise.resolve([]),
     tab === 'product'     ? getProductPerformance(from, to)     : Promise.resolve([]),
     tab === 'doctor'      ? getDoctorPerformance(from, to)      : Promise.resolve([]),
     tab === 'chemist'     ? getChemistPerformance(from, to)     : Promise.resolve([]),
     tab === 'distributor' ? getDistributorPerformance(from, to) : Promise.resolve([]),
     tab === 'territory'   ? getTerritoryPerformance(from, to)   : Promise.resolve([]),
+    tab === 'area'        ? getAreaPerformance(from, to)        : Promise.resolve([]),
     tab === 'stock'       ? getSlowMovingProducts(90)           : Promise.resolve([]),
   ])
 
@@ -427,6 +429,51 @@ export default async function ReportsPage({ searchParams }: Props) {
                           <span className={row.outstanding > 0 ? 'font-semibold text-red-700' : 'text-emerald-700'}>
                             {money(row.outstanding)}
                           </span>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableWrap>
+            )}
+          </>
+        )}
+
+        {tab === 'area' && (
+          <>
+            <CardHeader title="Activity by area" />
+            <p className="border-b border-gray-100 px-5 pb-3.5 text-[12px] text-gray-500">
+              Grouped by the doctor/chemist&rsquo;s own mapped area — customers not yet mapped under Masters → Doctors/Chemists won&rsquo;t appear here (they still count at the territory and MR level).
+            </p>
+            {areaRows.length === 0 ? (
+              <EmptyState icon={BarChart3} title="No area activity in this period" />
+            ) : (
+              <TableWrap>
+                <table className="w-full min-w-[820px]">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <Th>Area</Th>
+                      <Th>Territory</Th>
+                      <Th align="right">MRs</Th>
+                      <Th align="right">Doctor visits</Th>
+                      <Th align="right">New doctors</Th>
+                      <Th align="right">Chemist visits</Th>
+                      <Th align="right">Orders</Th>
+                      <Th align="right">Order value</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {areaRows.map(row => (
+                      <tr key={row.area_id} className="hover:bg-gray-50/60">
+                        <Td className="font-medium text-gray-900">{row.area_name}</Td>
+                        <Td className="text-[12.5px] text-gray-600">{row.territory_name}</Td>
+                        <Td align="right" className="tabular-nums">{qty(row.mr_count)}</Td>
+                        <Td align="right" className="tabular-nums font-medium">{qty(row.doctor_visits)}</Td>
+                        <Td align="right" className="tabular-nums text-emerald-700">{qty(row.new_doctors)}</Td>
+                        <Td align="right" className="tabular-nums">{qty(row.chemist_visits)}</Td>
+                        <Td align="right" className="tabular-nums">{qty(row.field_orders)}</Td>
+                        <Td align="right" className="tabular-nums font-medium text-gray-900">
+                          {money(row.order_value)}
                         </Td>
                       </tr>
                     ))}

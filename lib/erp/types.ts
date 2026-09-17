@@ -117,6 +117,10 @@ export interface Doctor {
   city: string | null
   area: string | null
   territory: string | null
+  /** Structured area — drives area/territory-wise reporting. `area` and
+   *  `territory` above are legacy free text kept only as display labels;
+   *  see erp_territory_performance()/erp_area_performance(). */
+  area_id: string | null
   clinic_name: string | null
   notes: string | null
   /** Non-null when this doctor was created inside a visit workflow (spec §18). */
@@ -138,6 +142,8 @@ export interface Chemist {
   city: string | null
   area: string | null
   territory: string | null
+  /** Structured area — see the matching note on Doctor.area_id. */
+  area_id: string | null
   gst_number: string | null
   drug_license_number: string | null
   notes: string | null

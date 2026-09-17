@@ -1,10 +1,11 @@
 import { UserRound } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listDoctors, PAGE_SIZE } from '@/lib/erp/data/masters'
+import { listAreas } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveDoctor, setDoctorActive } from '@/lib/erp/actions/masters'
-import { DOCTOR_FIELDS } from '@/components/erp/master-fields'
+import { buildDoctorFields } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
 import SearchBar from '@/components/erp/SearchBar'
@@ -24,7 +25,7 @@ export default async function DoctorsPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const [{ rows, total, pageCount }, settings] = await Promise.all([
+  const [{ rows, total, pageCount }, settings, areas] = await Promise.all([
     listDoctors({
       q: params.q,
       page,
@@ -32,10 +33,13 @@ export default async function DoctorsPage({ searchParams }: Props) {
       includeInactive: params.inactive === '1',
     }),
     getErpSettings(),
+    listAreas(),
   ])
 
   const isAdmin = session.role === 'ADMIN'
   const canAdd = session.role === 'ADMIN' || session.role === 'MR'
+  const areaOptions = areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` }))
+  const DOCTOR_FIELDS = buildDoctorFields(areaOptions)
 
   return (
     <>
@@ -107,9 +111,18 @@ export default async function DoctorsPage({ searchParams }: Props) {
                       <Td>{doctor.specialization ?? '—'}</Td>
                       <Td>{doctor.clinic_name ?? '—'}</Td>
                       <Td>
-                        {[doctor.area, doctor.city].filter(Boolean).join(', ') || '—'}
-                        {doctor.territory && (
-                          <p className="mt-0.5 text-[11.5px] text-gray-400">{doctor.territory}</p>
+                        {doctor.area_name ? (
+                          <>
+                            <span className="font-medium text-gray-900">{doctor.area_name}</span>
+                            <p className="mt-0.5 text-[11.5px] text-gray-400">{doctor.territory_name}</p>
+                          </>
+                        ) : (
+                          <>
+                            {[doctor.area, doctor.city].filter(Boolean).join(', ') || '—'}
+                            {doctor.territory && (
+                              <p className="mt-0.5 text-[11.5px] text-gray-400">{doctor.territory} (unmapped)</p>
+                            )}
+                          </>
                         )}
                       </Td>
                       <Td className="tabular-nums">{doctor.phone ?? '—'}</Td>
