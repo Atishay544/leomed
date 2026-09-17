@@ -2,8 +2,8 @@ import { z } from 'zod'
 import {
   ATTENDANCE_STATUSES, BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS,
   DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
-  FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, PAYMENT_METHODS, PAYROLL_ITEM_TYPES,
-  SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
+  FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, OFFER_COMPONENT_CATEGORIES, OFFER_STATUSES,
+  PAYMENT_METHODS, PAYROLL_ITEM_TYPES, SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
 } from './types'
 
 /**
@@ -64,6 +64,7 @@ export const ErpUserSchema = z.object({
   mr_code:       optionalText(20),
   territory:     optionalText(100),
   department:    optionalText(100),
+  designation:   optionalText(100),
   employee_code: optionalText(30),
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
@@ -82,6 +83,7 @@ export const ErpUserCreateSchema = z.object({
   mr_code:       optionalText(20),
   territory:     optionalText(100),
   department:    optionalText(100),
+  designation:   optionalText(100),
   employee_code: optionalText(30),
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
@@ -89,8 +91,44 @@ export const ErpUserCreateSchema = z.object({
   path: ['mr_code'],
 })
 
+// ─── Offer letters ──────────────────────────────────────────────────────────
+
+export const OfferLetterComponentSchema = z.object({
+  component_name: requiredText('Component name', 100),
+  category:        z.enum(OFFER_COMPONENT_CATEGORIES),
+  monthly_amount:  money,
+  annual_amount:   money,
+})
+
+export const OfferLetterSchema = z.object({
+  id:                optionalUuid,
+  candidate_name:    requiredText('Candidate name', 150),
+  candidate_address: optionalText(500),
+  candidate_email:   email,
+  candidate_phone:   phone,
+  designation:       requiredText('Designation', 100),
+  role:              z.enum(ERP_ROLES),
+  department:        optionalText(100),
+  territory:         optionalText(100),
+  reports_to:        optionalUuid,
+  offer_date:        dateString,
+  joining_date:      optionalDate,
+  incentive_terms:   optionalText(2000),
+  remarks:           optionalText(2000),
+  components:        z.array(OfferLetterComponentSchema).max(30),
+})
+
+export const OfferStatusSchema = z.object({
+  id:     uuid,
+  status: z.enum(OFFER_STATUSES),
+})
+
 // ─── Customer masters ───────────────────────────────────────────────────────
 
+// area/territory (free text) are retired from the write path — location is
+// now captured structurally via area_id only (see master-fields.ts). The
+// columns themselves stay in the database, untouched, for any pre-existing
+// record that hasn't been mapped to an area yet.
 export const DoctorSchema = z.object({
   doctor_name:    requiredText('Doctor name', 150),
   specialization: optionalText(100),
@@ -99,8 +137,7 @@ export const DoctorSchema = z.object({
   email,
   address:        optionalText(500),
   city:           optionalText(100),
-  area:           optionalText(100),
-  territory:      optionalText(100),
+  area_id:        uuid,
   clinic_name:    optionalText(150),
   notes:          optionalText(1000),
 })
@@ -112,8 +149,7 @@ export const ChemistSchema = z.object({
   email,
   address:             optionalText(500),
   city:                optionalText(100),
-  area:                optionalText(100),
-  territory:           optionalText(100),
+  area_id:             uuid,
   gst_number:          optionalText(20),
   drug_license_number: optionalText(50),
   notes:               optionalText(1000),
@@ -145,6 +181,35 @@ export const SupplierSchema = z.object({
   gst_number:          optionalText(20),
   drug_license_number: optionalText(50),
   payment_terms:       optionalText(100),
+})
+
+export const TerritorySchema = z.object({
+  name:           requiredText('Territory name', 100),
+  distributor_id: optionalUuid,
+  mr_id:          optionalUuid,
+})
+
+export const AreaSchema = z.object({
+  name:           requiredText('Area name', 100),
+  territory_id:   uuid,
+  mr_id:          optionalUuid,
+  distributor_id: optionalUuid,
+})
+
+export const ReassignMrSchema = z.object({
+  from_mr_id: uuid,
+  to_mr_id:   uuid,
+}).refine(v => v.from_mr_id !== v.to_mr_id, {
+  message: 'Choose a different MR to reassign to',
+  path: ['to_mr_id'],
+})
+
+export const ReassignDistributorSchema = z.object({
+  from_distributor_id: uuid,
+  to_distributor_id:   uuid,
+}).refine(v => v.from_distributor_id !== v.to_distributor_id, {
+  message: 'Choose a different distributor to reassign to',
+  path: ['to_distributor_id'],
 })
 
 export const BankAccountSchema = z.object({
@@ -468,6 +533,8 @@ export const SettingsSchema = z.object({
   company_address:            optionalText(500),
   company_phone:              phone,
   company_email:              email,
+  hr_signatory_name:          optionalText(150),
+  hr_signatory_title:         optionalText(150),
   expiry_warning_days:        z.coerce.number().int().min(1).max(730),
   mr_edit_window_hours:       z.coerce.number().int().min(0).max(720),
   allow_expired_sale:         z.coerce.boolean().default(false),
@@ -722,3 +789,10 @@ export type ExpenseReviewInput        = z.infer<typeof ExpenseReviewSchema>
 export type PricingRuleInput          = z.infer<typeof PricingRuleSchema>
 export type SchemeInput               = z.infer<typeof SchemeSchema>
 export type SchemeStatusInput         = z.infer<typeof SchemeStatusSchema>
+export type OfferLetterInput          = z.infer<typeof OfferLetterSchema>
+export type OfferLetterComponentInput = z.infer<typeof OfferLetterComponentSchema>
+export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>
+export type TerritoryInput            = z.infer<typeof TerritorySchema>
+export type AreaInput                 = z.infer<typeof AreaSchema>
+export type ReassignMrInput           = z.infer<typeof ReassignMrSchema>
+export type ReassignDistributorInput  = z.infer<typeof ReassignDistributorSchema>

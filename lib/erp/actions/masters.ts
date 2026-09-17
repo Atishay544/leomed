@@ -5,8 +5,8 @@ import type { z } from 'zod'
 import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import {
-  BankAccountSchema, ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
-  ProductBatchSchema, SupplierSchema,
+  AreaSchema, BankAccountSchema, ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
+  ProductBatchSchema, ReassignDistributorSchema, ReassignMrSchema, SupplierSchema, TerritorySchema,
 } from '../schemas'
 import type { Capability } from '../permissions'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
@@ -210,6 +210,90 @@ export async function saveSupplier(_prev: ActionState, formData: FormData) {
 
 export async function setSupplierActive(id: string, active: boolean) {
   return setMasterActive(SUPPLIER, id, active)
+}
+
+// ─── Territories & areas ────────────────────────────────────────────────────
+// Additive geography hierarchy — see the migration for why this doesn't
+// touch the existing free-text territory columns. Admin-only: who covers
+// what, and which distributor owns which territory, is an org-structure
+// call, not routine master data.
+
+const TERRITORY: MasterConfig = {
+  table: 'erp_territories',
+  capability: 'territories.manage',
+  path: '/erp/masters/territories',
+  label: 'territory',
+}
+
+export async function saveTerritory(_prev: ActionState, formData: FormData) {
+  return saveMaster(TERRITORY, TerritorySchema, formData)
+}
+
+export async function setTerritoryActive(id: string, active: boolean) {
+  return setMasterActive(TERRITORY, id, active)
+}
+
+const AREA: MasterConfig = {
+  table: 'erp_areas',
+  capability: 'territories.manage',
+  path: '/erp/masters/areas',
+  label: 'area',
+}
+
+export async function saveArea(_prev: ActionState, formData: FormData) {
+  return saveMaster(AREA, AreaSchema, formData)
+}
+
+export async function setAreaActive(id: string, active: boolean) {
+  return setMasterActive(AREA, id, active)
+}
+
+/**
+ * Bulk-moves every territory and area currently pointing at one MR onto
+ * another — the "an MR left the company" scenario, so nobody has to
+ * hand-edit each territory/area whose mr_id happened to be theirs.
+ * erp_reassign_mr() re-checks admin server-side independently of this.
+ */
+export async function reassignMr(input: unknown): Promise<ActionState> {
+  return runAction('Could not reassign this MR’s territories and areas.', async () => {
+    await assertCapability('territories.manage')
+
+    const parsed = ReassignMrSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { data, error } = await db.rpc('erp_reassign_mr', {
+      p_from_mr: parsed.data.from_mr_id,
+      p_to_mr: parsed.data.to_mr_id,
+    })
+    if (error) return friendlyDbError(error, 'Could not reassign this MR’s territories and areas.')
+
+    revalidatePath('/erp/masters/territories')
+    revalidatePath('/erp/masters/areas')
+    return { ok: true, data: (data ?? {}) as Record<string, unknown> }
+  })
+}
+
+/** Same idea as reassignMr(), for when a distributor is replaced across
+ *  everything currently assigned to them. */
+export async function reassignDistributor(input: unknown): Promise<ActionState> {
+  return runAction('Could not reassign this distributor’s territories and areas.', async () => {
+    await assertCapability('territories.manage')
+
+    const parsed = ReassignDistributorSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { data, error } = await db.rpc('erp_reassign_distributor', {
+      p_from_distributor: parsed.data.from_distributor_id,
+      p_to_distributor: parsed.data.to_distributor_id,
+    })
+    if (error) return friendlyDbError(error, 'Could not reassign this distributor’s territories and areas.')
+
+    revalidatePath('/erp/masters/territories')
+    revalidatePath('/erp/masters/areas')
+    return { ok: true, data: (data ?? {}) as Record<string, unknown> }
+  })
 }
 
 // ─── Bank accounts ──────────────────────────────────────────────────────────

@@ -14,6 +14,12 @@ export type ErpRole = (typeof ERP_ROLES)[number]
 export const CUSTOMER_TYPES = ['DOCTOR', 'CHEMIST'] as const
 export type CustomerType = (typeof CUSTOMER_TYPES)[number]
 
+export const OFFER_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'CONVERTED'] as const
+export type OfferStatus = (typeof OFFER_STATUSES)[number]
+
+export const OFFER_COMPONENT_CATEGORIES = ['EARNING', 'DEDUCTION'] as const
+export type OfferComponentCategory = (typeof OFFER_COMPONENT_CATEGORIES)[number]
+
 export const DOCTOR_STATUSES = ['NEW', 'EXISTING'] as const
 export type DoctorStatus = (typeof DOCTOR_STATUSES)[number]
 
@@ -88,6 +94,11 @@ export interface ErpUser {
   reports_to: string | null
   active: boolean
   department: string | null
+  /** Real job title (e.g. "Territory Manager", "Area Sales Manager") — a
+   *  document/HR detail, distinct from `role` which drives permissions and
+   *  must stay a closed set. Carried over automatically when an offer
+   *  letter is converted to an employee. */
+  designation: string | null
   employee_code: string | null
   week_off_days: number[] | null
   created_at: string
@@ -104,8 +115,17 @@ export interface Doctor {
   email: string | null
   address: string | null
   city: string | null
+  /** Retired from every form and no longer read by any report — a doctor's
+   *  location is now the structured area_id below. Kept only because the
+   *  column still exists for whichever pre-migration record hasn't been
+   *  mapped to an area yet. */
   area: string | null
   territory: string | null
+  /** The doctor's location — drives area/territory-wise reporting; see
+   *  erp_territory_performance()/erp_area_performance(). Required on every
+   *  new/edited doctor going forward (see DoctorSchema); null only means a
+   *  pre-existing record hasn't been mapped yet. */
+  area_id: string | null
   clinic_name: string | null
   notes: string | null
   /** Non-null when this doctor was created inside a visit workflow (spec §18). */
@@ -125,8 +145,11 @@ export interface Chemist {
   email: string | null
   address: string | null
   city: string | null
+  /** Retired — see the matching note on Doctor.area. */
   area: string | null
   territory: string | null
+  /** The chemist's location — see the matching note on Doctor.area_id. */
+  area_id: string | null
   gst_number: string | null
   drug_license_number: string | null
   notes: string | null
@@ -152,6 +175,38 @@ export interface Distributor {
   drug_license_number: string | null
   payment_terms: string | null
   credit_limit: number | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** A real geography master, additive to (not a replacement of) the
+ *  free-text erp_users.territory / erp_distributors.territory strings —
+ *  see the migration for why. One distributor per territory (a distributor
+ *  can cover many territories); a territory groups multiple Areas, each
+ *  independently assigned to one MR. */
+export interface Territory {
+  id: string
+  name: string
+  distributor_id: string | null
+  /** Default MR for the whole territory — an area's own mr_id, when set,
+   *  overrides this for that one area only. */
+  mr_id: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Area {
+  id: string
+  name: string
+  territory_id: string
+  /** Overrides the territory's default MR for this area only; null means
+   *  "follow the territory". */
+  mr_id: string | null
+  /** Overrides the territory's default distributor for this area only;
+   *  null means "follow the territory". */
+  distributor_id: string | null
   active: boolean
   created_at: string
   updated_at: string
@@ -416,11 +471,56 @@ export interface ErpSettings {
   company_email: string | null
   company_logo_url: string | null
   selected_bank_account_id: string | null
+  hr_signatory_name: string | null
+  hr_signatory_title: string | null
   expiry_warning_days: number
   mr_edit_window_hours: number
   allow_expired_sale: boolean
   financial_year_start_month: number
   low_stock_multiplier: number
+}
+
+/** One line of an offer letter's compensation breakup — EARNING rows sum to
+ *  "Total Guaranteed Compensation", + DEDUCTION rows (e.g. employer PF) to
+ *  "Total Fixed Compensation", + VARIABLE rows (e.g. an MR's target
+ *  incentive) to "Target Total Compensation". */
+export interface OfferLetterComponent {
+  id: string
+  offer_letter_id: string
+  component_name: string
+  category: OfferComponentCategory
+  monthly_amount: number
+  annual_amount: number
+  sort_order: number
+}
+
+export interface OfferLetter {
+  id: string
+  offer_number: string
+  candidate_name: string
+  candidate_address: string | null
+  candidate_email: string | null
+  candidate_phone: string | null
+  designation: string
+  role: ErpRole
+  department: string | null
+  territory: string | null
+  reports_to: string | null
+  offer_date: string
+  joining_date: string | null
+  /** Free text HR writes into the letter's opening paragraphs describing
+   *  incentive/variable-pay eligibility — deliberately not a row in the
+   *  compensation breakup, since it's conditional, not guaranteed. */
+  incentive_terms: string | null
+  remarks: string | null
+  status: OfferStatus
+  /** Bumped every time an existing offer is saved again — editing a Sent/
+   *  Accepted/Rejected/Withdrawn offer also resets status back to DRAFT,
+   *  since the old acceptance was for whatever the previous revision said. */
+  revision: number
+  converted_employee_id: string | null
+  created_at: string
+  updated_at: string
 }
 
 /** A bank account on file — admin can keep several; whichever one is
@@ -594,7 +694,11 @@ export interface ErpPayrollRecord {
   payroll_period_id: string
   employee_id: string
   employee_name: string
+  /** Despite the name, this snapshots ROLE at generation time (e.g. "MR"),
+   *  not a real job title — kept exactly as-is since payroll's role
+   *  filtering depends on it. The genuine job title snapshot is job_title. */
   designation: string | null
+  job_title: string | null
   department: string | null
   working_days: number
   present_days: number

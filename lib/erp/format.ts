@@ -1,7 +1,8 @@
 import type {
   AttendanceStatus, DiscussionType, DoctorStatus, ExpenseCategory, ExpenseStatus,
   FieldOrderStatus, FollowupPriority, FollowupStatus, InventoryTxnType, LeaveStatus,
-  OrderInvoiceStatus, PaymentMethod, PaymentStatus, PayrollStatus, TargetType, VisitPurpose,
+  OfferStatus, OrderInvoiceStatus, PaymentMethod, PaymentStatus, PayrollStatus, TargetType,
+  VisitPurpose,
 } from './types'
 
 // ─── Formatting (Indian conventions — ₹, lakh/crore grouping, dd Mmm yyyy) ──
@@ -234,6 +235,15 @@ export const DOCTOR_STATUS_LABELS: Record<DoctorStatus, string> = {
   NEW: 'New doctor', EXISTING: 'Existing doctor',
 }
 
+export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
+  DRAFT:     'Draft',
+  SENT:      'Sent to candidate',
+  ACCEPTED:  'Accepted',
+  REJECTED:  'Rejected',
+  WITHDRAWN: 'Withdrawn',
+  CONVERTED: 'Joined — converted to employee',
+}
+
 // ─── Badge styling ──────────────────────────────────────────────────────────
 
 export const FIELD_ORDER_STATUS_STYLES: Record<FieldOrderStatus, string> = {
@@ -254,6 +264,15 @@ export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   UNPAID:  'bg-red-50 text-red-700 ring-red-600/20',
   PARTIALLY_PAID: 'bg-amber-50 text-amber-700 ring-amber-600/20',
   PAID:    'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+}
+
+export const OFFER_STATUS_STYLES: Record<OfferStatus, string> = {
+  DRAFT:     'bg-gray-100 text-gray-600 ring-gray-500/20',
+  SENT:      'bg-blue-50 text-blue-700 ring-blue-600/20',
+  ACCEPTED:  'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
+  WITHDRAWN: 'bg-gray-100 text-gray-600 ring-gray-500/20',
+  CONVERTED: 'bg-violet-50 text-violet-700 ring-violet-600/20',
 }
 
 export const FOLLOWUP_PRIORITY_STYLES: Record<FollowupPriority, string> = {

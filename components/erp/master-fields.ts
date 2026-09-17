@@ -7,33 +7,50 @@ import type { FieldSpec } from './form/Field'
  * this is the presentation.
  */
 
-export const DOCTOR_FIELDS: FieldSpec[] = [
-  { name: 'doctor_name',    label: 'Doctor name', required: true, placeholder: 'Dr. Rajesh Kumar', span: 2 },
-  { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics' },
-  { name: 'qualification',  label: 'Qualification', placeholder: 'MBBS, MD' },
-  { name: 'clinic_name',    label: 'Clinic / hospital', span: 2 },
-  { name: 'phone',          label: 'Phone', type: 'tel', placeholder: '98765 43210' },
-  { name: 'email',          label: 'Email', type: 'email' },
-  { name: 'address',        label: 'Address', type: 'textarea', span: 2 },
-  { name: 'area',           label: 'Area' },
-  { name: 'city',           label: 'City' },
-  { name: 'territory',      label: 'Territory', hint: 'Used to group field reports' },
-  { name: 'notes',          label: 'Notes', type: 'textarea', span: 2 },
-]
+/** Doctors/chemists are located by the structured Area (which itself belongs
+ *  to a Territory) — not by the old free-text area/territory fields, which
+ *  are retired from every form here to avoid the two ever disagreeing.
+ *  `city` stays: it has no structured equivalent and isn't part of the
+ *  area/territory model. `area_id` needs the live list of areas for its
+ *  dropdown, hence a function, called at each page's render time, rather
+ *  than a static array. */
+export function buildDoctorFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    { name: 'doctor_name',    label: 'Doctor name', required: true, placeholder: 'Dr. Rajesh Kumar', span: 2 },
+    { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics' },
+    { name: 'qualification',  label: 'Qualification', placeholder: 'MBBS, MD' },
+    { name: 'clinic_name',    label: 'Clinic / hospital', span: 2 },
+    { name: 'phone',          label: 'Phone', type: 'tel', placeholder: '98765 43210' },
+    { name: 'email',          label: 'Email', type: 'email' },
+    { name: 'address',        label: 'Address', type: 'textarea', span: 2 },
+    { name: 'city',           label: 'City' },
+    {
+      name: 'area_id', label: 'Area', type: 'select', required: true,
+      options: [{ value: '', label: '— Select area —' }, ...areaOptions],
+      hint: 'Determines this doctor\'s territory for reports. Manage the list under Masters → Areas.',
+    },
+    { name: 'notes',          label: 'Notes', type: 'textarea', span: 2 },
+  ]
+}
 
-export const CHEMIST_FIELDS: FieldSpec[] = [
-  { name: 'chemist_name',        label: 'Chemist / store name', required: true, span: 2 },
-  { name: 'owner_name',          label: 'Owner name' },
-  { name: 'phone',               label: 'Phone', type: 'tel' },
-  { name: 'email',               label: 'Email', type: 'email' },
-  { name: 'gst_number',          label: 'GST number' },
-  { name: 'drug_license_number', label: 'Drug licence number', span: 2 },
-  { name: 'address',             label: 'Address', type: 'textarea', span: 2 },
-  { name: 'area',                label: 'Area' },
-  { name: 'city',                label: 'City' },
-  { name: 'territory',           label: 'Territory' },
-  { name: 'notes',               label: 'Notes', type: 'textarea', span: 2 },
-]
+export function buildChemistFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    { name: 'chemist_name',        label: 'Chemist / store name', required: true, span: 2 },
+    { name: 'owner_name',          label: 'Owner name' },
+    { name: 'phone',               label: 'Phone', type: 'tel' },
+    { name: 'email',               label: 'Email', type: 'email' },
+    { name: 'gst_number',          label: 'GST number' },
+    { name: 'drug_license_number', label: 'Drug licence number', span: 2 },
+    { name: 'address',             label: 'Address', type: 'textarea', span: 2 },
+    { name: 'city',                label: 'City' },
+    {
+      name: 'area_id', label: 'Area', type: 'select', required: true,
+      options: [{ value: '', label: '— Select area —' }, ...areaOptions],
+      hint: 'Determines this chemist\'s territory for reports. Manage the list under Masters → Areas.',
+    },
+    { name: 'notes',                label: 'Notes', type: 'textarea', span: 2 },
+  ]
+}
 
 export const DISTRIBUTOR_FIELDS: FieldSpec[] = [
   { name: 'distributor_name',    label: 'Distributor name', required: true, span: 2 },

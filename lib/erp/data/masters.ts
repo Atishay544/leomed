@@ -20,14 +20,47 @@ export interface MasterListParams {
   includeInactive?: boolean
 }
 
-export async function listDoctors(params: MasterListParams = {}): Promise<PageResult<Doctor>> {
+/** A doctor/chemist row with its structured area resolved to display names —
+ *  same two-step pattern as listAreas() in data/geography.ts (a one-level
+ *  embed for the area, then a separate batched lookup for the territory
+ *  name), rather than a three-level nested embed. */
+export interface DoctorRow extends Doctor {
+  area_name: string | null
+  territory_name: string | null
+}
+export interface ChemistRow extends Chemist {
+  area_name: string | null
+  territory_name: string | null
+}
+
+async function resolveAreaNames<T extends { area_id: string | null }>(
+  rows: (T & { erp_areas?: { name: string; territory_id: string } | null })[],
+): Promise<(T & { area_name: string | null; territory_name: string | null })[]> {
+  if (rows.length === 0) return []
+  const db = await erpDb()
+  const territoryIds = [...new Set(
+    rows.map(r => r.erp_areas?.territory_id).filter((v): v is string => !!v),
+  )]
+  const { data: territoryRows } = territoryIds.length > 0
+    ? await db.from('erp_territories').select('id, name').in('id', territoryIds)
+    : { data: [] as { id: string; name: string }[] }
+  const territoryNameById = new Map((territoryRows ?? []).map(t => [t.id, t.name]))
+
+  return rows.map(({ erp_areas, ...rest }) => ({
+    ...(rest as T),
+    area_name: erp_areas?.name ?? null,
+    territory_name: erp_areas ? (territoryNameById.get(erp_areas.territory_id) ?? null) : null,
+  }))
+}
+
+export async function listDoctors(params: MasterListParams = {}): Promise<PageResult<DoctorRow>> {
   const db = await erpDb()
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
 
   let query = db
     .from('erp_doctors')
-    .select('*', { count: 'exact' })
+    .select('*, erp_areas(name, territory_id)', { count: 'exact' })
     .order('doctor_name', { ascending: true })
     .range(from, to)
 
@@ -44,7 +77,8 @@ export async function listDoctors(params: MasterListParams = {}): Promise<PageRe
   }
 
   const { data, count } = await query
-  return toPage<Doctor>(data as Doctor[] | null, count, page)
+  const rows = await resolveAreaNames((data ?? []) as unknown as (Doctor & { erp_areas: { name: string; territory_id: string } | null })[])
+  return toPage<DoctorRow>(rows, count, page)
 }
 
 export async function getDoctor(id: string): Promise<Doctor | null> {
@@ -53,14 +87,14 @@ export async function getDoctor(id: string): Promise<Doctor | null> {
   return (data as Doctor) ?? null
 }
 
-export async function listChemists(params: MasterListParams = {}): Promise<PageResult<Chemist>> {
+export async function listChemists(params: MasterListParams = {}): Promise<PageResult<ChemistRow>> {
   const db = await erpDb()
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
 
   let query = db
     .from('erp_chemists')
-    .select('*', { count: 'exact' })
+    .select('*, erp_areas(name, territory_id)', { count: 'exact' })
     .order('chemist_name', { ascending: true })
     .range(from, to)
 
@@ -77,7 +111,8 @@ export async function listChemists(params: MasterListParams = {}): Promise<PageR
   }
 
   const { data, count } = await query
-  return toPage<Chemist>(data as Chemist[] | null, count, page)
+  const rows = await resolveAreaNames((data ?? []) as unknown as (Chemist & { erp_areas: { name: string; territory_id: string } | null })[])
+  return toPage<ChemistRow>(rows, count, page)
 }
 
 export async function getChemist(id: string): Promise<Chemist | null> {

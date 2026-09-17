@@ -18,13 +18,20 @@ import type { FieldSpec } from '../form/Field'
  * product-detailing section — just the conversation and any order taken.
  */
 
-const NEW_CHEMIST_FIELDS: FieldSpec[] = [
-  { name: 'chemist_name', label: 'Store name', required: true, span: 2, placeholder: 'Sharma Medical Store' },
-  { name: 'owner_name',   label: 'Owner name' },
-  { name: 'phone',        label: 'Phone', type: 'tel' },
-  { name: 'area',         label: 'Area' },
-  { name: 'city',         label: 'City' },
-]
+/** area_id is required here too (matches ChemistSchema) — see the matching
+ *  note in DoctorVisitForm.tsx. */
+function buildNewChemistFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    { name: 'chemist_name', label: 'Store name', required: true, span: 2, placeholder: 'Sharma Medical Store' },
+    { name: 'owner_name',   label: 'Owner name' },
+    { name: 'phone',        label: 'Phone', type: 'tel' },
+    { name: 'city',         label: 'City' },
+    {
+      name: 'area_id', label: 'Area', type: 'select', required: true, span: 2,
+      options: [{ value: '', label: '— Select area —' }, ...areaOptions],
+    },
+  ]
+}
 
 function Section({
   icon: Icon, title, subtitle, children, action,
@@ -71,7 +78,10 @@ function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
   )
 }
 
-export default function ChemistVisitForm() {
+export default function ChemistVisitForm({ areas }: { areas: { id: string; name: string; territory_name: string }[] }) {
+  const NEW_CHEMIST_FIELDS = buildNewChemistFields(
+    areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` })),
+  )
   const [chemist, setChemist] = useState<PickerValue>({ mode: 'none' })
   const [visitDate, setVisitDate] = useState(isoDate())
   const [visitTime, setVisitTime] = useState('')

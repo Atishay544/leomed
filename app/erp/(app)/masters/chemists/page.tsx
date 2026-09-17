@@ -1,10 +1,11 @@
 import { Store } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listChemists, PAGE_SIZE } from '@/lib/erp/data/masters'
+import { listAreas } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveChemist, setChemistActive } from '@/lib/erp/actions/masters'
-import { CHEMIST_FIELDS } from '@/components/erp/master-fields'
+import { buildChemistFields } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
 import SearchBar from '@/components/erp/SearchBar'
@@ -22,13 +23,16 @@ export default async function ChemistsPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const [{ rows, total, pageCount }, settings] = await Promise.all([
+  const [{ rows, total, pageCount }, settings, areas] = await Promise.all([
     listChemists({ q: params.q, page, includeInactive: params.inactive === '1' }),
     getErpSettings(),
+    listAreas(),
   ])
 
   const isAdmin = session.role === 'ADMIN'
   const canAdd = session.role === 'ADMIN' || session.role === 'MR'
+  const areaOptions = areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` }))
+  const CHEMIST_FIELDS = buildChemistFields(areaOptions)
 
   return (
     <>
@@ -64,13 +68,14 @@ export default async function ChemistsPage({ searchParams }: Props) {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[880px]">
+            <table className="w-full min-w-[960px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Code</Th>
                   <Th>Store</Th>
                   <Th>Owner</Th>
-                  <Th>Area / City</Th>
+                  <Th>Area</Th>
+                  <Th>City</Th>
                   <Th>Phone</Th>
                   <Th>GST</Th>
                   <Th align="right">Actions</Th>
@@ -94,11 +99,16 @@ export default async function ChemistsPage({ searchParams }: Props) {
                       </Td>
                       <Td>{chemist.owner_name ?? '—'}</Td>
                       <Td>
-                        {[chemist.area, chemist.city].filter(Boolean).join(', ') || '—'}
-                        {chemist.territory && (
-                          <p className="mt-0.5 text-[11.5px] text-gray-400">{chemist.territory}</p>
+                        {chemist.area_name ? (
+                          <>
+                            <span className="font-medium text-gray-900">{chemist.area_name}</span>
+                            <p className="mt-0.5 text-[11.5px] text-gray-400">{chemist.territory_name}</p>
+                          </>
+                        ) : (
+                          <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Not mapped</Badge>
                         )}
                       </Td>
+                      <Td>{chemist.city ?? '—'}</Td>
                       <Td className="tabular-nums">{chemist.phone ?? '—'}</Td>
                       <Td className="font-mono text-[11.5px]">{chemist.gst_number ?? '—'}</Td>
                       <Td align="right">

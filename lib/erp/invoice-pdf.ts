@@ -123,8 +123,14 @@ export async function generateSalesInvoicePdf(data: InvoicePdfData, company: Inv
     ].filter(Boolean).join('   ·   ')
     if (contactLine) doc.text(contactLine, textX, doc.y)
 
-    // Clear the logo box too, whichever block (logo or text) runs taller.
+    // Clear the logo box too, whichever block (logo or text) runs taller,
+    // and reset x back to the true left margin — every block below assumes
+    // it starts there (many pass a fixed width without repeating x), and
+    // the header's textX offset otherwise leaks into them, silently
+    // narrowing (or outright overflowing past the page edge) anything that
+    // doesn't explicitly re-anchor itself.
     if (logoDrawn) doc.y = Math.max(doc.y, headerTop + 68)
+    doc.x = 40
 
     doc.moveDown(0.5)
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#111').text('TAX INVOICE', { align: 'right' })

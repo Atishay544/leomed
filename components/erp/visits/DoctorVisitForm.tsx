@@ -26,14 +26,22 @@ import type { FieldSpec } from '../form/Field'
  * Nothing here reports success until the server confirms it (spec §43).
  */
 
-const NEW_DOCTOR_FIELDS: FieldSpec[] = [
-  { name: 'doctor_name',    label: 'Doctor name', required: true, span: 2, placeholder: 'Dr. Rajesh Kumar' },
-  { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics' },
-  { name: 'phone',          label: 'Phone', type: 'tel' },
-  { name: 'clinic_name',    label: 'Clinic / hospital', span: 2 },
-  { name: 'area',           label: 'Area' },
-  { name: 'city',           label: 'City' },
-]
+/** area_id is required here too (matches DoctorSchema) — a doctor "born"
+ *  inside a visit still needs a real location, not free text, so it shows up
+ *  correctly in area/territory-wise reporting from day one. */
+function buildNewDoctorFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
+  return [
+    { name: 'doctor_name',    label: 'Doctor name', required: true, span: 2, placeholder: 'Dr. Rajesh Kumar' },
+    { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics' },
+    { name: 'phone',          label: 'Phone', type: 'tel' },
+    { name: 'clinic_name',    label: 'Clinic / hospital', span: 2 },
+    { name: 'city',           label: 'City' },
+    {
+      name: 'area_id', label: 'Area', type: 'select', required: true, span: 2,
+      options: [{ value: '', label: '— Select area —' }, ...areaOptions],
+    },
+  ]
+}
 
 interface DiscussedRow {
   product: ProductOption
@@ -73,7 +81,10 @@ const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900 ' +
   'focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none sm:text-[13px]'
 
-export default function DoctorVisitForm() {
+export default function DoctorVisitForm({ areas }: { areas: { id: string; name: string; territory_name: string }[] }) {
+  const NEW_DOCTOR_FIELDS = buildNewDoctorFields(
+    areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` })),
+  )
   const [doctor, setDoctor] = useState<PickerValue>({ mode: 'none' })
   const [visitDate, setVisitDate] = useState(isoDate())
   const [visitTime, setVisitTime] = useState('')

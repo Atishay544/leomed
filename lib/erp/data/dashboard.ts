@@ -140,6 +140,17 @@ export async function getDistributorPerformance(
   return (data ?? []) as unknown as DistributorPerformanceRow[]
 }
 
+/** Grouped by the visited doctor's/chemist's own area → territory — purely
+ *  the structured model, no legacy free-text fallback (see 20260918000004:
+ *  mixing the two risked two same-named-but-drifted "territories" showing up
+ *  as separate rows, which is the exact confusion this feature replaces).
+ *  Anyone not yet mapped to an area buckets under 'Unassigned' until an
+ *  admin/MR edits that record. This is NOT the MR's own territory — see the
+ *  design note in erp_territory_performance()'s migration: an MR can now be
+ *  responsible for areas across more than one territory, so attributing via
+ *  the MR would be ambiguous; the customer's own location is always
+ *  unambiguous. MR-wise performance (getMrPerformance) is the separate,
+ *  still mr_id-grouped dimension for "who is doing the work". */
 export interface TerritoryPerformanceRow {
   territory: string
   mr_count: number
@@ -160,6 +171,35 @@ export async function getTerritoryPerformance(
     return []
   }
   return (data ?? []) as unknown as TerritoryPerformanceRow[]
+}
+
+/** Area-wise performance — one level more granular than territory, and the
+ *  only one of the three dimensions with no legacy-fallback bucket (an area
+ *  is a purely new concept, so unmapped doctors/chemists simply don't show
+ *  up here — they still count at the territory/MR level instead). */
+export interface AreaPerformanceRow {
+  area_id: string
+  area_name: string
+  territory_id: string
+  territory_name: string
+  mr_count: number
+  doctor_visits: number
+  chemist_visits: number
+  new_doctors: number
+  field_orders: number
+  order_value: number
+}
+
+export async function getAreaPerformance(
+  from: string, to: string,
+): Promise<AreaPerformanceRow[]> {
+  const db = await erpDb()
+  const { data, error } = await db.rpc('erp_area_performance', { p_from: from, p_to: to })
+  if (error) {
+    console.error('[erp] area performance failed', error.message)
+    return []
+  }
+  return (data ?? []) as unknown as AreaPerformanceRow[]
 }
 
 export interface TargetProgressRow {

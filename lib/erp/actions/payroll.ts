@@ -180,7 +180,11 @@ export async function emailPayslip(recordId: string): Promise<ActionState> {
         name: record.employee_name,
         employeeCode: employee.employee_code,
         mrCode: employee.mr_code,
-        designation: record.designation,
+        // job_title is the real snapshotted job title (e.g. "Territory
+        // Manager"); designation confusingly snapshots ROLE instead (see
+        // its own comment on ErpPayrollRecord) — fall back to it only for
+        // records generated before job_title existed.
+        designation: record.job_title ?? record.designation,
         department: record.department,
       },
       { name: settings.company_name, address: settings.company_address },
