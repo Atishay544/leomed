@@ -13,8 +13,9 @@ import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
  * This is the only file in the ERP that uses the service-role client, and only
  * for the one thing the caller's own session cannot do: create a row in
  * auth.users. Everything else — including the erp_users row itself — goes
- * through the caller's RLS session, so the database still enforces that only
- * an admin can create staff.
+ * through the caller's RLS session, so the database still enforces who may
+ * create/edit staff (admin and HR — never an ADMIN account itself, which
+ * only admin may create or touch — see 20260918000006_hr_role.sql).
  */
 
 function formObject(formData: FormData): Record<string, unknown> {
@@ -62,7 +63,9 @@ export async function createErpUser(_prev: ActionState, formData: FormData): Pro
       return { ok: false, error: 'Could not create the login. Please try a different email address.' }
     }
 
-    // Through the caller's session, so RLS re-checks that they are an admin.
+    // Through the caller's session, so RLS re-checks admin/HR — and, for HR,
+    // that this insert isn't trying to create an ADMIN account (the role
+    // picklist already hides that option from HR, but RLS is the real gate).
     const db = await erpDb()
     const { error: rowError } = await db.from('erp_users').insert({
       auth_user_id:  created.user.id,

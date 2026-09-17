@@ -120,7 +120,7 @@ const ALL_GROUPS: ErpNavGroup[] = [
     label: 'Administration',
     items: [
       { href: '/erp/users',       label: 'Staff',            icon: Users,      capability: 'users.manage' },
-      { href: '/erp/audit',       label: 'Audit Log',        icon: ScrollText, capability: 'users.manage' },
+      { href: '/erp/audit',       label: 'Audit Log',        icon: ScrollText, capability: 'audit.read' },
       { href: '/erp/settings',    label: 'Settings',         icon: Settings,   capability: 'settings.manage' },
       // Storefront admin (catalogue, banners, announcements, news, launches,
       // about) is a separate app section under /admin — same ADMIN-only

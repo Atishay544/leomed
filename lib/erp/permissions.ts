@@ -72,18 +72,28 @@ export const CAPABILITIES = [
   'pricing.manage',
 
   // Administration
+  // Staff accounts — held by ADMIN and HR. The RLS layer still refuses HR
+  // the one thing this capability alone would otherwise let them do: create
+  // or edit an ADMIN account (see erp_users_insert/update in
+  // 20260918000006_hr_role.sql) — "admin has master role for everything"
+  // means HR administers everyone ELSE, never admin itself.
   'users.manage',
   'targets.manage',
   'reports.read.all',
   'settings.manage',
+  // Company-wide change history — deliberately its own capability rather
+  // than reusing users.manage (which it did until HR needed users.manage
+  // too): audit log rows span every table in the ERP, not just HR's own
+  // ground, so granting HR staff-management must not also hand them that.
+  // ADMIN-only, held by no other role below.
+  'audit.read',
   // Offer letters — compensation data on a candidate who isn't even a staff
   // member yet, and the flow that eventually creates one (users.manage).
-  // ADMIN-only, deliberately held by no other role below.
+  // Held by ADMIN and HR — this IS routine HR work.
   'offers.manage',
   // Territories & areas — who covers what, and which distributor owns
-  // which territory, is a field-force/org-structure decision, not routine
-  // master data entry (unlike masters.write, which ACCOUNTANT also holds
-  // for distributors/suppliers). ADMIN-only, held by no other role below.
+  // which territory. Held by ADMIN and HR: HR owns field-force org
+  // structure (who's assigned where), same as it owns who's on staff at all.
   'territories.manage',
 
   // HR: attendance — every non-admin employee checks in; ADMIN deliberately
@@ -100,9 +110,10 @@ export const CAPABILITIES = [
   'leave.read.own',
   'leave.manage',        // approve/reject/cancel/create on anyone's behalf
 
-  // HR: payroll & salary — deliberately ADMIN-only, held by no other role
-  // below (see ACCOUNTANT_CAPABILITIES' note on why billing access does not
-  // imply payroll access).
+  // HR: payroll & salary — held by ADMIN and HR only (see
+  // ACCOUNTANT_CAPABILITIES' note on why billing access does not imply
+  // payroll access — that reasoning is about ACCOUNTANT specifically, not
+  // about payroll being admin-exclusive, which it no longer is now HR exists).
   'payroll.manage',      // salary structures, generate/finalize/reopen payroll
   'payroll.read.own',    // an employee's own payslips — never another's
 
@@ -207,6 +218,43 @@ const MANAGER_CAPABILITIES: readonly Capability[] = [
 ]
 
 /**
+ * Personnel administration end to end: staff accounts, offer letters,
+ * territory/area org structure, attendance, leave, payroll and expenses —
+ * everything this file's capability comments tag "HR:" above. Deliberately
+ * without masters.write, products.write, any billing or pricing.manage
+ * capability, any inventory capability, targets.manage, reports.read.all or
+ * settings.manage: none of that is personnel administration, and HR seeing
+ * sales/margin/inventory data would be the same kind of capability-
+ * conflation this file exists to prevent (see ACCOUNTANT_CAPABILITIES' and
+ * MANAGER_CAPABILITIES' notes for the same principle applied elsewhere).
+ *
+ * "Admin has master role for everything" is enforced BELOW this list, not
+ * by omission from it: users.manage/offers.manage alone would let HR create
+ * or promote someone to ADMIN, so the RLS policies in
+ * 20260918000006_hr_role.sql additionally refuse HR any write that creates,
+ * edits, or targets an ADMIN account. HR is not in ADMIN_CAPABILITIES'
+ * reverse either — no capability here grants oversight of admin's own
+ * actions (that is audit.read, ADMIN-only, on purpose).
+ */
+const HR_CAPABILITIES: readonly Capability[] = [
+  'users.manage',
+  'offers.manage',
+  'territories.manage',
+  'attendance.checkin',
+  'attendance.read.own',
+  'attendance.read.all',
+  'attendance.manage',
+  'leave.apply',
+  'leave.read.own',
+  'leave.manage',
+  'payroll.manage',
+  'payroll.read.own',
+  'expenses.submit',
+  'expenses.read.own',
+  'expenses.manage',
+]
+
+/**
  * Read-only observer — management or audit, no writes anywhere.
  *
  * `.read.own` is listed alongside `.read.all` because the visit and order
@@ -228,6 +276,7 @@ export const ROLE_CAPABILITIES: Record<ErpRole, readonly Capability[]> = {
   MR:         MR_CAPABILITIES,
   ACCOUNTANT: ACCOUNTANT_CAPABILITIES,
   MANAGER:    MANAGER_CAPABILITIES,
+  HR:         HR_CAPABILITIES,
   VIEWER:     VIEWER_CAPABILITIES,
 }
 
@@ -244,6 +293,7 @@ export const ROLE_LABELS: Record<ErpRole, string> = {
   MR:         'Medical Representative',
   ACCOUNTANT: 'Accountant',
   MANAGER:    'Manager',
+  HR:         'HR',
   VIEWER:     'Viewer',
 }
 
@@ -252,6 +302,7 @@ export function homeRouteFor(role: ErpRole): string {
   switch (role) {
     case 'MR':         return '/erp/mr'
     case 'ACCOUNTANT': return '/erp/accounting/sales'
+    case 'HR':          return '/erp/hr'
     default:           return '/erp/dashboard'
   }
 }

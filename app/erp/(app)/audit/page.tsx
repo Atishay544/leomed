@@ -56,7 +56,10 @@ interface Props {
 }
 
 export default async function AuditPage({ searchParams }: Props) {
-  await requireCapability('users.manage')
+  // Was users.manage until HR needed that too (20260918000006) — audit rows
+  // span every table in the ERP, not just HR's ground, so this needed its
+  // own, still ADMIN-only, capability.
+  await requireCapability('audit.read')
   const params = await searchParams
   const page = parsePage(params.page)
   const [from, to] = rangeFor(page)

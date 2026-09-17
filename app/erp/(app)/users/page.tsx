@@ -18,41 +18,55 @@ export const metadata = { title: 'Staff' }
 
 const ROLE_OPTIONS = ERP_ROLES.map(r => ({ value: r, label: ROLE_LABELS[r] }))
 
-const CREATE_FIELDS: FieldSpec[] = [
-  { name: 'name',      label: 'Full name', required: true, span: 2 },
-  { name: 'email',     label: 'Email (used to sign in)', type: 'email', required: true, span: 2 },
-  {
-    name: 'password', label: 'Temporary password', type: 'text', required: true, span: 2,
-    hint: 'At least 8 characters. Share it securely and ask them to change it.',
-  },
-  { name: 'role',      label: 'Role', type: 'select', options: ROLE_OPTIONS, required: true },
-  { name: 'designation', label: 'Designation', hint: 'Real job title, e.g. Territory Manager — separate from Role above' },
-  { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
-  { name: 'employee_code', label: 'Employee ID', hint: 'For non-MR staff, e.g. EMP0042' },
-  { name: 'phone',     label: 'Phone', type: 'tel' },
-  { name: 'territory', label: 'Territory' },
-  { name: 'department', label: 'Department', hint: 'e.g. Sales, Accounts, HR, Warehouse' },
-]
+/** HR holds users.manage too, but must never be offered ADMIN as a role to
+ *  assign — "admin has master role for everything" — so the picklist itself
+ *  hides it for anyone who isn't already an admin. The database backs this
+ *  up independently (erp_users_insert/update in 20260918000006_hr_role.sql
+ *  refuse the write outright), so this is belt, not the only buckle. */
+function buildRoleOptions(canAssignAdmin: boolean) {
+  return canAssignAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter(r => r.value !== 'ADMIN')
+}
 
-const EDIT_FIELDS: FieldSpec[] = [
-  { name: 'name',      label: 'Full name', required: true, span: 2 },
-  { name: 'email',     label: 'Email', type: 'email', required: true, span: 2,
-    hint: 'Changing this here does not change their sign-in address.' },
-  { name: 'role',      label: 'Role', type: 'select', options: ROLE_OPTIONS, required: true },
-  { name: 'designation', label: 'Designation', hint: 'Real job title, e.g. Territory Manager — separate from Role above' },
-  { name: 'mr_code',   label: 'MR code' },
-  { name: 'employee_code', label: 'Employee ID' },
-  { name: 'phone',     label: 'Phone', type: 'tel' },
-  { name: 'territory', label: 'Territory' },
-  { name: 'department', label: 'Department' },
-  { name: 'active',    label: 'Account active', type: 'checkbox', placeholder: 'Can sign in', span: 2 },
-]
+function buildCreateFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
+  return [
+    { name: 'name',      label: 'Full name', required: true, span: 2 },
+    { name: 'email',     label: 'Email (used to sign in)', type: 'email', required: true, span: 2 },
+    {
+      name: 'password', label: 'Temporary password', type: 'text', required: true, span: 2,
+      hint: 'At least 8 characters. Share it securely and ask them to change it.',
+    },
+    { name: 'role',      label: 'Role', type: 'select', options: roleOptions, required: true },
+    { name: 'designation', label: 'Designation', hint: 'Real job title, e.g. Territory Manager — separate from Role above' },
+    { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
+    { name: 'employee_code', label: 'Employee ID', hint: 'For non-MR staff, e.g. EMP0042' },
+    { name: 'phone',     label: 'Phone', type: 'tel' },
+    { name: 'territory', label: 'Territory' },
+    { name: 'department', label: 'Department', hint: 'e.g. Sales, Accounts, HR, Warehouse' },
+  ]
+}
+
+function buildEditFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
+  return [
+    { name: 'name',      label: 'Full name', required: true, span: 2 },
+    { name: 'email',     label: 'Email', type: 'email', required: true, span: 2,
+      hint: 'Changing this here does not change their sign-in address.' },
+    { name: 'role',      label: 'Role', type: 'select', options: roleOptions, required: true },
+    { name: 'designation', label: 'Designation', hint: 'Real job title, e.g. Territory Manager — separate from Role above' },
+    { name: 'mr_code',   label: 'MR code' },
+    { name: 'employee_code', label: 'Employee ID' },
+    { name: 'phone',     label: 'Phone', type: 'tel' },
+    { name: 'territory', label: 'Territory' },
+    { name: 'department', label: 'Department' },
+    { name: 'active',    label: 'Account active', type: 'checkbox', placeholder: 'Can sign in', span: 2 },
+  ]
+}
 
 const ROLE_STYLES: Record<string, string> = {
   ADMIN:      'bg-violet-50 text-violet-700 ring-violet-600/20',
   MR:         'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   ACCOUNTANT: 'bg-blue-50 text-blue-700 ring-blue-600/20',
   MANAGER:    'bg-amber-50 text-amber-700 ring-amber-600/20',
+  HR:         'bg-pink-50 text-pink-700 ring-pink-600/20',
   VIEWER:     'bg-gray-100 text-gray-600 ring-gray-500/20',
 }
 
@@ -61,13 +75,18 @@ interface Props {
 }
 
 export default async function StaffPage({ searchParams }: Props) {
-  await requireCapability('users.manage')
+  const session = await requireCapability('users.manage')
+  const isAdmin = session.role === 'ADMIN'
   const params = await searchParams
   const page = parsePage(params.page)
 
   const { rows, total, pageCount } = await listErpUsers({
     q: params.q, page, role: params.role, includeInactive: true,
   })
+
+  const roleOptions = buildRoleOptions(isAdmin)
+  const CREATE_FIELDS = buildCreateFields(roleOptions)
+  const EDIT_FIELDS = buildEditFields(roleOptions)
 
   return (
     <>
@@ -146,24 +165,33 @@ export default async function StaffPage({ searchParams }: Props) {
                     <Td>{user.territory ?? '—'}</Td>
                     <Td className="text-[12px] text-gray-500">{formatDate(user.created_at)}</Td>
                     <Td align="right">
-                      <div className="flex items-center justify-end gap-2">
-                        <MasterFormDialog
-                          action={updateErpUser}
-                          fields={EDIT_FIELDS}
-                          title={`Edit ${user.name}`}
-                          submitLabel="Save changes"
-                          initial={user as unknown as Record<string, unknown>}
-                          trigger={
-                            <button type="button" className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[12px] font-medium text-gray-700 transition hover:bg-gray-50">
-                              Edit
-                            </button>
-                          }
-                        />
-                        <ToggleActiveButton
-                          id={user.id} active={user.active}
-                          action={setErpUserActive} noun="account"
-                        />
-                      </div>
+                      {/* HR can administer every other role, never an admin
+                          account — the database refuses the write anyway
+                          (erp_users_update in 20260918000006_hr_role.sql),
+                          so hide the dead-end buttons rather than let HR
+                          hit that error. */}
+                      {(isAdmin || user.role !== 'ADMIN') ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <MasterFormDialog
+                            action={updateErpUser}
+                            fields={EDIT_FIELDS}
+                            title={`Edit ${user.name}`}
+                            submitLabel="Save changes"
+                            initial={user as unknown as Record<string, unknown>}
+                            trigger={
+                              <button type="button" className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[12px] font-medium text-gray-700 transition hover:bg-gray-50">
+                                Edit
+                              </button>
+                            }
+                          />
+                          <ToggleActiveButton
+                            id={user.id} active={user.active}
+                            action={setErpUserActive} noun="account"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-[12px] text-gray-400">—</span>
+                      )}
                     </Td>
                   </tr>
                 ))}
