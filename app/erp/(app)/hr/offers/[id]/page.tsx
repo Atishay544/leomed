@@ -20,28 +20,39 @@ const CATEGORY_LABELS: Record<string, string> = {
   EARNING: 'Earning', DEDUCTION: 'Deduction',
 }
 
-const CONVERT_FIELDS: FieldSpec[] = [
-  { name: 'name',      label: 'Full name', required: true, span: 2 },
-  { name: 'email',     label: 'Email (used to sign in)', type: 'email', required: true, span: 2 },
-  {
-    name: 'password', label: 'Temporary password', type: 'text', required: true, span: 2,
-    hint: 'At least 8 characters. Share it securely and ask them to change it.',
-  },
-  { name: 'role',      label: 'System role', type: 'select', options: ROLE_OPTIONS, required: true },
-  { name: 'designation', label: 'Designation', hint: 'Pre-filled from the offer — adjust if it changed since' },
-  { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
-  { name: 'employee_code', label: 'Employee ID' },
-  { name: 'phone',     label: 'Phone', type: 'tel' },
-  { name: 'territory', label: 'Territory' },
-  { name: 'department', label: 'Department' },
-]
+/** offers.manage is held by HR as well as ADMIN, but converting an offer
+ *  into an ADMIN account is exactly what "admin has master role for
+ *  everything" refuses HR — the erp_users insert this ultimately runs
+ *  would be rejected by RLS anyway (20260918000006_hr_role.sql), so the
+ *  picklist just doesn't offer ADMIN in the first place for a non-admin. */
+function buildConvertFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
+  return [
+    { name: 'name',      label: 'Full name', required: true, span: 2 },
+    { name: 'email',     label: 'Email (used to sign in)', type: 'email', required: true, span: 2 },
+    {
+      name: 'password', label: 'Temporary password', type: 'text', required: true, span: 2,
+      hint: 'At least 8 characters. Share it securely and ask them to change it.',
+    },
+    { name: 'role',      label: 'System role', type: 'select', options: roleOptions, required: true },
+    { name: 'designation', label: 'Designation', hint: 'Pre-filled from the offer — adjust if it changed since' },
+    { name: 'mr_code',   label: 'MR code', hint: 'Required for medical representatives, e.g. MR001' },
+    { name: 'employee_code', label: 'Employee ID' },
+    { name: 'phone',     label: 'Phone', type: 'tel' },
+    { name: 'territory', label: 'Territory' },
+    { name: 'department', label: 'Department' },
+  ]
+}
 
 export default async function OfferLetterDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireCapability('offers.manage')
+  const session = await requireCapability('offers.manage')
   const { id } = await params
 
   const offer = await getOfferLetter(id)
   if (!offer) notFound()
+
+  const CONVERT_FIELDS = buildConvertFields(
+    session.role === 'ADMIN' ? ROLE_OPTIONS : ROLE_OPTIONS.filter(r => r.value !== 'ADMIN'),
+  )
 
   const earning  = offer.components.filter(c => c.category === 'EARNING')
   const deduction = offer.components.filter(c => c.category === 'DEDUCTION')

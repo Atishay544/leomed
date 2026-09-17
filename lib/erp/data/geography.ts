@@ -21,9 +21,14 @@ export interface TerritoryRow extends Territory {
 
 export async function listTerritories(includeInactive = false): Promise<TerritoryRow[]> {
   const db = await erpDb()
+  // erp_territories has three FKs to erp_users (created_by, updated_by,
+  // mr_id) — an unqualified erp_users(...) embed is ambiguous and PostgREST
+  // rejects the whole query with an error, which (before the error logging
+  // just added) looked identical to "there are no territories". !mr_id picks
+  // the one relationship this screen actually wants.
   let query = db
     .from('erp_territories')
-    .select('*, erp_distributors(distributor_name), erp_users(name)')
+    .select('*, erp_distributors(distributor_name), erp_users!mr_id(name)')
     .order('name', { ascending: true })
   if (!includeInactive) query = query.eq('active', true)
 
@@ -70,9 +75,11 @@ export interface AreaRow extends Area {
 
 export async function listAreas(params: { territoryId?: string; includeInactive?: boolean } = {}): Promise<AreaRow[]> {
   const db = await erpDb()
+  // Same ambiguous-embed problem as listTerritories() above — erp_areas also
+  // has three FKs to erp_users.
   let query = db
     .from('erp_areas')
-    .select('*, erp_territories(name, mr_id, distributor_id), erp_users(name), erp_distributors(distributor_name)')
+    .select('*, erp_territories(name, mr_id, distributor_id), erp_users!mr_id(name), erp_distributors(distributor_name)')
     .order('name', { ascending: true })
   if (!params.includeInactive) query = query.eq('active', true)
   if (params.territoryId) query = query.eq('territory_id', params.territoryId)

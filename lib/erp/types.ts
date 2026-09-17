@@ -8,7 +8,7 @@
 
 // ─── Enums (must match the PostgreSQL enum types exactly) ───────────────────
 
-export const ERP_ROLES = ['ADMIN', 'MR', 'ACCOUNTANT', 'MANAGER', 'VIEWER'] as const
+export const ERP_ROLES = ['ADMIN', 'MR', 'ACCOUNTANT', 'MANAGER', 'HR', 'VIEWER'] as const
 export type ErpRole = (typeof ERP_ROLES)[number]
 
 export const CUSTOMER_TYPES = ['DOCTOR', 'CHEMIST'] as const
