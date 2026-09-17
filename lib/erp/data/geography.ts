@@ -124,6 +124,18 @@ export async function listAreas(params: { territoryId?: string; includeInactive?
   })
 }
 
+/** The areas a given MR is actually responsible for right now — their own
+ *  per-area overrides, plus every area in a territory where they're the
+ *  default MR. Used to scope the Area picker an MR sees when adding a new
+ *  doctor/chemist during a visit, so they can only place one somewhere
+ *  they're assigned rather than anywhere in the company. Existing doctors/
+ *  chemists remain visitable by any MR regardless of area — this only
+ *  narrows where a NEW one can be placed. */
+export async function listAreasForMr(mrId: string, includeInactive = false): Promise<AreaRow[]> {
+  const areas = await listAreas({ includeInactive })
+  return areas.filter(a => a.effective_mr_id === mrId)
+}
+
 /** Active MRs, for the Area/Territory forms' "Assigned MR" dropdowns — a
  *  short list, unpaginated is fine (matches listPotentialManagers() for
  *  offer letters). */
