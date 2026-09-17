@@ -1,11 +1,14 @@
 import Link from 'next/link'
 import { ArrowLeft, MapPinned } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
-import { listActiveMRs, listAreas, listTerritories } from '@/lib/erp/data/geography'
-import { saveArea, setAreaActive } from '@/lib/erp/actions/masters'
+import {
+  listActiveDistributorsForDropdown, listActiveMRs, listAllMRs, listAreas, listTerritories,
+} from '@/lib/erp/data/geography'
+import { reassignMr, saveArea, setAreaActive } from '@/lib/erp/actions/masters'
 import type { FieldSpec } from '@/components/erp/form/Field'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import ReassignPanel from '@/components/erp/ReassignPanel'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
 
@@ -19,30 +22,39 @@ export default async function AreasPage({ searchParams }: Props) {
   await requireCapability('territories.manage')
   const params = await searchParams
 
-  const [areas, territories, mrs] = await Promise.all([
+  const [areas, territories, mrs, allMrs, distributors] = await Promise.all([
     listAreas({ territoryId: params.territory, includeInactive: true }),
     listTerritories(true),
     listActiveMRs(),
+    listAllMRs(),
+    listActiveDistributorsForDropdown(),
   ])
 
   const territoryOptions = territories.map(t => ({ value: t.id, label: t.name }))
   const mrOptions = mrs.map(m => ({ value: m.id, label: m.name }))
+  const distributorOptions = distributors.map(d => ({ value: d.id, label: d.distributor_name }))
   const currentTerritory = territories.find(t => t.id === params.territory)
 
   const AREA_FIELDS: FieldSpec[] = [
     { name: 'name', label: 'Area name', required: true, span: 2, placeholder: 'e.g. Civil Lines' },
     { name: 'territory_id', label: 'Territory', type: 'select', required: true, options: territoryOptions },
     {
-      name: 'mr_id', label: 'Assigned MR', type: 'select',
-      options: [{ value: '', label: '— Not assigned —' }, ...mrOptions],
+      name: 'mr_id', label: 'MR (overrides the territory default)', type: 'select',
+      options: [{ value: '', label: '— Follow territory default —' }, ...mrOptions],
+    },
+    {
+      name: 'distributor_id', label: 'Distributor (overrides the territory default)', type: 'select', span: 2,
+      options: [{ value: '', label: '— Follow territory default —' }, ...distributorOptions],
     },
   ]
+
+  const reassignMrOptions = allMrs.map(m => ({ id: m.id, name: m.active ? m.name : `${m.name} (inactive)` }))
 
   return (
     <>
       <PageHeader
         title="Areas"
-        description="The localities within each territory — each is assigned to one MR. Split a territory across MRs by pointing different areas to different MRs."
+        description="The localities within each territory. Leave MR/Distributor unset to follow the territory's default, or pick one to override it just for this area."
         action={
           <MasterFormDialog
             action={saveArea}
@@ -54,6 +66,17 @@ export default async function AreasPage({ searchParams }: Props) {
           />
         }
       />
+
+      {allMrs.length >= 2 && (
+        <ReassignPanel
+          title="Reassign an MR"
+          description="Moves every territory and area currently assigned to one MR over to another — e.g. when an MR leaves the company."
+          fromLabel="Currently assigned to" toLabel="Reassign to"
+          options={reassignMrOptions}
+          action={reassignMr}
+          fromKey="from_mr_id" toKey="to_mr_id"
+        />
+      )}
 
       {currentTerritory && (
         <div className="mb-4">
@@ -80,12 +103,13 @@ export default async function AreasPage({ searchParams }: Props) {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[700px]">
+            <table className="w-full min-w-[820px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Area</Th>
                   <Th>Territory</Th>
-                  <Th>Assigned MR</Th>
+                  <Th>MR (in effect)</Th>
+                  <Th>Distributor (in effect)</Th>
                   <Th align="right">Actions</Th>
                 </tr>
               </thead>
@@ -97,7 +121,14 @@ export default async function AreasPage({ searchParams }: Props) {
                       {!a.active && <Badge className="ml-2 bg-gray-100 text-gray-500 ring-gray-400/20">Inactive</Badge>}
                     </Td>
                     <Td className="text-[12.5px] text-gray-600">{a.territory_name}</Td>
-                    <Td className="text-[12.5px] text-gray-600">{a.mr_name ?? '—'}</Td>
+                    <Td className="text-[12.5px] text-gray-600">
+                      {a.effective_mr_name ?? '—'}
+                      {!a.mr_id && a.effective_mr_name && <span className="ml-1 text-gray-400">(territory default)</span>}
+                    </Td>
+                    <Td className="text-[12.5px] text-gray-600">
+                      {a.effective_distributor_name ?? '—'}
+                      {!a.distributor_id && a.effective_distributor_name && <span className="ml-1 text-gray-400">(territory default)</span>}
+                    </Td>
                     <Td align="right">
                       <div className="flex items-center justify-end gap-2">
                         <MasterFormDialog

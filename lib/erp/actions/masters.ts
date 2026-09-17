@@ -6,7 +6,7 @@ import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import {
   AreaSchema, BankAccountSchema, ChemistSchema, DistributorSchema, DoctorSchema, ErpProductSchema,
-  ProductBatchSchema, SupplierSchema, TerritorySchema,
+  ProductBatchSchema, ReassignDistributorSchema, ReassignMrSchema, SupplierSchema, TerritorySchema,
 } from '../schemas'
 import type { Capability } from '../permissions'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
@@ -246,6 +246,54 @@ export async function saveArea(_prev: ActionState, formData: FormData) {
 
 export async function setAreaActive(id: string, active: boolean) {
   return setMasterActive(AREA, id, active)
+}
+
+/**
+ * Bulk-moves every territory and area currently pointing at one MR onto
+ * another — the "an MR left the company" scenario, so nobody has to
+ * hand-edit each territory/area whose mr_id happened to be theirs.
+ * erp_reassign_mr() re-checks admin server-side independently of this.
+ */
+export async function reassignMr(input: unknown): Promise<ActionState> {
+  return runAction('Could not reassign this MR’s territories and areas.', async () => {
+    await assertCapability('territories.manage')
+
+    const parsed = ReassignMrSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { data, error } = await db.rpc('erp_reassign_mr', {
+      p_from_mr: parsed.data.from_mr_id,
+      p_to_mr: parsed.data.to_mr_id,
+    })
+    if (error) return friendlyDbError(error, 'Could not reassign this MR’s territories and areas.')
+
+    revalidatePath('/erp/masters/territories')
+    revalidatePath('/erp/masters/areas')
+    return { ok: true, data: (data ?? {}) as Record<string, unknown> }
+  })
+}
+
+/** Same idea as reassignMr(), for when a distributor is replaced across
+ *  everything currently assigned to them. */
+export async function reassignDistributor(input: unknown): Promise<ActionState> {
+  return runAction('Could not reassign this distributor’s territories and areas.', async () => {
+    await assertCapability('territories.manage')
+
+    const parsed = ReassignDistributorSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { data, error } = await db.rpc('erp_reassign_distributor', {
+      p_from_distributor: parsed.data.from_distributor_id,
+      p_to_distributor: parsed.data.to_distributor_id,
+    })
+    if (error) return friendlyDbError(error, 'Could not reassign this distributor’s territories and areas.')
+
+    revalidatePath('/erp/masters/territories')
+    revalidatePath('/erp/masters/areas')
+    return { ok: true, data: (data ?? {}) as Record<string, unknown> }
+  })
 }
 
 // ─── Bank accounts ──────────────────────────────────────────────────────────

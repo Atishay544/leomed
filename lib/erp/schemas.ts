@@ -184,12 +184,30 @@ export const SupplierSchema = z.object({
 export const TerritorySchema = z.object({
   name:           requiredText('Territory name', 100),
   distributor_id: optionalUuid,
+  mr_id:          optionalUuid,
 })
 
 export const AreaSchema = z.object({
-  name:         requiredText('Area name', 100),
-  territory_id: uuid,
-  mr_id:        optionalUuid,
+  name:           requiredText('Area name', 100),
+  territory_id:   uuid,
+  mr_id:          optionalUuid,
+  distributor_id: optionalUuid,
+})
+
+export const ReassignMrSchema = z.object({
+  from_mr_id: uuid,
+  to_mr_id:   uuid,
+}).refine(v => v.from_mr_id !== v.to_mr_id, {
+  message: 'Choose a different MR to reassign to',
+  path: ['to_mr_id'],
+})
+
+export const ReassignDistributorSchema = z.object({
+  from_distributor_id: uuid,
+  to_distributor_id:   uuid,
+}).refine(v => v.from_distributor_id !== v.to_distributor_id, {
+  message: 'Choose a different distributor to reassign to',
+  path: ['to_distributor_id'],
 })
 
 export const BankAccountSchema = z.object({
@@ -774,3 +792,5 @@ export type OfferLetterComponentInput = z.infer<typeof OfferLetterComponentSchem
 export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>
 export type TerritoryInput            = z.infer<typeof TerritorySchema>
 export type AreaInput                 = z.infer<typeof AreaSchema>
+export type ReassignMrInput           = z.infer<typeof ReassignMrSchema>
+export type ReassignDistributorInput  = z.infer<typeof ReassignDistributorSchema>

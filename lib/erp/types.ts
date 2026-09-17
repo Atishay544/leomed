@@ -177,6 +177,9 @@ export interface Territory {
   id: string
   name: string
   distributor_id: string | null
+  /** Default MR for the whole territory — an area's own mr_id, when set,
+   *  overrides this for that one area only. */
+  mr_id: string | null
   active: boolean
   created_at: string
   updated_at: string
@@ -186,7 +189,12 @@ export interface Area {
   id: string
   name: string
   territory_id: string
+  /** Overrides the territory's default MR for this area only; null means
+   *  "follow the territory". */
   mr_id: string | null
+  /** Overrides the territory's default distributor for this area only;
+   *  null means "follow the territory". */
+  distributor_id: string | null
   active: boolean
   created_at: string
   updated_at: string
