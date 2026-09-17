@@ -465,6 +465,10 @@ export interface OfferLetter {
   incentive_terms: string | null
   remarks: string | null
   status: OfferStatus
+  /** Bumped every time an existing offer is saved again — editing a Sent/
+   *  Accepted/Rejected/Withdrawn offer also resets status back to DRAFT,
+   *  since the old acceptance was for whatever the previous revision said. */
+  revision: number
   converted_employee_id: string | null
   created_at: string
   updated_at: string

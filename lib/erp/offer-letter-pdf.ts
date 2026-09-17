@@ -21,6 +21,9 @@ export interface OfferLetterPdfComponent {
 export interface OfferLetterPdfData {
   offerNumber: string
   offerDate: string
+  /** Bumped every time HR edits and re-saves an existing offer — shown on
+   *  the letter so a revised offer never reads as identical to the first. */
+  revision: number
   candidateName: string
   candidateAddress: string | null
   designation: string
@@ -89,12 +92,18 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
       company.email && `Email: ${company.email}`,
     ].filter(Boolean).join('   ·   ')
     if (contactLine) doc.text(contactLine, textX, doc.y)
+    // Reset x back to the true left margin — everything below assumes it
+    // starts there (most pass a fixed width without repeating x), and the
+    // header's textX offset otherwise leaks into it, overflowing past the
+    // page edge instead of wrapping (this is what clipped "Muzaffarnagar"
+    // mid-word the first time a logo was tested).
     if (logoDrawn) doc.y = Math.max(doc.y, headerTop + 68)
+    doc.x = 40
 
     doc.moveDown(0.5)
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#111').text('OFFER OF EMPLOYMENT', { align: 'right' })
     doc.fontSize(9).font('Helvetica').fillColor('#333')
-    doc.text(`Ref: ${data.offerNumber}`, { align: 'right' })
+    doc.text(`Ref: ${data.offerNumber}${data.revision > 1 ? ` (Revision ${data.revision})` : ''}`, { align: 'right' })
     doc.text(`Date: ${formatDate(data.offerDate)}`, { align: 'right' })
     doc.moveDown(0.5)
     doc.strokeColor('#ddd').moveTo(40, doc.y).lineTo(555, doc.y).stroke()
@@ -123,6 +132,15 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
       { width: 515, align: 'justify' },
     )
     doc.moveDown(0.6)
+
+    if (data.revision > 1) {
+      doc.font('Helvetica-Oblique').fillColor('#555').text(
+        'This revised offer letter supersedes any previous offer letter issued to you for this position.',
+        { width: 515, align: 'justify' },
+      )
+      doc.moveDown(0.6)
+      doc.font('Helvetica').fillColor('#333')
+    }
 
     doc.text('Your fixed compensation is detailed in Annexure I to this letter.', { width: 515, align: 'justify' })
     doc.moveDown(0.6)

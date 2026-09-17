@@ -69,7 +69,12 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
                   <FileText size={19} />
                 </span>
                 <div>
-                  <h1 className="font-mono text-lg font-bold text-gray-900">{offer.offer_number}</h1>
+                  <h1 className="font-mono text-lg font-bold text-gray-900">
+                    {offer.offer_number}
+                    {offer.revision > 1 && (
+                      <span className="ml-2 font-sans text-[11px] font-semibold text-gray-400">Revision {offer.revision}</span>
+                    )}
+                  </h1>
                   <p className="mt-0.5 text-[12.5px] text-gray-500">
                     {offer.candidate_name} · {offer.designation} · {formatDate(offer.offer_date)}
                   </p>
@@ -89,7 +94,7 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
                 {offer.status !== 'CONVERTED' && (
                   <Link href={`/erp/hr/offers/${offer.id}/edit`}
                         className="text-[12px] font-medium text-emerald-700 hover:underline">
-                    Edit offer
+                    Edit &amp; regenerate
                   </Link>
                 )}
               </div>

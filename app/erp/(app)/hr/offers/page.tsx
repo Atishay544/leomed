@@ -81,6 +81,7 @@ export default async function OfferLettersPage({ searchParams }: Props) {
                       <Link href={`/erp/hr/offers/${o.id}`} className="font-mono text-[12px] font-medium text-emerald-700 hover:underline">
                         {o.offer_number}
                       </Link>
+                      {o.revision > 1 && <p className="mt-0.5 text-[11px] text-gray-400">Revision {o.revision}</p>}
                     </Td>
                     <Td>
                       <span className="font-medium text-gray-900">{o.candidate_name}</span>

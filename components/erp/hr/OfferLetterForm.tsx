@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { saveOfferLetter } from '@/lib/erp/actions/offers'
-import { money } from '@/lib/erp/format'
+import { money, OFFER_STATUS_LABELS } from '@/lib/erp/format'
 import { ERP_ROLES, OFFER_COMPONENT_CATEGORIES, type OfferComponentCategory, type ErpRole } from '@/lib/erp/types'
 import { ROLE_LABELS } from '@/lib/erp/permissions'
 import type { OfferDetail } from '@/lib/erp/data/offers'
@@ -84,6 +84,7 @@ export default function OfferLetterForm({
   const [error, setError] = useState<string | null>(null)
 
   const locked = initial?.status === 'CONVERTED'
+  const willResetStatus = !!initial && initial.status !== 'DRAFT' && initial.status !== 'CONVERTED'
 
   function patchRow(uid: string, changes: Partial<ComponentRow>) {
     setRows(prev => prev.map(r => (r.uid === uid ? { ...r, ...changes } : r)))
@@ -162,6 +163,13 @@ export default function OfferLetterForm({
       {locked && (
         <div className="rounded-lg border border-violet-200 bg-violet-50 px-3.5 py-2.5 text-[12.5px] text-violet-800">
           This offer has already been converted to an employee and can no longer be edited.
+        </div>
+      )}
+      {willResetStatus && initial && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] text-amber-900">
+          This offer is currently &quot;{OFFER_STATUS_LABELS[initial.status]}&quot;. Saving changes here will bump it to
+          a new revision, reprint the letter accordingly, and reset its status back to Draft — whatever the candidate
+          previously agreed to was for the old terms, so it&apos;ll need to be sent and accepted again.
         </div>
       )}
 
@@ -309,7 +317,7 @@ export default function OfferLetterForm({
           <button type="submit" disabled={pending}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60">
             {pending && <Loader2 size={14} className="animate-spin" />}
-            {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create offer letter'}
+            {pending ? 'Saving…' : isEdit ? (willResetStatus ? 'Save & regenerate' : 'Save changes') : 'Create offer letter'}
           </button>
         </div>
       )}

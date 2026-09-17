@@ -24,6 +24,7 @@ export async function GET(
   const data: OfferLetterPdfData = {
     offerNumber: offer.offer_number,
     offerDate: offer.offer_date,
+    revision: offer.revision,
     candidateName: offer.candidate_name,
     candidateAddress: offer.candidate_address,
     designation: offer.designation,
