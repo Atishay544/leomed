@@ -40,6 +40,10 @@ function buildConvertFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
     { name: 'phone',     label: 'Phone', type: 'tel' },
     { name: 'territory', label: 'Territory' },
     { name: 'department', label: 'Department' },
+    {
+      name: 'joining_date', label: 'Joining date', type: 'date',
+      hint: 'Pre-filled from the offer — adjust if the actual joining date changed. Sets when Earned Leave starts accruing.',
+    },
   ]
 }
 
@@ -145,6 +149,7 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
                     designation: offer.designation,
                     territory: offer.territory ?? '',
                     department: offer.department ?? '',
+                    joining_date: offer.joining_date ?? '',
                   }}
                   trigger={
                     <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-emerald-800">

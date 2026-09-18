@@ -101,6 +101,11 @@ export interface ErpUser {
   designation: string | null
   employee_code: string | null
   week_off_days: number[] | null
+  /** Actual date of joining — drives Earned Leave's per-employee accrual
+   *  schedule (see erp_run_leave_accruals()), not just a record-keeping
+   *  field. Falls back to created_at when unset, for anyone hired before
+   *  this field existed. */
+  joining_date: string | null
   created_at: string
   updated_at: string
 }
