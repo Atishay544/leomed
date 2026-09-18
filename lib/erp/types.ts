@@ -513,6 +513,12 @@ export interface OfferLetter {
    *  compensation breakup, since it's conditional, not guaranteed. */
   incentive_terms: string | null
   remarks: string | null
+  /** Leave entitlement promised in writing — seeded onto the employee's
+   *  erp_leave_balances for the current year the moment this offer is
+   *  converted (see convertOfferToEmployee). */
+  annual_el_days: number
+  annual_sl_days: number
+  annual_cl_days: number
   status: OfferStatus
   /** Bumped every time an existing offer is saved again — editing a Sent/
    *  Accepted/Rejected/Withdrawn offer also resets status back to DRAFT,
@@ -627,6 +633,15 @@ export interface ErpLeaveType {
   is_paid: boolean
   active: boolean
   sort_order: number
+  /** Whether this type participates in the per-employee annual balance
+   *  system (erp_leave_balances) at all — true by default for Casual/Sick/
+   *  Earned Leave. A leave type with this false (Paid Leave, Unpaid Leave,
+   *  Other) has no quota and applying for it is never blocked on balance. */
+  tracks_balance: boolean
+  /** Only meaningful when tracks_balance is true: whether an unused balance
+   *  rolls into next year (Earned Leave) or expires at year end (Casual/
+   *  Sick Leave) — see erp_leave_year_end_rollover(). */
+  carries_forward: boolean
   created_at: string
 }
 
@@ -641,6 +656,21 @@ export interface ErpLeaveRequest {
   admin_remarks: string | null
   reviewed_by: string | null
   reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** One employee's quota and usage for one leave type in one calendar year —
+ *  see the migration note in 20260918000008_leave_balances.sql for why only
+ *  tracks_balance leave types get a row here at all. */
+export interface ErpLeaveBalance {
+  id: string
+  employee_id: string
+  leave_type_id: string
+  year: number
+  allocated: number
+  used: number
+  updated_by: string | null
   created_at: string
   updated_at: string
 }
@@ -718,6 +748,12 @@ export interface ErpPayrollRecord {
   bonus: number
   other_earnings: number
   deductions: number
+  /** Loss of Pay: unpaid_leave_days + absent_days, priced at the daily rate
+   *  of fixed_salary — derived as (fixed_salary - the prorated amount
+   *  already folded into net_salary), so it always reconciles exactly with
+   *  what net_salary actually pays out. See 20260918000011_payroll_lop_
+   *  deduction.sql. */
+  lop_deduction_amount: number
   net_salary: number
   remarks: string | null
   created_at: string

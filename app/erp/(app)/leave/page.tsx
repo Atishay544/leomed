@@ -1,12 +1,14 @@
 import { CalendarDays } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
-import { listLeaveTypes, listMyLeaveRequests } from '@/lib/erp/data/leave'
+import { getEmployeeLeaveSummary, listLeaveTypes, listMyLeaveRequests } from '@/lib/erp/data/leave'
 import { PAGE_SIZE, parsePage } from '@/lib/erp/data/query'
-import { formatDate, LEAVE_STATUS_LABELS, LEAVE_STATUS_STYLES } from '@/lib/erp/format'
+import { formatDate, LEAVE_STATUS_LABELS, LEAVE_STATUS_STYLES, qty } from '@/lib/erp/format'
 import LeaveApplicationForm from '@/components/erp/leave/LeaveApplicationForm'
 import CancelLeaveButton from '@/components/erp/leave/CancelLeaveButton'
 import Pagination from '@/components/erp/Pagination'
-import { Badge, Card, CardHeader, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
+import {
+  Badge, Card, CardHeader, EmptyState, PageHeader, StatCard, TableWrap, Td, Th,
+} from '@/components/erp/ui'
 
 export const metadata = { title: 'My Leave' }
 
@@ -18,18 +20,34 @@ export default async function MyLeavePage({ searchParams }: Props) {
   const session = await requireCapability('leave.apply')
   const params = await searchParams
   const page = parsePage(params.page)
+  const year = new Date().getFullYear()
 
-  const [leaveTypes, myRequests] = await Promise.all([
+  const [leaveTypes, myRequests, balances] = await Promise.all([
     listLeaveTypes(),
     listMyLeaveRequests(session.id, page),
+    getEmployeeLeaveSummary(session.id, year),
   ])
 
   return (
     <>
       <PageHeader title="My Leave" description="Apply for leave and track your own requests. Other employees' leave is not shown here." />
 
+      {balances.length > 0 && (
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {balances.map(b => (
+            <StatCard
+              key={b.leave_type_id}
+              label={`${b.name} (${year})`}
+              value={`${qty(b.remaining)} left`}
+              hint={`${qty(b.used)} used of ${qty(b.allocated)} allocated`}
+              tone={b.remaining <= 0 ? 'critical' : b.remaining <= 2 ? 'warning' : 'positive'}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="mb-6 max-w-2xl">
-        <LeaveApplicationForm leaveTypes={leaveTypes} />
+        <LeaveApplicationForm leaveTypes={leaveTypes} balances={balances} />
       </div>
 
       <Card padded={false}>

@@ -33,6 +33,9 @@ export async function GET(
     reportsToName: offer.reports_to_name,
     joiningDate: offer.joining_date,
     incentiveTerms: offer.incentive_terms,
+    annualElDays: Number(offer.annual_el_days),
+    annualSlDays: Number(offer.annual_sl_days),
+    annualClDays: Number(offer.annual_cl_days),
     remarks: offer.remarks,
     components: offer.components.map(c => ({
       name: c.component_name,

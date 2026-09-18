@@ -37,6 +37,9 @@ const positiveInt = z.coerce.number().int('Enter a whole number').positive('Must
 const nonNegativeInt = z.coerce.number().int().min(0)
 const percent = z.coerce.number().min(0).max(100)
 const gstRate = z.coerce.number().min(0).max(28, 'GST cannot exceed 28%')
+// Leave-day counts — half-day leave is common enough to allow (0.5, 1.5, …),
+// so this is deliberately not nonNegativeInt.
+const nonNegativeDays = z.coerce.number().min(0, 'Cannot be negative').max(365)
 
 const phone = z.string().trim()
   .regex(/^[0-9+\-\s()]{6,20}$/, 'Enter a valid phone number')
@@ -115,6 +118,11 @@ export const OfferLetterSchema = z.object({
   joining_date:      optionalDate,
   incentive_terms:   optionalText(2000),
   remarks:           optionalText(2000),
+  // Seeded onto erp_leave_balances for the current year when this offer is
+  // converted to an employee — see convertOfferToEmployee().
+  annual_el_days:    nonNegativeDays.default(0),
+  annual_sl_days:    nonNegativeDays.default(0),
+  annual_cl_days:    nonNegativeDays.default(0),
   components:        z.array(OfferLetterComponentSchema).max(30),
 })
 
@@ -600,9 +608,26 @@ export const LeaveTypeSchema = z.object({
   // false, not true: an unchecked checkbox is simply absent from FormData, so
   // defaulting to true would make unchecking either box silently do nothing
   // (same footgun ErpUserSchema.active avoids for the same reason).
-  is_paid:    z.coerce.boolean().default(false),
-  active:     z.coerce.boolean().default(false),
-  sort_order: z.coerce.number().int().default(0),
+  is_paid:         z.coerce.boolean().default(false),
+  active:          z.coerce.boolean().default(false),
+  // Whether this type runs on an annual quota (erp_leave_balances) at all,
+  // and whether an unused balance rolls into next year — see the note on
+  // ErpLeaveType in types.ts.
+  tracks_balance:  z.coerce.boolean().default(false),
+  carries_forward: z.coerce.boolean().default(false),
+  sort_order:      z.coerce.number().int().default(0),
+})
+
+/** One employee's EL/SL/CL quota for one year, set in a single dialog since
+ *  HR always manages the three together — see LeaveBalanceDialog. Each
+ *  field is a hard SET of `allocated`, not an addition to whatever is
+ *  already there (same convention as EmployeeSalarySchema). */
+export const LeaveBalanceSchema = z.object({
+  employee_id: uuid,
+  year:        z.coerce.number().int().min(2000).max(2200),
+  el_days:     nonNegativeDays.default(0),
+  sl_days:     nonNegativeDays.default(0),
+  cl_days:     nonNegativeDays.default(0),
 })
 
 export const LeaveApplicationSchema = z.object({
@@ -781,6 +806,7 @@ export type AttendanceRulesInput      = z.infer<typeof AttendanceRulesSchema>
 export type MrAttendanceTargetInput   = z.infer<typeof MrAttendanceTargetSchema>
 export type HolidayInput              = z.infer<typeof HolidaySchema>
 export type LeaveTypeInput            = z.infer<typeof LeaveTypeSchema>
+export type LeaveBalanceInput         = z.infer<typeof LeaveBalanceSchema>
 export type LeaveApplicationInput     = z.infer<typeof LeaveApplicationSchema>
 export type LeaveReviewInput          = z.infer<typeof LeaveReviewSchema>
 export type AdminCreateLeaveInput     = z.infer<typeof AdminCreateLeaveSchema>

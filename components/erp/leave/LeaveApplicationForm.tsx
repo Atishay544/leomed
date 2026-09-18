@@ -5,7 +5,8 @@ import { useFormStatus } from 'react-dom'
 import { Loader2 } from 'lucide-react'
 import { applyLeave } from '@/lib/erp/actions/leave'
 import { IDLE } from '@/lib/erp/actions/shared'
-import { isoDate } from '@/lib/erp/format'
+import { isoDate, qty } from '@/lib/erp/format'
+import type { LeaveBalanceSummary } from '@/lib/erp/data/leave'
 import type { ErpLeaveType } from '@/lib/erp/types'
 
 const inputClass =
@@ -26,8 +27,17 @@ function SubmitButton() {
   )
 }
 
-export default function LeaveApplicationForm({ leaveTypes }: { leaveTypes: ErpLeaveType[] }) {
+export default function LeaveApplicationForm({
+  leaveTypes, balances,
+}: {
+  leaveTypes: ErpLeaveType[]
+  /** This year's remaining balance for each tracks_balance type — folded
+   *  into the option label so the employee sees the constraint before
+   *  hitting the block on submit, not just after. */
+  balances: LeaveBalanceSummary[]
+}) {
   const [state, formAction] = useActionState(applyLeave, IDLE)
+  const remainingByType = new Map(balances.map(b => [b.leave_type_id, b.remaining]))
 
   return (
     <form action={formAction} className="space-y-3.5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -46,7 +56,14 @@ export default function LeaveApplicationForm({ leaveTypes }: { leaveTypes: ErpLe
         <div>
           <label htmlFor="leave_type_id" className="mb-1 block text-[12px] font-medium text-gray-700">Leave type</label>
           <select id="leave_type_id" name="leave_type_id" required className={inputClass}>
-            {leaveTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {leaveTypes.map(t => {
+              const remaining = remainingByType.get(t.id)
+              return (
+                <option key={t.id} value={t.id}>
+                  {t.name}{remaining !== undefined ? ` (${qty(remaining)} left)` : ''}
+                </option>
+              )
+            })}
           </select>
         </div>
         <div>

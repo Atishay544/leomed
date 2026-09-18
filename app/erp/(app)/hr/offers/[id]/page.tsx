@@ -231,6 +231,17 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
               <div className="flex justify-between"><dt className="text-gray-500">Joining date</dt><dd className="text-gray-900">{offer.joining_date ? formatDate(offer.joining_date) : '—'}</dd></div>
             </dl>
           </Card>
+
+          {(offer.annual_el_days > 0 || offer.annual_sl_days > 0 || offer.annual_cl_days > 0) && (
+            <Card>
+              <h2 className="mb-3 text-[13px] font-semibold text-gray-800">Leave Entitlement (per year)</h2>
+              <dl className="space-y-2 text-[12.5px]">
+                <div className="flex justify-between"><dt className="text-gray-500">Earned Leave</dt><dd className="text-gray-900">{offer.annual_el_days} days</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Sick Leave</dt><dd className="text-gray-900">{offer.annual_sl_days} days</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-500">Casual Leave</dt><dd className="text-gray-900">{offer.annual_cl_days} days</dd></div>
+              </dl>
+            </Card>
+          )}
         </div>
       </div>
     </>

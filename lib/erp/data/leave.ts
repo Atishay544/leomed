@@ -11,6 +11,116 @@ export const listLeaveTypes = cache(async (activeOnly = true): Promise<ErpLeaveT
   return (data ?? []) as ErpLeaveType[]
 })
 
+/** The company's EL/SL/CL leave-type ids, looked up by name once — every
+ *  balance screen and the offer-letter seeding need exactly these three. A
+ *  missing one (someone renamed/deleted the seed row) reads as undefined
+ *  rather than throwing, so a caller can still work with whichever exist. */
+export async function getElSlClLeaveTypeIds(): Promise<{ elId?: string; slId?: string; clId?: string }> {
+  const types = await listLeaveTypes(false)
+  return {
+    elId: types.find(t => t.name === 'Earned Leave')?.id,
+    slId: types.find(t => t.name === 'Sick Leave')?.id,
+    clId: types.find(t => t.name === 'Casual Leave')?.id,
+  }
+}
+
+/** A single leave type's remaining balance for one employee/year — the
+ *  gate applyLeave() checks before letting a tracks_balance request through.
+ *  No row yet means no allocation has been set, i.e. zero remaining, not
+ *  "no restriction". */
+export async function getLeaveBalance(
+  employeeId: string, leaveTypeId: string, year: number,
+): Promise<{ allocated: number; used: number; remaining: number }> {
+  const db = await erpDb()
+  const { data, error } = await db
+    .from('erp_leave_balances')
+    .select('allocated, used')
+    .eq('employee_id', employeeId)
+    .eq('leave_type_id', leaveTypeId)
+    .eq('year', year)
+    .maybeSingle()
+  if (error) console.error('[erp] getLeaveBalance failed', error.message)
+  const allocated = data?.allocated ?? 0
+  const used = data?.used ?? 0
+  return { allocated, used, remaining: Math.max(0, allocated - used) }
+}
+
+export interface LeaveBalanceSummary {
+  leave_type_id: string
+  name: string
+  allocated: number
+  used: number
+  remaining: number
+}
+
+/** One employee's balance across every tracks_balance leave type (EL/SL/CL
+ *  today, plus any other type HR later flags the same way) — the "Leave
+ *  Balance" cards on the Leave Portal, and the inline balance shown next to
+ *  each option on the apply form. */
+export async function getEmployeeLeaveSummary(employeeId: string, year: number): Promise<LeaveBalanceSummary[]> {
+  const db = await erpDb()
+  const [types, { data: balances, error }] = await Promise.all([
+    listLeaveTypes(true),
+    db.from('erp_leave_balances').select('leave_type_id, allocated, used')
+      .eq('employee_id', employeeId).eq('year', year),
+  ])
+  if (error) console.error('[erp] getEmployeeLeaveSummary failed', error.message)
+
+  const byType = new Map((balances ?? []).map(b => [b.leave_type_id, b]))
+  return types.filter(t => t.tracks_balance).map(t => {
+    const b = byType.get(t.id)
+    const allocated = b?.allocated ?? 0
+    const used = b?.used ?? 0
+    return { leave_type_id: t.id, name: t.name, allocated, used, remaining: Math.max(0, allocated - used) }
+  })
+}
+
+export interface LeaveBalanceSummaryRow {
+  employee_id: string
+  employee_name: string
+  employee_role: string
+  mr_code: string | null
+  year: number
+  el_allocated: number; el_used: number
+  sl_allocated: number; sl_used: number
+  cl_allocated: number; cl_used: number
+}
+
+/** Admin/HR's Leave Balances screen — one row per employee who already has
+ *  at least one balance row this year, EL/SL/CL pivoted into columns (the
+ *  underlying table is one row per employee+type+year). Unpaginated: fetch
+ *  every row for the year and group in JS, the same "small enough, fine
+ *  unpaginated" call made for territory/area lookups — a company's whole
+ *  staff list at 3 rows each is nowhere near the scale that would matter. */
+export async function listLeaveBalancesSummary(year: number): Promise<LeaveBalanceSummaryRow[]> {
+  const db = await erpDb()
+  const { elId, slId, clId } = await getElSlClLeaveTypeIds()
+
+  const { data, error } = await db
+    .from('erp_leave_balances')
+    // erp_leave_balances has two FKs to erp_users (employee_id, updated_by)
+    // — an unqualified erp_users(...) embed would be ambiguous (see the
+    // Territory/Area fix for the exact same problem).
+    .select('*, erp_users!erp_leave_balances_employee_id_fkey(name, role, mr_code)')
+    .eq('year', year)
+  if (error) { console.error('[erp] listLeaveBalancesSummary failed', error.message); return [] }
+
+  const byEmployee = new Map<string, LeaveBalanceSummaryRow>()
+  for (const row of (data ?? []) as any[]) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const emp = row.erp_users
+    if (!emp) continue
+    const existing = byEmployee.get(row.employee_id) ?? {
+      employee_id: row.employee_id, employee_name: emp.name, employee_role: emp.role, mr_code: emp.mr_code,
+      year, el_allocated: 0, el_used: 0, sl_allocated: 0, sl_used: 0, cl_allocated: 0, cl_used: 0,
+    }
+    if (row.leave_type_id === elId) { existing.el_allocated = Number(row.allocated); existing.el_used = Number(row.used) }
+    else if (row.leave_type_id === slId) { existing.sl_allocated = Number(row.allocated); existing.sl_used = Number(row.used) }
+    else if (row.leave_type_id === clId) { existing.cl_allocated = Number(row.allocated); existing.cl_used = Number(row.used) }
+    byEmployee.set(row.employee_id, existing)
+  }
+  return [...byEmployee.values()].sort((a, b) => a.employee_name.localeCompare(b.employee_name))
+}
+
 export interface LeaveRequestRow extends ErpLeaveRequest {
   erp_leave_types: { name: string; is_paid: boolean } | null
 }

@@ -103,7 +103,10 @@ export function generatePayslipPdf(
     const deductionItems = items.filter(i => i.item_type === 'DEDUCTION')
 
     const earningRows: [string, string][] = [
-      ['Fixed salary (prorated)', pdfMoney(record.fixed_salary * record.payable_days / (record.working_days || 1))],
+      // The full monthly entitlement — Loss of Pay is shown as its own line
+      // under Deductions below, not folded silently into this figure, so
+      // the payslip states plainly what was earned and what was deducted.
+      ['Fixed salary (full month)', pdfMoney(record.fixed_salary)],
       ['Basic salary (reference)', pdfMoney(record.basic_salary)],
       ['Allowances (reference)', pdfMoney(record.allowances)],
       ...earnings.map((i): [string, string] => [i.label, pdfMoney(i.amount)]),
@@ -112,8 +115,14 @@ export function generatePayslipPdf(
     drawTwoColumnTable(doc, earningRows)
     doc.moveDown(0.5)
 
+    const lopDays = record.unpaid_leave_days + record.absent_days
     const deductionRows: [string, string][] = [
       ['Standard deductions', pdfMoney(record.standard_deductions)],
+      // Not an extra subtraction on top of net_salary — the fixed-salary
+      // earning line above is the FULL month, so this is what actually
+      // brings it down to the prorated amount already reflected in Net
+      // Payable Salary. See lop_deduction_amount's note in types.ts.
+      ...(lopDays > 0 ? [['Loss of Pay Deduction (' + lopDays + ' day(s))', pdfMoney(record.lop_deduction_amount)] as [string, string]] : []),
       ...deductionItems.map((i): [string, string] => [i.label, pdfMoney(i.amount)]),
     ]
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111').text('Deductions')

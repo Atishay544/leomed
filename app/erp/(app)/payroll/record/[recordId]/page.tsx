@@ -83,6 +83,13 @@ export default async function PayrollRecordPage({ params }: Props) {
             <h2 className="mb-3 text-[13px] font-semibold text-gray-800">Salary breakdown</h2>
             <dl className="space-y-2 text-[13px]">
               <Row label="Fixed salary (full)" value={money(record.fixed_salary)} />
+              {record.lop_deduction_amount > 0 && (
+                <Row
+                  label={`Loss of Pay (${record.unpaid_leave_days + record.absent_days} day(s))`}
+                  value={`− ${money(record.lop_deduction_amount)}`}
+                  tone="negative"
+                />
+              )}
               <Row label="Prorated (payable days)" value={money(record.fixed_salary * record.payable_days / (record.working_days || 1))} />
               <Row label="Allowances" value={money(record.allowances)} />
               <Row label="Incentives" value={money(record.incentives)} tone="positive" />

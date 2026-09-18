@@ -190,8 +190,16 @@ export function mrTargetFields(mrOptions: { value: string; label: string }[]): F
 }
 
 export const LEAVE_TYPE_FIELDS: FieldSpec[] = [
-  { name: 'name',       label: 'Leave type name', required: true, span: 2 },
-  { name: 'is_paid',    label: 'Paid leave',      type: 'checkbox' },
-  { name: 'active',     label: 'Active',          type: 'checkbox' },
-  { name: 'sort_order', label: 'Display order',   type: 'number', min: '0' },
+  { name: 'name',            label: 'Leave type name', required: true, span: 2 },
+  { name: 'is_paid',         label: 'Paid leave',      type: 'checkbox' },
+  { name: 'active',          label: 'Active',          type: 'checkbox' },
+  {
+    name: 'tracks_balance',  label: 'Runs on an annual balance', type: 'checkbox', span: 2,
+    hint: 'When on, employees need a balance (set under Leave → Leave Balances) to apply, and it is blocked once that runs out.',
+  },
+  {
+    name: 'carries_forward', label: 'Unused balance carries into next year', type: 'checkbox', span: 2,
+    hint: 'Only matters if "Runs on an annual balance" is also on. Off means it expires at year end instead (e.g. Casual/Sick Leave).',
+  },
+  { name: 'sort_order',      label: 'Display order',   type: 'number', min: '0' },
 ]
