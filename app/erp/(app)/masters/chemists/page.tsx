@@ -37,7 +37,8 @@ export default async function ChemistsPage({ searchParams }: Props) {
   const settings = await getErpSettings()
 
   const areaOptions = areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` }))
-  const CHEMIST_FIELDS = buildChemistFields(areaOptions)
+  const CHEMIST_FIELDS_NEW = buildChemistFields(areaOptions, true)
+  const CHEMIST_FIELDS_EDIT = buildChemistFields(areaOptions, false)
 
   return (
     <>
@@ -51,7 +52,7 @@ export default async function ChemistsPage({ searchParams }: Props) {
         action={canAdd && (
           <MasterFormDialog
             action={saveChemist}
-            fields={CHEMIST_FIELDS}
+            fields={CHEMIST_FIELDS_NEW}
             title="Add chemist"
             triggerLabel="Add chemist"
             submitLabel="Save chemist"
@@ -86,7 +87,6 @@ export default async function ChemistsPage({ searchParams }: Props) {
                   <Th>Store</Th>
                   <Th>Owner</Th>
                   <Th>Area</Th>
-                  <Th>City</Th>
                   <Th>Phone</Th>
                   <Th>GST</Th>
                   <Th align="right">Actions</Th>
@@ -119,7 +119,6 @@ export default async function ChemistsPage({ searchParams }: Props) {
                           <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Not mapped</Badge>
                         )}
                       </Td>
-                      <Td>{chemist.city ?? '—'}</Td>
                       <Td className="tabular-nums">{chemist.phone ?? '—'}</Td>
                       <Td className="font-mono text-[11.5px]">{chemist.gst_number ?? '—'}</Td>
                       <Td align="right">
@@ -127,7 +126,7 @@ export default async function ChemistsPage({ searchParams }: Props) {
                           {canEdit && (
                             <MasterFormDialog
                               action={saveChemist}
-                              fields={CHEMIST_FIELDS}
+                              fields={CHEMIST_FIELDS_EDIT}
                               title={`Edit ${chemist.chemist_name}`}
                               submitLabel="Save changes"
                               initial={chemist as unknown as Record<string, unknown>}

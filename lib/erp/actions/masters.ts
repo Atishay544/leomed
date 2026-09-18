@@ -121,7 +121,22 @@ const DOCTOR: MasterConfig = {
   label: 'doctor',
 }
 
-export async function saveDoctor(_prev: ActionState, formData: FormData) {
+/** Specialisation/phone/clinic are required for a brand-new doctor, but not
+ *  re-required just to edit an old one that predates this rule — checked
+ *  here, ahead of the shared saveMaster(), rather than in DoctorSchema
+ *  itself (which stays optional and is also used for edits). The visit
+ *  "add new doctor" flow enforces the identical rule server-side in
+ *  erp_create_doctor_visit() (20260918000015), since that path never goes
+ *  through this action at all. */
+export async function saveDoctor(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const isCreate = !String(formData.get('id') ?? '').trim()
+  if (isCreate) {
+    const missing = ['specialization', 'phone', 'clinic_name']
+      .filter(f => !String(formData.get(f) ?? '').trim())
+    if (missing.length > 0) {
+      return { ok: false, error: 'Specialisation, phone and clinic/hospital are required for a new doctor.' }
+    }
+  }
   return saveMaster(DOCTOR, DoctorSchema, formData)
 }
 
@@ -158,7 +173,16 @@ const CHEMIST: MasterConfig = {
   label: 'chemist',
 }
 
-export async function saveChemist(_prev: ActionState, formData: FormData) {
+/** Owner name/phone are required for a brand-new chemist — same reasoning
+ *  and same non-retroactive scope as saveDoctor()'s check above. */
+export async function saveChemist(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const isCreate = !String(formData.get('id') ?? '').trim()
+  if (isCreate) {
+    const missing = ['owner_name', 'phone'].filter(f => !String(formData.get(f) ?? '').trim())
+    if (missing.length > 0) {
+      return { ok: false, error: 'Owner name and phone are required for a new chemist.' }
+    }
+  }
   return saveMaster(CHEMIST, ChemistSchema, formData)
 }
 

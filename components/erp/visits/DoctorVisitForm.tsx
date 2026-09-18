@@ -28,14 +28,18 @@ import type { FieldSpec } from '../form/Field'
 
 /** area_id is required here too (matches DoctorSchema) — a doctor "born"
  *  inside a visit still needs a real location, not free text, so it shows up
- *  correctly in area/territory-wise reporting from day one. */
+ *  correctly in area/territory-wise reporting from day one. Specialisation/
+ *  phone/clinic are required here unconditionally (unlike the Doctors master
+ *  form, where they're only required for a new record, never retroactively
+ *  for an edit) — this form only ever creates, never edits. City is dropped
+ *  entirely — area already covers location. Enforced server-side too, in
+ *  erp_create_doctor_visit() (20260918000015). */
 function buildNewDoctorFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
   return [
     { name: 'doctor_name',    label: 'Doctor name', required: true, span: 2, placeholder: 'Dr. Rajesh Kumar' },
-    { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics' },
-    { name: 'phone',          label: 'Phone', type: 'tel' },
-    { name: 'clinic_name',    label: 'Clinic / hospital', span: 2 },
-    { name: 'city',           label: 'City' },
+    { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics', required: true },
+    { name: 'phone',          label: 'Phone', type: 'tel', required: true },
+    { name: 'clinic_name',    label: 'Clinic / hospital', span: 2, required: true },
     {
       name: 'area_id', label: 'Area', type: 'select', required: true, span: 2,
       options: [{ value: '', label: '— Select area —' }, ...areaOptions],
@@ -86,8 +90,12 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
     areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` })),
   )
   const [doctor, setDoctor] = useState<PickerValue>({ mode: 'none' })
-  const [visitDate, setVisitDate] = useState(isoDate())
-  const [visitTime, setVisitTime] = useState('')
+  // Not editable, on purpose — the visit is logged for right now, not
+  // whatever date/time an MR might otherwise pick. This is a display only;
+  // the actual timestamp saved is the server's own clock at submit time
+  // (erp_create_doctor_visit no longer even accepts a client-supplied one),
+  // so the two can differ by however long the MR takes to finish the form.
+  const [now, setNow] = useState(() => new Date())
   const [purpose, setPurpose] = useState<VisitPurpose>('PRODUCT_DETAILING')
   const [discussion, setDiscussion] = useState('')
   const [remarks, setRemarks] = useState('')
@@ -119,8 +127,7 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
    *  The request id is cleared too, so the next visit is a new submission. */
   function startAnother() {
     setDoctor({ mode: 'none' })
-    setVisitDate(isoDate())
-    setVisitTime('')
+    setNow(new Date())
     setPurpose('PRODUCT_DETAILING')
     setDiscussion('')
     setRemarks('')
@@ -160,6 +167,10 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
       setError('Capture your current location before saving the visit.')
       return
     }
+    if (!discussion.trim()) {
+      setError('Enter what was discussed during the visit.')
+      return
+    }
 
     requestId.current ??= (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`)
 
@@ -167,8 +178,9 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
       ...(doctor.mode === 'existing'
         ? { doctor_id: doctor.id }
         : { new_doctor: doctor.values }),
-      visit_date: visitDate,
-      visit_time: visitTime || undefined,
+      // No visit_date/visit_time here — the server stamps its own clock at
+      // insert time (see erp_create_doctor_visit), not whatever the MR's
+      // device says.
       purpose,
       discussion: discussion || undefined,
       remarks: remarks || undefined,
@@ -292,15 +304,13 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
 
       <Section icon={CalendarClock} title="Visit details">
         <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
-          <div>
-            <label htmlFor="visit_date" className="mb-1 block text-[12px] font-medium text-gray-700">Date</label>
-            <input id="visit_date" type="date" value={visitDate} max={isoDate()}
-                   onChange={e => setVisitDate(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="visit_time" className="mb-1 block text-[12px] font-medium text-gray-700">Time</label>
-            <input id="visit_time" type="time" value={visitTime}
-                   onChange={e => setVisitTime(e.target.value)} className={inputClass} />
+          <div className="sm:col-span-2">
+            <span className="mb-1 block text-[12px] font-medium text-gray-700">Date &amp; time</span>
+            <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-base text-gray-700 sm:text-[13px]">
+              {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {' · '}
+              {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} (now)
+            </p>
           </div>
           <div>
             <label htmlFor="purpose" className="mb-1 block text-[12px] font-medium text-gray-700">Purpose</label>
@@ -311,9 +321,9 @@ export default function DoctorVisitForm({ areas }: { areas: { id: string; name: 
           </div>
           <div className="sm:col-span-3">
             <label htmlFor="discussion" className="mb-1 block text-[12px] font-medium text-gray-700">
-              What was discussed
+              What was discussed <span className="text-red-500">*</span>
             </label>
-            <textarea id="discussion" rows={3} value={discussion}
+            <textarea id="discussion" rows={3} value={discussion} required
                       onChange={e => setDiscussion(e.target.value)} className={inputClass}
                       placeholder="Key points from the conversation…" />
           </div>

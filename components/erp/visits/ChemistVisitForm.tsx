@@ -19,13 +19,15 @@ import type { FieldSpec } from '../form/Field'
  */
 
 /** area_id is required here too (matches ChemistSchema) — see the matching
- *  note in DoctorVisitForm.tsx. */
+ *  note in DoctorVisitForm.tsx. Owner name/phone required unconditionally
+ *  (this form only ever creates), city dropped entirely — same reasoning
+ *  as buildNewDoctorFields there. Enforced server-side too, in
+ *  erp_create_chemist_visit() (20260918000015). */
 function buildNewChemistFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
   return [
     { name: 'chemist_name', label: 'Store name', required: true, span: 2, placeholder: 'Sharma Medical Store' },
-    { name: 'owner_name',   label: 'Owner name' },
-    { name: 'phone',        label: 'Phone', type: 'tel' },
-    { name: 'city',         label: 'City' },
+    { name: 'owner_name',   label: 'Owner name', required: true },
+    { name: 'phone',        label: 'Phone', type: 'tel', required: true },
     {
       name: 'area_id', label: 'Area', type: 'select', required: true, span: 2,
       options: [{ value: '', label: '— Select area —' }, ...areaOptions],
@@ -83,8 +85,8 @@ export default function ChemistVisitForm({ areas }: { areas: { id: string; name:
     areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` })),
   )
   const [chemist, setChemist] = useState<PickerValue>({ mode: 'none' })
-  const [visitDate, setVisitDate] = useState(isoDate())
-  const [visitTime, setVisitTime] = useState('')
+  // Not editable, on purpose — see the matching note in DoctorVisitForm.tsx.
+  const [now, setNow] = useState(() => new Date())
   const [purpose, setPurpose] = useState<VisitPurpose>('ORDER_COLLECTION')
   const [discussion, setDiscussion] = useState('')
   const [remarks, setRemarks] = useState('')
@@ -109,8 +111,7 @@ export default function ChemistVisitForm({ areas }: { areas: { id: string; name:
    *  is cleared too, so the next save is a new submission rather than a retry. */
   function startAnother() {
     setChemist({ mode: 'none' })
-    setVisitDate(isoDate())
-    setVisitTime('')
+    setNow(new Date())
     setPurpose('ORDER_COLLECTION')
     setDiscussion('')
     setRemarks('')
@@ -144,6 +145,10 @@ export default function ChemistVisitForm({ areas }: { areas: { id: string; name:
       setError('Capture your current location before saving the visit.')
       return
     }
+    if (!discussion.trim()) {
+      setError('Enter what was discussed during the visit.')
+      return
+    }
 
     requestId.current ??= (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`)
 
@@ -151,8 +156,8 @@ export default function ChemistVisitForm({ areas }: { areas: { id: string; name:
       ...(chemist.mode === 'existing'
         ? { chemist_id: chemist.id }
         : { new_chemist: chemist.values }),
-      visit_date: visitDate,
-      visit_time: visitTime || undefined,
+      // No visit_date/visit_time — server clock at insert time, see
+      // erp_create_chemist_visit.
       purpose,
       discussion: discussion || undefined,
       remarks: remarks || undefined,
@@ -251,15 +256,13 @@ export default function ChemistVisitForm({ areas }: { areas: { id: string; name:
 
       <Section icon={CalendarClock} title="Visit details">
         <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
-          <div>
-            <label htmlFor="c_date" className="mb-1 block text-[12px] font-medium text-gray-700">Date</label>
-            <input id="c_date" type="date" value={visitDate} max={isoDate()}
-                   onChange={e => setVisitDate(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="c_time" className="mb-1 block text-[12px] font-medium text-gray-700">Time</label>
-            <input id="c_time" type="time" value={visitTime}
-                   onChange={e => setVisitTime(e.target.value)} className={inputClass} />
+          <div className="sm:col-span-2">
+            <span className="mb-1 block text-[12px] font-medium text-gray-700">Date &amp; time</span>
+            <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-base text-gray-700 sm:text-[13px]">
+              {now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {' · '}
+              {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} (now)
+            </p>
           </div>
           <div>
             <label htmlFor="c_purpose" className="mb-1 block text-[12px] font-medium text-gray-700">Purpose</label>
@@ -270,9 +273,9 @@ export default function ChemistVisitForm({ areas }: { areas: { id: string; name:
           </div>
           <div className="sm:col-span-3">
             <label htmlFor="c_discussion" className="mb-1 block text-[12px] font-medium text-gray-700">
-              What was discussed
+              What was discussed <span className="text-red-500">*</span>
             </label>
-            <textarea id="c_discussion" rows={3} value={discussion}
+            <textarea id="c_discussion" rows={3} value={discussion} required
                       onChange={e => setDiscussion(e.target.value)} className={inputClass}
                       placeholder="Stock position, pending payments, new launches…" />
           </div>
