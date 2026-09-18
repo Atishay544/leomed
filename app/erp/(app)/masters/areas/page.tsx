@@ -75,6 +75,7 @@ export default async function AreasPage({ searchParams }: Props) {
           options={reassignMrOptions}
           action={reassignMr}
           fromKey="from_mr_id" toKey="to_mr_id"
+          followupOption
         />
       )}
 
