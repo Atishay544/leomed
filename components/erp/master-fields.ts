@@ -201,5 +201,17 @@ export const LEAVE_TYPE_FIELDS: FieldSpec[] = [
     name: 'carries_forward', label: 'Unused balance carries into next year', type: 'checkbox', span: 2,
     hint: 'Only matters if "Runs on an annual balance" is also on. Off means it expires at year end instead (e.g. Casual/Sick Leave).',
   },
+  {
+    name: 'monthly_cap_days', label: 'Max days per calendar month', type: 'number', min: '0', step: '0.5',
+    hint: 'Leave blank for no monthly cap. Applies on top of the annual balance (e.g. Casual Leave capped at 2/month).',
+  },
+  {
+    name: 'accrual_days', label: 'Auto-accrue this many days…', type: 'number', min: '0', step: '0.5',
+    hint: 'Leave blank for no automatic accrual — the balance then only changes when HR sets it.',
+  },
+  {
+    name: 'accrual_interval_months', label: '…every this many months', type: 'number', min: '1',
+    hint: 'Only matters if "Auto-accrue" above is set. E.g. 1 day every 2 months for Earned Leave.',
+  },
   { name: 'sort_order',      label: 'Display order',   type: 'number', min: '0' },
 ]

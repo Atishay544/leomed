@@ -45,12 +45,49 @@ export async function getLeaveBalance(
   return { allocated, used, remaining: Math.max(0, allocated - used) }
 }
 
+/** Days of one leave type an employee has already requested (PENDING or
+ *  APPROVED — not just APPROVED, unlike the annual balance's `used`) that
+ *  fall within one calendar month, counting each request's overlap with
+ *  that month rather than assuming it's fully inside it. Backs the
+ *  monthly_cap_days check in applyLeave(): PENDING counts too, so someone
+ *  can't get past a cap by stacking several not-yet-reviewed requests in
+ *  the same month. */
+export async function getLeaveDaysUsedInMonth(
+  employeeId: string, leaveTypeId: string, year: number, month: number,
+): Promise<number> {
+  const db = await erpDb()
+  const monthStart = new Date(Date.UTC(year, month - 1, 1))
+  const monthEnd = new Date(Date.UTC(year, month, 0)) // last day of the month
+  const monthStartStr = monthStart.toISOString().slice(0, 10)
+  const monthEndStr = monthEnd.toISOString().slice(0, 10)
+
+  const { data, error } = await db
+    .from('erp_leave_requests')
+    .select('from_date, to_date')
+    .eq('employee_id', employeeId)
+    .eq('leave_type_id', leaveTypeId)
+    .in('status', ['PENDING', 'APPROVED'])
+    .lte('from_date', monthEndStr)
+    .gte('to_date', monthStartStr)
+  if (error) { console.error('[erp] getLeaveDaysUsedInMonth failed', error.message); return 0 }
+
+  let total = 0
+  for (const r of data ?? []) {
+    const from = new Date(r.from_date) > monthStart ? new Date(r.from_date) : monthStart
+    const to = new Date(r.to_date) < monthEnd ? new Date(r.to_date) : monthEnd
+    const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
+    if (days > 0) total += days
+  }
+  return total
+}
+
 export interface LeaveBalanceSummary {
   leave_type_id: string
   name: string
   allocated: number
   used: number
   remaining: number
+  monthly_cap_days: number | null
 }
 
 /** One employee's balance across every tracks_balance leave type (EL/SL/CL
@@ -71,7 +108,10 @@ export async function getEmployeeLeaveSummary(employeeId: string, year: number):
     const b = byType.get(t.id)
     const allocated = b?.allocated ?? 0
     const used = b?.used ?? 0
-    return { leave_type_id: t.id, name: t.name, allocated, used, remaining: Math.max(0, allocated - used) }
+    return {
+      leave_type_id: t.id, name: t.name, allocated, used,
+      remaining: Math.max(0, allocated - used), monthly_cap_days: t.monthly_cap_days,
+    }
   })
 }
 

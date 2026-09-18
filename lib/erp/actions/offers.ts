@@ -138,6 +138,7 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
         department:    profile.department ?? null,
         designation:   profile.designation ?? null,
         employee_code: profile.employee_code ?? null,
+        joining_date:  profile.joining_date ?? null,
       })
       .select('id')
       .single()

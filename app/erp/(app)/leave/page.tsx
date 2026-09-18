@@ -39,7 +39,10 @@ export default async function MyLeavePage({ searchParams }: Props) {
               key={b.leave_type_id}
               label={`${b.name} (${year})`}
               value={`${qty(b.remaining)} left`}
-              hint={`${qty(b.used)} used of ${qty(b.allocated)} allocated`}
+              hint={
+                `${qty(b.used)} used of ${qty(b.allocated)} allocated` +
+                (b.monthly_cap_days != null ? ` · max ${qty(b.monthly_cap_days)}/month` : '')
+              }
               tone={b.remaining <= 0 ? 'critical' : b.remaining <= 2 ? 'warning' : 'positive'}
             />
           ))}

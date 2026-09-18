@@ -42,6 +42,10 @@ function buildCreateFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
     { name: 'phone',     label: 'Phone', type: 'tel' },
     { name: 'territory', label: 'Territory' },
     { name: 'department', label: 'Department', hint: 'e.g. Sales, Accounts, HR, Warehouse' },
+    {
+      name: 'joining_date', label: 'Joining date', type: 'date',
+      hint: 'Sets when Earned Leave starts accruing for this person — see Leave → Leave types.',
+    },
   ]
 }
 
@@ -57,6 +61,10 @@ function buildEditFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
     { name: 'phone',     label: 'Phone', type: 'tel' },
     { name: 'territory', label: 'Territory' },
     { name: 'department', label: 'Department' },
+    {
+      name: 'joining_date', label: 'Joining date', type: 'date',
+      hint: 'Sets when Earned Leave starts accruing for this person — see Leave → Leave types.',
+    },
     { name: 'active',    label: 'Account active', type: 'checkbox', placeholder: 'Can sign in', span: 2 },
   ]
 }

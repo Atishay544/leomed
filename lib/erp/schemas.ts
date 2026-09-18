@@ -40,6 +40,15 @@ const gstRate = z.coerce.number().min(0).max(28, 'GST cannot exceed 28%')
 // Leave-day counts — half-day leave is common enough to allow (0.5, 1.5, …),
 // so this is deliberately not nonNegativeInt.
 const nonNegativeDays = z.coerce.number().min(0, 'Cannot be negative').max(365)
+// An optional policy number where blank must mean "not configured" (null),
+// never 0 — z.coerce.number() alone would happily coerce '' to 0, silently
+// turning "leave this blank" into "cap it at zero days". The literal-''
+// branch has to be checked before the coerce branch gets a chance at it,
+// same trick optionalDate already uses for the same reason.
+const optionalPositiveDays = z.union([z.literal(''), z.coerce.number().positive().max(365)])
+  .transform(v => (v === '' ? undefined : v)).optional()
+const optionalPositiveMonths = z.union([z.literal(''), z.coerce.number().int().positive().max(24)])
+  .transform(v => (v === '' ? undefined : v)).optional()
 
 const phone = z.string().trim()
   .regex(/^[0-9+\-\s()]{6,20}$/, 'Enter a valid phone number')
@@ -69,6 +78,9 @@ export const ErpUserSchema = z.object({
   department:    optionalText(100),
   designation:   optionalText(100),
   employee_code: optionalText(30),
+  // Drives Earned Leave's per-employee accrual schedule (see
+  // erp_run_leave_accruals()) — not just a record-keeping field.
+  joining_date:  optionalDate,
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
   // silently do nothing. The edit form always renders the checkbox.
@@ -88,6 +100,7 @@ export const ErpUserCreateSchema = z.object({
   department:    optionalText(100),
   designation:   optionalText(100),
   employee_code: optionalText(30),
+  joining_date:  optionalDate,
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
   message: 'An MR code is required for medical representatives',
@@ -615,6 +628,11 @@ export const LeaveTypeSchema = z.object({
   // ErpLeaveType in types.ts.
   tracks_balance:  z.coerce.boolean().default(false),
   carries_forward: z.coerce.boolean().default(false),
+  // Blank means "not configured" (null) for all three — see the note on
+  // optionalPositiveDays above.
+  monthly_cap_days:        optionalPositiveDays,
+  accrual_days:            optionalPositiveDays,
+  accrual_interval_months: optionalPositiveMonths,
   sort_order:      z.coerce.number().int().default(0),
 })
 

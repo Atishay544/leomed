@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
-import { getElSlClLeaveTypeIds, getLeaveBalance, listLeaveTypes } from '../data/leave'
+import { getElSlClLeaveTypeIds, getLeaveBalance, getLeaveDaysUsedInMonth, listLeaveTypes } from '../data/leave'
 import {
   AdminCreateLeaveSchema, LeaveApplicationSchema, LeaveBalanceSchema, LeaveReviewSchema, LeaveTypeSchema,
 } from '../schemas'
@@ -15,6 +15,28 @@ function formObject(formData: FormData): Record<string, unknown> {
     if (typeof value === 'string') out[key] = value
   }
   return out
+}
+
+/** How many days of [from, to] fall in each calendar month it touches — a
+ *  request almost never crosses a month boundary, but the monthly cap check
+ *  must still be correct if one does, rather than attributing the whole
+ *  thing to just one of the two months. */
+function daysPerMonth(fromDate: string, toDate: string): { year: number; month: number; days: number }[] {
+  const result: { year: number; month: number; days: number }[] = []
+  const from = new Date(fromDate)
+  const to = new Date(toDate)
+  let cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1))
+  while (cursor <= to) {
+    const year = cursor.getUTCFullYear()
+    const month = cursor.getUTCMonth() + 1
+    const monthEnd = new Date(Date.UTC(year, month, 0))
+    const segmentFrom = from > cursor ? from : cursor
+    const segmentTo = to < monthEnd ? to : monthEnd
+    const days = Math.round((segmentTo.getTime() - segmentFrom.getTime()) / 86_400_000) + 1
+    result.push({ year, month, days })
+    cursor = new Date(Date.UTC(year, month, 1))
+  }
+  return result
 }
 
 /**
@@ -54,6 +76,24 @@ export async function applyLeave(_prev: ActionState, formData: FormData): Promis
             ? `You have no ${leaveType.name} balance left for ${year}. Apply for Unpaid Leave / Loss of Pay instead.`
             : `You only have ${remaining} day(s) of ${leaveType.name} left for ${year} (this request needs ${requestedDays}). ` +
               `Reduce the dates, or apply for Unpaid Leave / Loss of Pay for the rest.`,
+        }
+      }
+    }
+
+    // A monthly cap (e.g. Casual Leave, max 2/month) applies independently
+    // of the annual balance — counts PENDING requests too, not just
+    // APPROVED, so it can't be beaten by stacking several at once.
+    if (leaveType?.monthly_cap_days != null) {
+      for (const segment of daysPerMonth(parsed.data.from_date, parsed.data.to_date)) {
+        const alreadyUsed = await getLeaveDaysUsedInMonth(session.id, leaveType.id, segment.year, segment.month)
+        if (alreadyUsed + segment.days > leaveType.monthly_cap_days) {
+          const monthName = new Date(Date.UTC(segment.year, segment.month - 1, 1))
+            .toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+          return {
+            ok: false,
+            error: `${leaveType.name} is capped at ${leaveType.monthly_cap_days} day(s) per month, and you've already ` +
+              `requested/used ${alreadyUsed} in ${monthName}. Reduce the dates, or apply for Unpaid Leave / Loss of Pay for the rest.`,
+          }
         }
       }
     }

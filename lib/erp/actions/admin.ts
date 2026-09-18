@@ -78,6 +78,7 @@ export async function createErpUser(_prev: ActionState, formData: FormData): Pro
       department:    profile.department ?? null,
       designation:   profile.designation ?? null,
       employee_code: profile.employee_code ?? null,
+      joining_date:  profile.joining_date ?? null,
     })
 
     if (rowError) {
@@ -114,6 +115,7 @@ export async function updateErpUser(_prev: ActionState, formData: FormData): Pro
         department:    parsed.data.department ?? null,
         designation:   parsed.data.designation ?? null,
         employee_code: parsed.data.employee_code ?? null,
+        joining_date:  parsed.data.joining_date ?? null,
         active:        parsed.data.active,
       })
       .eq('id', id)
