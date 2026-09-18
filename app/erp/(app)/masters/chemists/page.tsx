@@ -1,7 +1,7 @@
 import { Store } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listChemists, PAGE_SIZE } from '@/lib/erp/data/masters'
-import { listAreas } from '@/lib/erp/data/geography'
+import { listAreas, listAreasForMr } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveChemist, setChemistActive } from '@/lib/erp/actions/masters'
@@ -23,14 +23,19 @@ export default async function ChemistsPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const [{ rows, total, pageCount }, settings, areas] = await Promise.all([
-    listChemists({ q: params.q, page, includeInactive: params.inactive === '1' }),
-    getErpSettings(),
-    listAreas(),
-  ])
-
   const isAdmin = session.role === 'ADMIN'
-  const canAdd = session.role === 'ADMIN' || session.role === 'MR'
+  const isMr = session.role === 'MR'
+  const canAdd = isAdmin || isMr
+
+  // Same scoping as the Doctors page — see the note there.
+  const areas = isMr ? await listAreasForMr(session.id) : await listAreas()
+  const myAreaIds = isMr ? areas.map(a => a.id) : undefined
+
+  const { rows, total, pageCount } = await listChemists({
+    q: params.q, page, includeInactive: params.inactive === '1', areaIds: myAreaIds,
+  })
+  const settings = await getErpSettings()
+
   const areaOptions = areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` }))
   const CHEMIST_FIELDS = buildChemistFields(areaOptions)
 
@@ -38,7 +43,11 @@ export default async function ChemistsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Chemists"
-        description="Medical stores and pharmacies. Shared master — multiple MRs may visit the same store."
+        description={
+          isMr
+            ? 'Medical stores and pharmacies in your own working areas.'
+            : 'Medical stores and pharmacies — MRs each see and add chemists only in their own working areas.'
+        }
         action={canAdd && (
           <MasterFormDialog
             action={saveChemist}
@@ -61,9 +70,11 @@ export default async function ChemistsPage({ searchParams }: Props) {
             icon={Store}
             title={params.q ? 'No chemists match that search' : 'No chemists yet'}
             description={
-              params.q
-                ? 'Try part of the store name, the owner’s name, or a phone number.'
-                : 'Chemists are added here, or automatically when an MR records a visit to a new store.'
+              isMr && areas.length === 0
+                ? "You don't have any areas assigned yet — ask your admin/HR to assign you to one."
+                : params.q
+                  ? 'Try part of the store name, the owner’s name, or a phone number.'
+                  : 'Chemists are added here, or automatically when an MR records a visit to a new store.'
             }
           />
         ) : (
