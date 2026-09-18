@@ -1,6 +1,7 @@
 import { Truck } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listDistributors, PAGE_SIZE } from '@/lib/erp/data/masters'
+import { listAreasForMr } from '@/lib/erp/data/geography'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveDistributor, setDistributorActive } from '@/lib/erp/actions/masters'
 import { can } from '@/lib/erp/permissions'
@@ -22,9 +23,21 @@ export default async function DistributorsPage({ searchParams }: Props) {
   const session = await requireCapability('masters.read')
   const params = await searchParams
   const page = parsePage(params.page)
+  const isMr = session.role === 'MR'
+
+  // An MR sees only the distributor(s) effectively covering their own
+  // working areas — same "effective" resolution the Areas page shows
+  // (own override, else the territory's default), just reduced to ids.
+  const myDistributorIds = isMr
+    ? [...new Set(
+        (await listAreasForMr(session.id))
+          .map(a => a.effective_distributor_id)
+          .filter((id): id is string => !!id),
+      )]
+    : undefined
 
   const { rows, total, pageCount } = await listDistributors({
-    q: params.q, page, includeInactive: params.inactive === '1',
+    q: params.q, page, includeInactive: params.inactive === '1', distributorIds: myDistributorIds,
   })
 
   const canWrite = can(session.role, 'masters.write')
@@ -33,7 +46,11 @@ export default async function DistributorsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Distributors"
-        description="Leomed sells to these partners. Sales invoices and stock movements are raised against them."
+        description={
+          isMr
+            ? 'The distributor(s) covering your own working areas.'
+            : 'Leomed sells to these partners. Sales invoices and stock movements are raised against them.'
+        }
         action={canWrite && (
           <MasterFormDialog
             action={saveDistributor}
@@ -55,7 +72,11 @@ export default async function DistributorsPage({ searchParams }: Props) {
           <EmptyState
             icon={Truck}
             title={params.q ? 'No distributors match that search' : 'No distributors yet'}
-            description="Add the partners you invoice, so sales can be recorded against them."
+            description={
+              isMr
+                ? "No distributor is set for your working areas yet — ask your admin/HR to assign one."
+                : 'Add the partners you invoice, so sales can be recorded against them.'
+            }
           />
         ) : (
           <TableWrap>

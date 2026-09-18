@@ -18,6 +18,16 @@ export interface MasterListParams {
   territory?: string
   city?: string
   includeInactive?: boolean
+  /** Doctors/chemists: restrict to these areas — an MR viewing their own
+   *  working areas only, per listAreasForMr(). An explicit empty array means
+   *  "this MR has no areas" and must return nothing, not everything, so it's
+   *  handled before the query ever runs (an empty `.in()` filter is not the
+   *  same thing and shouldn't be relied on to mean that). undefined means no
+   *  restriction — every other role browses the full masters. */
+  areaIds?: string[]
+  /** Distributors: restrict to these ids — the distributors effectively
+   *  covering an MR's own working areas. Same empty-vs-undefined handling. */
+  distributorIds?: string[]
 }
 
 /** A doctor/chemist row with its structured area resolved to display names —
@@ -54,6 +64,8 @@ async function resolveAreaNames<T extends { area_id: string | null }>(
 }
 
 export async function listDoctors(params: MasterListParams = {}): Promise<PageResult<DoctorRow>> {
+  if (params.areaIds && params.areaIds.length === 0) return toPage<DoctorRow>([], 0, params.page ?? 1)
+
   const db = await erpDb()
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
@@ -67,6 +79,7 @@ export async function listDoctors(params: MasterListParams = {}): Promise<PageRe
   if (!params.includeInactive) query = query.eq('active', true)
   if (params.territory) query = query.eq('territory', params.territory)
   if (params.city) query = query.eq('city', params.city)
+  if (params.areaIds) query = query.in('area_id', params.areaIds)
 
   const term = safeSearch(params.q)
   if (term) {
@@ -88,6 +101,8 @@ export async function getDoctor(id: string): Promise<Doctor | null> {
 }
 
 export async function listChemists(params: MasterListParams = {}): Promise<PageResult<ChemistRow>> {
+  if (params.areaIds && params.areaIds.length === 0) return toPage<ChemistRow>([], 0, params.page ?? 1)
+
   const db = await erpDb()
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
@@ -101,6 +116,7 @@ export async function listChemists(params: MasterListParams = {}): Promise<PageR
   if (!params.includeInactive) query = query.eq('active', true)
   if (params.territory) query = query.eq('territory', params.territory)
   if (params.city) query = query.eq('city', params.city)
+  if (params.areaIds) query = query.in('area_id', params.areaIds)
 
   const term = safeSearch(params.q)
   if (term) {
@@ -122,6 +138,10 @@ export async function getChemist(id: string): Promise<Chemist | null> {
 }
 
 export async function listDistributors(params: MasterListParams = {}): Promise<PageResult<Distributor>> {
+  if (params.distributorIds && params.distributorIds.length === 0) {
+    return toPage<Distributor>([], 0, params.page ?? 1)
+  }
+
   const db = await erpDb()
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
@@ -133,6 +153,7 @@ export async function listDistributors(params: MasterListParams = {}): Promise<P
     .range(from, to)
 
   if (!params.includeInactive) query = query.eq('active', true)
+  if (params.distributorIds) query = query.in('id', params.distributorIds)
 
   const term = safeSearch(params.q)
   if (term) {

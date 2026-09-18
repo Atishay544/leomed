@@ -2,6 +2,7 @@
 
 import { assertCapability } from '../auth'
 import { erpDb, ilikeAny, safeSearch } from '../data/query'
+import { listAreasForMr } from '../data/geography'
 
 /**
  * Typeahead lookups called directly from client components.
@@ -26,7 +27,7 @@ export interface DoctorOption {
 }
 
 export async function lookupDoctors(term: string): Promise<DoctorOption[]> {
-  await assertCapability('masters.read')
+  const session = await assertCapability('masters.read')
   const db = await erpDb()
 
   let query = db
@@ -35,6 +36,14 @@ export async function lookupDoctors(term: string): Promise<DoctorOption[]> {
     .eq('active', true)
     .order('doctor_name')
     .limit(15)
+
+  // An MR can only search/select doctors in their own working areas — the
+  // same scoping the Doctors master list and the visit "add new" flow apply.
+  if (session.role === 'MR') {
+    const areaIds = (await listAreasForMr(session.id)).map(a => a.id)
+    if (areaIds.length === 0) return []
+    query = query.in('area_id', areaIds)
+  }
 
   const q = safeSearch(term)
   if (q) query = query.or(ilikeAny(['doctor_name', 'doctor_code', 'phone', 'clinic_name', 'area'], q))
@@ -54,7 +63,7 @@ export interface ChemistOption {
 }
 
 export async function lookupChemists(term: string): Promise<ChemistOption[]> {
-  await assertCapability('masters.read')
+  const session = await assertCapability('masters.read')
   const db = await erpDb()
 
   let query = db
@@ -63,6 +72,13 @@ export async function lookupChemists(term: string): Promise<ChemistOption[]> {
     .eq('active', true)
     .order('chemist_name')
     .limit(15)
+
+  // Same scoping as lookupDoctors() above.
+  if (session.role === 'MR') {
+    const areaIds = (await listAreasForMr(session.id)).map(a => a.id)
+    if (areaIds.length === 0) return []
+    query = query.in('area_id', areaIds)
+  }
 
   const q = safeSearch(term)
   if (q) query = query.or(ilikeAny(['chemist_name', 'chemist_code', 'owner_name', 'phone', 'area'], q))

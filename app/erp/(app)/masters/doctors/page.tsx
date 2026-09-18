@@ -1,7 +1,7 @@
 import { UserRound } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listDoctors, PAGE_SIZE } from '@/lib/erp/data/masters'
-import { listAreas } from '@/lib/erp/data/geography'
+import { listAreas, listAreasForMr } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
 import { parsePage } from '@/lib/erp/data/query'
 import { saveDoctor, setDoctorActive } from '@/lib/erp/actions/masters'
@@ -25,19 +25,25 @@ export default async function DoctorsPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const [{ rows, total, pageCount }, settings, areas] = await Promise.all([
-    listDoctors({
-      q: params.q,
-      page,
-      territory: params.territory,
-      includeInactive: params.inactive === '1',
-    }),
-    getErpSettings(),
-    listAreas(),
-  ])
-
   const isAdmin = session.role === 'ADMIN'
-  const canAdd = session.role === 'ADMIN' || session.role === 'MR'
+  const isMr = session.role === 'MR'
+  const canAdd = isAdmin || isMr
+
+  // MRs see (and may only add) doctors in their own working areas — everyone
+  // else browses the whole shared master. myAreaIds stays undefined for
+  // non-MRs, which listDoctors() reads as "no restriction".
+  const areas = isMr ? await listAreasForMr(session.id) : await listAreas()
+  const myAreaIds = isMr ? areas.map(a => a.id) : undefined
+
+  const { rows, total, pageCount } = await listDoctors({
+    q: params.q,
+    page,
+    territory: params.territory,
+    includeInactive: params.inactive === '1',
+    areaIds: myAreaIds,
+  })
+  const settings = await getErpSettings()
+
   const areaOptions = areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` }))
   const DOCTOR_FIELDS = buildDoctorFields(areaOptions)
 
@@ -45,7 +51,11 @@ export default async function DoctorsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Doctors"
-        description="Shared company master. Any MR can visit any doctor — there is no permanent assignment."
+        description={
+          isMr
+            ? 'Doctors in your own working areas. Ask your admin/HR if you need to be assigned elsewhere.'
+            : 'Shared company master — MRs each see and add doctors only in their own working areas.'
+        }
         action={canAdd && (
           <MasterFormDialog
             action={saveDoctor}
@@ -70,9 +80,11 @@ export default async function DoctorsPage({ searchParams }: Props) {
             icon={UserRound}
             title={params.q ? 'No doctors match that search' : 'No doctors yet'}
             description={
-              params.q
-                ? 'Try a shorter search — part of a name, a phone number, or an area.'
-                : 'Doctors are added here, or automatically when an MR records a visit to someone new.'
+              isMr && areas.length === 0
+                ? "You don't have any areas assigned yet — ask your admin/HR to assign you to one."
+                : params.q
+                  ? 'Try a shorter search — part of a name, a phone number, or an area.'
+                  : 'Doctors are added here, or automatically when an MR records a visit to someone new.'
             }
           />
         ) : (
