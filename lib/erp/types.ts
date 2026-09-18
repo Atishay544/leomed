@@ -642,6 +642,16 @@ export interface ErpLeaveType {
    *  rolls into next year (Earned Leave) or expires at year end (Casual/
    *  Sick Leave) — see erp_leave_year_end_rollover(). */
   carries_forward: boolean
+  /** A per-calendar-month cap, independent of the annual balance — e.g.
+   *  Casual Leave capped at 2 days in any one month. Null means no monthly
+   *  cap. See getLeaveDaysUsedInMonth(). */
+  monthly_cap_days: number | null
+  /** Automatic accrual — this many days added to every active employee's
+   *  balance every accrual_interval_months, on top of whatever was
+   *  allocated at hire time or set manually. Both null means no automatic
+   *  accrual. See erp_run_leave_accruals(). */
+  accrual_days: number | null
+  accrual_interval_months: number | null
   created_at: string
 }
 
