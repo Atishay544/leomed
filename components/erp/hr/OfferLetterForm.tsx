@@ -77,6 +77,9 @@ export default function OfferLetterForm({
   const [offerDate, setOfferDate]               = useState(initial?.offer_date ?? new Date().toISOString().slice(0, 10))
   const [joiningDate, setJoiningDate]           = useState(initial?.joining_date ?? '')
   const [incentiveTerms, setIncentiveTerms]     = useState(initial?.incentive_terms ?? '')
+  const [annualElDays, setAnnualElDays]         = useState(String(initial?.annual_el_days ?? 0))
+  const [annualSlDays, setAnnualSlDays]         = useState(String(initial?.annual_sl_days ?? 0))
+  const [annualClDays, setAnnualClDays]         = useState(String(initial?.annual_cl_days ?? 0))
   const [remarks, setRemarks]                   = useState(initial?.remarks ?? '')
   const [rows, setRows]                         = useState<ComponentRow[]>(() => toRows(initial))
 
@@ -134,6 +137,9 @@ export default function OfferLetterForm({
       offer_date: offerDate,
       joining_date: joiningDate || undefined,
       incentive_terms: incentiveTerms.trim() || undefined,
+      annual_el_days: Number(annualElDays) || 0,
+      annual_sl_days: Number(annualSlDays) || 0,
+      annual_cl_days: Number(annualClDays) || 0,
       remarks: remarks.trim() || undefined,
       components: validRows.map(r => ({
         component_name: r.component_name.trim(),
@@ -247,6 +253,31 @@ export default function OfferLetterForm({
                   className={inputClass} />
         <p className="mt-1 text-[11px] text-gray-400">
           Describe incentive eligibility here, not as a row below — it&apos;s conditional/variable pay, never part of the guaranteed compensation table.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-[14px] font-semibold text-gray-900">Leave Entitlement</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="mb-1 block text-[12px] font-medium text-gray-700">Earned Leave / year</label>
+            <input type="number" min="0" step="0.5" value={annualElDays} onChange={e => setAnnualElDays(e.target.value)}
+                   disabled={locked} className={inputClass} />
+          </div>
+          <div>
+            <label className="mb-1 block text-[12px] font-medium text-gray-700">Sick Leave / year</label>
+            <input type="number" min="0" step="0.5" value={annualSlDays} onChange={e => setAnnualSlDays(e.target.value)}
+                   disabled={locked} className={inputClass} />
+          </div>
+          <div>
+            <label className="mb-1 block text-[12px] font-medium text-gray-700">Casual Leave / year</label>
+            <input type="number" min="0" step="0.5" value={annualClDays} onChange={e => setAnnualClDays(e.target.value)}
+                   disabled={locked} className={inputClass} />
+          </div>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-400">
+          Printed in the letter, and seeded onto the employee&apos;s leave balance for the current year the moment this offer is converted —
+          editable afterward under Leave → Leave Balances like any other employee&apos;s.
         </p>
       </div>
 

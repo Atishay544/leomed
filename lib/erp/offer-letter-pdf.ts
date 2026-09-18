@@ -34,6 +34,11 @@ export interface OfferLetterPdfData {
   /** Free text on incentive/variable-pay eligibility — printed in the
    *  letter's opening paragraphs, deliberately never a row in Annexure I. */
   incentiveTerms: string | null
+  /** Annual leave entitlement — also seeded onto the employee's leave
+   *  balance for the current year when this offer is converted. */
+  annualElDays: number
+  annualSlDays: number
+  annualClDays: number
   remarks: string | null
   components: OfferLetterPdfComponent[]
 }
@@ -150,6 +155,15 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     if (data.incentiveTerms) {
       doc.font('Helvetica-Bold').fillColor('#111').text('Incentive: ', 40, doc.y, { continued: true, width: 515 })
       doc.font('Helvetica').fillColor('#333').text(data.incentiveTerms)
+      doc.moveDown(0.6)
+    }
+
+    if (data.annualElDays > 0 || data.annualSlDays > 0 || data.annualClDays > 0) {
+      doc.font('Helvetica-Bold').fillColor('#111').text('Leave Entitlement: ', 40, doc.y, { continued: true, width: 515 })
+      doc.font('Helvetica').fillColor('#333').text(
+        `You will be entitled to ${data.annualElDays} day(s) of Earned Leave, ${data.annualSlDays} day(s) of Sick Leave ` +
+        `and ${data.annualClDays} day(s) of Casual Leave per calendar year, as per the Company's leave policy.`,
+      )
       doc.moveDown(0.6)
     }
 

@@ -5,6 +5,7 @@ import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ErpUserCreateSchema, OfferLetterSchema, OfferStatusSchema } from '../schemas'
+import { getElSlClLeaveTypeIds } from '../data/leave'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
 
 /**
@@ -92,7 +93,7 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
     const db = await erpDb()
     const { data: offer, error: offerError } = await db
       .from('erp_offer_letters')
-      .select('id, status')
+      .select('id, status, annual_el_days, annual_sl_days, annual_cl_days')
       .eq('id', offerId)
       .maybeSingle()
     if (offerError) return friendlyDbError(offerError, 'Could not load the offer letter.')
@@ -181,6 +182,32 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
       })
     }
 
+    // Seed this year's leave balance from the offer's entitlement — the
+    // employee can apply for EL/SL/CL against a real quota from day one,
+    // editable afterward on Leave -> Leave Balances like any other
+    // employee's. Skipped entirely if the offer promised none of the three
+    // (all zero), rather than writing three empty rows for no reason.
+    const { elId, slId, clId } = await getElSlClLeaveTypeIds()
+    const currentYear = new Date().getFullYear()
+    const leaveRows = [
+      elId && Number(offer.annual_el_days) > 0 && { leave_type_id: elId, allocated: Number(offer.annual_el_days) },
+      slId && Number(offer.annual_sl_days) > 0 && { leave_type_id: slId, allocated: Number(offer.annual_sl_days) },
+      clId && Number(offer.annual_cl_days) > 0 && { leave_type_id: clId, allocated: Number(offer.annual_cl_days) },
+    ].filter((r): r is { leave_type_id: string; allocated: number } => !!r)
+
+    if (leaveRows.length > 0) {
+      await db.from('erp_leave_balances').upsert(
+        leaveRows.map(r => ({
+          employee_id:   newUser.id,
+          leave_type_id: r.leave_type_id,
+          year:          currentYear,
+          allocated:     r.allocated,
+          updated_by:    session.id,
+        })),
+        { onConflict: 'employee_id,leave_type_id,year' },
+      )
+    }
+
     const { error: convertError } = await db
       .from('erp_offer_letters')
       .update({ status: 'CONVERTED', converted_employee_id: newUser.id, updated_by: session.id })
@@ -195,6 +222,7 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
     revalidatePath(`/erp/hr/offers/${offerId}`)
     revalidatePath('/erp/users')
     revalidatePath('/erp/payroll/salaries')
+    revalidatePath('/erp/leave/balances')
     return { ok: true, data: { employee_id: newUser.id } }
   })
 }
