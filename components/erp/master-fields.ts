@@ -10,20 +10,28 @@ import type { FieldSpec } from './form/Field'
 /** Doctors/chemists are located by the structured Area (which itself belongs
  *  to a Territory) — not by the old free-text area/territory fields, which
  *  are retired from every form here to avoid the two ever disagreeing.
- *  `city` stays: it has no structured equivalent and isn't part of the
- *  area/territory model. `area_id` needs the live list of areas for its
- *  dropdown, hence a function, called at each page's render time, rather
- *  than a static array. */
-export function buildDoctorFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
+ *  `city` is dropped entirely (not just retired like area/territory) — area
+ *  already covers location, and unlike area/territory there was no
+ *  pre-existing reporting dependency on it to preserve.
+ *  `area_id` needs the live list of areas for its dropdown, hence a
+ *  function, called at each page's render time, rather than a static array.
+ *
+ *  `forCreate` marks specialisation/phone/clinic (doctor) or owner name/
+ *  phone (chemist) as required — but only for the Add dialog, not Edit:
+ *  the server-side check backing this (saveDoctor/saveChemist in actions/
+ *  masters.ts) is create-only on purpose, so an old record missing one of
+ *  these from before this rule existed can still be edited without being
+ *  forced to backfill it first. Keeping `required` here in sync with that
+ *  is just the UI half — see the note there for the real gate. */
+export function buildDoctorFields(areaOptions: { value: string; label: string }[], forCreate: boolean): FieldSpec[] {
   return [
     { name: 'doctor_name',    label: 'Doctor name', required: true, placeholder: 'Dr. Rajesh Kumar', span: 2 },
-    { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics' },
+    { name: 'specialization', label: 'Specialisation', placeholder: 'Paediatrics', required: forCreate },
     { name: 'qualification',  label: 'Qualification', placeholder: 'MBBS, MD' },
-    { name: 'clinic_name',    label: 'Clinic / hospital', span: 2 },
-    { name: 'phone',          label: 'Phone', type: 'tel', placeholder: '98765 43210' },
+    { name: 'clinic_name',    label: 'Clinic / hospital', span: 2, required: forCreate },
+    { name: 'phone',          label: 'Phone', type: 'tel', placeholder: '98765 43210', required: forCreate },
     { name: 'email',          label: 'Email', type: 'email' },
     { name: 'address',        label: 'Address', type: 'textarea', span: 2 },
-    { name: 'city',           label: 'City' },
     {
       name: 'area_id', label: 'Area', type: 'select', required: true,
       options: [{ value: '', label: '— Select area —' }, ...areaOptions],
@@ -33,16 +41,15 @@ export function buildDoctorFields(areaOptions: { value: string; label: string }[
   ]
 }
 
-export function buildChemistFields(areaOptions: { value: string; label: string }[]): FieldSpec[] {
+export function buildChemistFields(areaOptions: { value: string; label: string }[], forCreate: boolean): FieldSpec[] {
   return [
     { name: 'chemist_name',        label: 'Chemist / store name', required: true, span: 2 },
-    { name: 'owner_name',          label: 'Owner name' },
-    { name: 'phone',               label: 'Phone', type: 'tel' },
+    { name: 'owner_name',          label: 'Owner name', required: forCreate },
+    { name: 'phone',               label: 'Phone', type: 'tel', required: forCreate },
     { name: 'email',               label: 'Email', type: 'email' },
     { name: 'gst_number',          label: 'GST number' },
     { name: 'drug_license_number', label: 'Drug licence number', span: 2 },
     { name: 'address',             label: 'Address', type: 'textarea', span: 2 },
-    { name: 'city',                label: 'City' },
     {
       name: 'area_id', label: 'Area', type: 'select', required: true,
       options: [{ value: '', label: '— Select area —' }, ...areaOptions],

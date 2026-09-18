@@ -45,7 +45,8 @@ export default async function DoctorsPage({ searchParams }: Props) {
   const settings = await getErpSettings()
 
   const areaOptions = areas.map(a => ({ value: a.id, label: `${a.name} (${a.territory_name})` }))
-  const DOCTOR_FIELDS = buildDoctorFields(areaOptions)
+  const DOCTOR_FIELDS_NEW = buildDoctorFields(areaOptions, true)
+  const DOCTOR_FIELDS_EDIT = buildDoctorFields(areaOptions, false)
 
   return (
     <>
@@ -59,7 +60,7 @@ export default async function DoctorsPage({ searchParams }: Props) {
         action={canAdd && (
           <MasterFormDialog
             action={saveDoctor}
-            fields={DOCTOR_FIELDS}
+            fields={DOCTOR_FIELDS_NEW}
             title="Add doctor"
             triggerLabel="Add doctor"
             submitLabel="Save doctor"
@@ -97,7 +98,6 @@ export default async function DoctorsPage({ searchParams }: Props) {
                   <Th>Specialisation</Th>
                   <Th>Clinic</Th>
                   <Th>Area</Th>
-                  <Th>City</Th>
                   <Th>Phone</Th>
                   <Th align="right">Actions</Th>
                 </tr>
@@ -133,14 +133,13 @@ export default async function DoctorsPage({ searchParams }: Props) {
                           <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Not mapped</Badge>
                         )}
                       </Td>
-                      <Td>{doctor.city ?? '—'}</Td>
                       <Td className="tabular-nums">{doctor.phone ?? '—'}</Td>
                       <Td align="right">
                         <div className="flex items-center justify-end gap-2">
                           {canEdit && (
                             <MasterFormDialog
                               action={saveDoctor}
-                              fields={DOCTOR_FIELDS}
+                              fields={DOCTOR_FIELDS_EDIT}
                               title={`Edit ${doctor.doctor_name}`}
                               submitLabel="Save changes"
                               initial={doctor as unknown as Record<string, unknown>}
