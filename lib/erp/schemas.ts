@@ -199,6 +199,10 @@ export const AreaSchema = z.object({
 export const ReassignMrSchema = z.object({
   from_mr_id: uuid,
   to_mr_id:   uuid,
+  // Unchecked means absent from a form submit, but ReassignPanel calls this
+  // action directly with a real boolean rather than via FormData — coerce
+  // covers both.
+  move_pending_followups: z.coerce.boolean().optional().default(false),
 }).refine(v => v.from_mr_id !== v.to_mr_id, {
   message: 'Choose a different MR to reassign to',
   path: ['to_mr_id'],

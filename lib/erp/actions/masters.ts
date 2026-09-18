@@ -265,6 +265,7 @@ export async function reassignMr(input: unknown): Promise<ActionState> {
     const { data, error } = await db.rpc('erp_reassign_mr', {
       p_from_mr: parsed.data.from_mr_id,
       p_to_mr: parsed.data.to_mr_id,
+      p_move_pending_followups: parsed.data.move_pending_followups,
     })
     if (error) return friendlyDbError(error, 'Could not reassign this MR’s territories and areas.')
 
