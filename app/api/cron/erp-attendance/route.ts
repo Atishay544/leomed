@@ -14,12 +14,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * finalizes anyone still PENDING_REVIEW. Never touches today's attendance,
  * and never finalizes payroll — that stays a separate, admin-reviewed step.
  *
- * erp_run_leave_accruals() (e.g. Earned Leave's "+1 every 2 months") also
- * runs from here rather than its own cron entry — it's cheap and self-
- * throttling (a no-op most days, see 20260918000012_leave_policy_rules.sql),
- * and Vercel's Hobby plan caps a project at 2 cron jobs, so piggybacking on
- * this once-a-day job avoids needing a 3rd. A failure in either step is
- * reported independently — one must never mask or block the other.
+ * erp_run_leave_accruals() (e.g. Earned Leave's "+1 every 2 months") and
+ * erp_compute_daily_travel_allowance() (auto-detects which chargeable areas
+ * an MR visited yesterday) also run from here rather than their own cron
+ * entries — both are cheap and self-throttling/idempotent, and Vercel's
+ * Hobby plan caps a project at 2 cron jobs, so piggybacking everything onto
+ * this once-a-day job avoids needing a 3rd and 4th. Each step's failure is
+ * reported independently — one must never mask or block the others.
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -45,6 +46,12 @@ export async function GET(req: NextRequest) {
   const { data: accrualData, error: accrualError } = await admin.rpc('erp_run_leave_accruals')
   if (accrualError) console.error('[erp-leave-accrual-cron]', accrualError.message)
 
+  // Travel allowance is computed for the SAME "yesterday" attendance is
+  // processed for — an MR's visits for a date are essentially final once
+  // that date has passed, same reasoning as attendance itself.
+  const { data: travelData, error: travelError } = await admin.rpc('erp_compute_daily_travel_allowance', { p_date: date })
+  if (travelError) console.error('[erp-travel-allowance-cron]', travelError.message)
+
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -53,5 +60,6 @@ export async function GET(req: NextRequest) {
     ok: true,
     result: data,
     leaveAccrual: accrualError ? { error: accrualError.message } : accrualData,
+    travelAllowance: travelError ? { error: travelError.message } : travelData,
   })
 }

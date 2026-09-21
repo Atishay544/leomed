@@ -5,6 +5,7 @@ import {
   listActiveDistributorsForDropdown, listActiveMRs, listAllMRs, listAreas, listTerritories,
 } from '@/lib/erp/data/geography'
 import { reassignMr, saveArea, setAreaActive } from '@/lib/erp/actions/masters'
+import { money } from '@/lib/erp/format'
 import type { FieldSpec } from '@/components/erp/form/Field'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
@@ -45,6 +46,10 @@ export default async function AreasPage({ searchParams }: Props) {
     {
       name: 'distributor_id', label: 'Distributor (overrides the territory default)', type: 'select', span: 2,
       options: [{ value: '', label: '— Follow territory default —' }, ...distributorOptions],
+    },
+    {
+      name: 'daily_travel_allowance', label: 'Daily travel allowance (₹)', type: 'number', min: '0', step: '1', span: 2,
+      hint: 'Leave blank if visiting here isn\'t a chargeable trip (e.g. a home-base city locality). Paid once per day an MR visits a doctor/chemist here, reviewed under Payroll → Travel Allowance.',
     },
   ]
 
@@ -111,6 +116,7 @@ export default async function AreasPage({ searchParams }: Props) {
                   <Th>Territory</Th>
                   <Th>MR (in effect)</Th>
                   <Th>Distributor (in effect)</Th>
+                  <Th align="right">Travel allowance</Th>
                   <Th align="right">Actions</Th>
                 </tr>
               </thead>
@@ -129,6 +135,9 @@ export default async function AreasPage({ searchParams }: Props) {
                     <Td className="text-[12.5px] text-gray-600">
                       {a.effective_distributor_name ?? '—'}
                       {!a.distributor_id && a.effective_distributor_name && <span className="ml-1 text-gray-400">(territory default)</span>}
+                    </Td>
+                    <Td align="right" className="tabular-nums text-[12.5px] text-gray-600">
+                      {a.daily_travel_allowance != null ? `${money(a.daily_travel_allowance)}/day` : '—'}
                     </Td>
                     <Td align="right">
                       <div className="flex items-center justify-end gap-2">

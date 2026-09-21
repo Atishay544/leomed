@@ -49,6 +49,10 @@ const optionalPositiveDays = z.union([z.literal(''), z.coerce.number().positive(
   .transform(v => (v === '' ? undefined : v)).optional()
 const optionalPositiveMonths = z.union([z.literal(''), z.coerce.number().int().positive().max(24)])
   .transform(v => (v === '' ? undefined : v)).optional()
+// Same blank-means-null reasoning, for a rupee amount — an Area with no
+// travel allowance configured (most city localities) must stay null, not 0.
+const optionalPositiveMoney = z.union([z.literal(''), z.coerce.number().positive().max(99_999)])
+  .transform(v => (v === '' ? undefined : v)).optional()
 
 const phone = z.string().trim()
   .regex(/^[0-9+\-\s()]{6,20}$/, 'Enter a valid phone number')
@@ -215,6 +219,21 @@ export const AreaSchema = z.object({
   territory_id:   uuid,
   mr_id:          optionalUuid,
   distributor_id: optionalUuid,
+  // A fixed per-day travel allowance for whichever MR visits this area —
+  // blank means "not a chargeable trip" (typical for a home-base city
+  // locality), not ₹0 specifically. See erp_compute_daily_travel_allowance().
+  daily_travel_allowance: optionalPositiveMoney,
+})
+
+/** HR/Admin's decision on one auto-computed day — approving may adjust the
+ *  amount (e.g. rounding, a dispute), rejecting zeroes it out. Never
+ *  self-service: an MR can see their own rows (erp_mr_travel_allowance RLS)
+ *  but never review/approve them. */
+export const TravelAllowanceReviewSchema = z.object({
+  id:              uuid,
+  status:          z.enum(['APPROVED', 'REJECTED']),
+  approved_amount: money.optional(),
+  notes:           optionalText(500),
 })
 
 export const ReassignMrSchema = z.object({
@@ -842,5 +861,6 @@ export type OfferLetterComponentInput = z.infer<typeof OfferLetterComponentSchem
 export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>
 export type TerritoryInput            = z.infer<typeof TerritorySchema>
 export type AreaInput                 = z.infer<typeof AreaSchema>
+export type TravelAllowanceReviewInput = z.infer<typeof TravelAllowanceReviewSchema>
 export type ReassignMrInput           = z.infer<typeof ReassignMrSchema>
 export type ReassignDistributorInput  = z.infer<typeof ReassignDistributorSchema>

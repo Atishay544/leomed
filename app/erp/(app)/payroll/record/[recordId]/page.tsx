@@ -93,6 +93,9 @@ export default async function PayrollRecordPage({ params }: Props) {
               <Row label="Prorated (payable days)" value={money(record.fixed_salary * record.payable_days / (record.working_days || 1))} />
               <Row label="Allowances" value={money(record.allowances)} />
               <Row label="Incentives" value={money(record.incentives)} tone="positive" />
+              {record.travel_allowance > 0 && (
+                <Row label="Travel allowance" value={money(record.travel_allowance)} tone="positive" />
+              )}
               <Row label="Other earnings" value={money(record.other_earnings)} tone="positive" />
               <Row label="Deductions" value={`− ${money(record.deductions)}`} tone="negative" />
               <div className="flex justify-between border-t border-gray-100 pt-2">
