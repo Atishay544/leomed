@@ -212,6 +212,10 @@ export interface Area {
   /** Overrides the territory's default distributor for this area only;
    *  null means "follow the territory". */
   distributor_id: string | null
+  /** A fixed per-day travel allowance for whichever MR visits this area —
+   *  null means "not a chargeable trip" (typical for a home-base city
+   *  locality). See erp_compute_daily_travel_allowance(). */
+  daily_travel_allowance: number | null
   active: boolean
   created_at: string
   updated_at: string
@@ -698,6 +702,37 @@ export type PayrollStatus = (typeof PAYROLL_STATUSES)[number]
 export const PAYROLL_ITEM_TYPES = ['INCENTIVE', 'BONUS', 'OTHER_EARNING', 'DEDUCTION'] as const
 export type PayrollItemType = (typeof PAYROLL_ITEM_TYPES)[number]
 
+export const TRAVEL_ALLOWANCE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
+export type TravelAllowanceStatus = (typeof TRAVEL_ALLOWANCE_STATUSES)[number]
+
+/** One area an MR's day was auto-detected as covering — a snapshot inside
+ *  ErpMrTravelAllowance.detected_areas, not its own table (see the
+ *  migration note on why). */
+export interface DetectedTravelArea {
+  area_id: string
+  area_name: string
+  rate: number
+}
+
+/** One day's travel allowance for one MR, auto-computed from that day's
+ *  doctor/chemist visits and awaiting (or having received) HR's review.
+ *  Only ever reaches payroll once status is APPROVED — see
+ *  erp_recalculate_payroll_record(). */
+export interface ErpMrTravelAllowance {
+  id: string
+  mr_id: string
+  allowance_date: string
+  detected_areas: DetectedTravelArea[]
+  computed_amount: number
+  approved_amount: number | null
+  status: TravelAllowanceStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export const EXPENSE_CATEGORIES = [
   'TRAVEL', 'FUEL', 'OFFICE', 'MARKETING', 'PROMOTIONAL', 'DOCTOR_MEETING',
   'SAMPLES', 'EVENTS', 'LOGISTICS', 'MISCELLANEOUS', 'OTHER',
@@ -769,6 +804,10 @@ export interface ErpPayrollRecord {
    *  what net_salary actually pays out. See 20260918000011_payroll_lop_
    *  deduction.sql. */
   lop_deduction_amount: number
+  /** Sum of this employee's APPROVED erp_mr_travel_allowance rows for the
+   *  period — a still-PENDING day isn't included until reviewed. See
+   *  20260921000001_mr_travel_allowance.sql. */
+  travel_allowance: number
   net_salary: number
   remarks: string | null
   created_at: string

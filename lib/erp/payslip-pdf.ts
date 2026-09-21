@@ -109,6 +109,7 @@ export function generatePayslipPdf(
       ['Fixed salary (full month)', pdfMoney(record.fixed_salary)],
       ['Basic salary (reference)', pdfMoney(record.basic_salary)],
       ['Allowances (reference)', pdfMoney(record.allowances)],
+      ...(record.travel_allowance > 0 ? [['Travel allowance', pdfMoney(record.travel_allowance)] as [string, string]] : []),
       ...earnings.map((i): [string, string] => [i.label, pdfMoney(i.amount)]),
     ]
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#111').text('Earnings')
