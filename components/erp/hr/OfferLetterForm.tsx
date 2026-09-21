@@ -57,10 +57,18 @@ function emptyRow(): ComponentRow {
 }
 
 export default function OfferLetterForm({
-  initial, managers,
+  initial, managers, elAccrual,
 }: {
   initial?: OfferDetail
   managers: ManagerOption[]
+  /** Set when Earned Leave currently has automatic accrual configured
+   *  (Leave -> Leave types) — in that case the EL entitlement isn't a fixed
+   *  annual number anymore, so the field below is disabled/zeroed and the
+   *  letter describes the accrual rate in words instead (see
+   *  offer-letter-pdf.ts). Seeding at conversion is skipped the same way,
+   *  regardless of what this form ever submitted — see
+   *  convertOfferToEmployee(). */
+  elAccrual: { days: number; months: number } | null
 }) {
   const router = useRouter()
   const isEdit = !!initial
@@ -77,7 +85,7 @@ export default function OfferLetterForm({
   const [offerDate, setOfferDate]               = useState(initial?.offer_date ?? new Date().toISOString().slice(0, 10))
   const [joiningDate, setJoiningDate]           = useState(initial?.joining_date ?? '')
   const [incentiveTerms, setIncentiveTerms]     = useState(initial?.incentive_terms ?? '')
-  const [annualElDays, setAnnualElDays]         = useState(String(initial?.annual_el_days ?? 0))
+  const [annualElDays, setAnnualElDays]         = useState(String(elAccrual ? 0 : (initial?.annual_el_days ?? 0)))
   const [annualSlDays, setAnnualSlDays]         = useState(String(initial?.annual_sl_days ?? 0))
   const [annualClDays, setAnnualClDays]         = useState(String(initial?.annual_cl_days ?? 0))
   const [remarks, setRemarks]                   = useState(initial?.remarks ?? '')
@@ -262,7 +270,12 @@ export default function OfferLetterForm({
           <div>
             <label className="mb-1 block text-[12px] font-medium text-gray-700">Earned Leave / year</label>
             <input type="number" min="0" step="0.5" value={annualElDays} onChange={e => setAnnualElDays(e.target.value)}
-                   disabled={locked} className={inputClass} />
+                   disabled={locked || !!elAccrual} className={inputClass} />
+            {elAccrual && (
+              <p className="mt-1 text-[11px] text-amber-600">
+                Ignored — Earned Leave auto-accrues {elAccrual.days} day(s) every {elAccrual.months} month(s) of service instead (Leave → Leave types). The letter will describe this policy, not a fixed number.
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-[12px] font-medium text-gray-700">Sick Leave / year</label>

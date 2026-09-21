@@ -35,10 +35,19 @@ export interface OfferLetterPdfData {
    *  letter's opening paragraphs, deliberately never a row in Annexure I. */
   incentiveTerms: string | null
   /** Annual leave entitlement — also seeded onto the employee's leave
-   *  balance for the current year when this offer is converted. */
+   *  balance for the current year when this offer is converted. Ignored for
+   *  Earned Leave specifically when elAccrualDays/elAccrualIntervalMonths
+   *  are set (see the note there). */
   annualElDays: number
   annualSlDays: number
   annualClDays: number
+  /** Set when Earned Leave currently has automatic accrual configured
+   *  (Leave -> Leave types) — the letter then describes EL as an accrual
+   *  rate ("1 day every 2 months of service") instead of annualElDays,
+   *  since that's what the employee will actually see happen to their
+   *  balance. Null means EL is a plain fixed annual number, same as SL/CL. */
+  elAccrualDays: number | null
+  elAccrualIntervalMonths: number | null
   remarks: string | null
   components: OfferLetterPdfComponent[]
 }
@@ -158,10 +167,14 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
       doc.moveDown(0.6)
     }
 
-    if (data.annualElDays > 0 || data.annualSlDays > 0 || data.annualClDays > 0) {
+    const elText = data.elAccrualDays != null && data.elAccrualIntervalMonths != null
+      ? `Earned Leave accruing at the rate of ${data.elAccrualDays} day(s) for every ${data.elAccrualIntervalMonths} month(s) of service`
+      : `${data.annualElDays} day(s) of Earned Leave`
+
+    if (data.elAccrualDays || data.annualElDays > 0 || data.annualSlDays > 0 || data.annualClDays > 0) {
       doc.font('Helvetica-Bold').fillColor('#111').text('Leave Entitlement: ', 40, doc.y, { continued: true, width: 515 })
       doc.font('Helvetica').fillColor('#333').text(
-        `You will be entitled to ${data.annualElDays} day(s) of Earned Leave, ${data.annualSlDays} day(s) of Sick Leave ` +
+        `You will be entitled to ${elText}, ${data.annualSlDays} day(s) of Sick Leave ` +
         `and ${data.annualClDays} day(s) of Casual Leave per calendar year, as per the Company's leave policy.`,
       )
       doc.moveDown(0.6)
