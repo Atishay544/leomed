@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getErpSession } from '@/lib/erp/auth'
 import { can } from '@/lib/erp/permissions'
 import { getOfferLetter } from '@/lib/erp/data/offers'
+import { listLeaveTypes } from '@/lib/erp/data/leave'
 import { getErpSettings } from '@/lib/erp/data/settings'
 import { generateOfferLetterPdf, type OfferLetterPdfData } from '@/lib/erp/offer-letter-pdf'
 
@@ -21,6 +22,14 @@ export async function GET(
   const offer = await getOfferLetter(id)
   if (!offer) return NextResponse.json({ error: 'Offer letter not found' }, { status: 404 })
 
+  // Earned Leave's accrual configuration (if any), so the letter can
+  // describe it as an ongoing rate instead of a fixed annual number — see
+  // the note on OfferLetterPdfData.elAccrualDays.
+  const leaveTypes = await listLeaveTypes(false)
+  const earnedLeave = leaveTypes.find(t => t.name === 'Earned Leave')
+  const elAccrualDays = earnedLeave?.accrual_days && earnedLeave.accrual_interval_months ? earnedLeave.accrual_days : null
+  const elAccrualIntervalMonths = earnedLeave?.accrual_days && earnedLeave.accrual_interval_months ? earnedLeave.accrual_interval_months : null
+
   const data: OfferLetterPdfData = {
     offerNumber: offer.offer_number,
     offerDate: offer.offer_date,
@@ -36,6 +45,8 @@ export async function GET(
     annualElDays: Number(offer.annual_el_days),
     annualSlDays: Number(offer.annual_sl_days),
     annualClDays: Number(offer.annual_cl_days),
+    elAccrualDays,
+    elAccrualIntervalMonths,
     remarks: offer.remarks,
     components: offer.components.map(c => ({
       name: c.component_name,

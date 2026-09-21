@@ -5,7 +5,7 @@ import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ErpUserCreateSchema, OfferLetterSchema, OfferStatusSchema } from '../schemas'
-import { getElSlClLeaveTypeIds } from '../data/leave'
+import { getElSlClLeaveTypeIds, listLeaveTypes } from '../data/leave'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
 
 /**
@@ -188,10 +188,23 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
     // editable afterward on Leave -> Leave Balances like any other
     // employee's. Skipped entirely if the offer promised none of the three
     // (all zero), rather than writing three empty rows for no reason.
+    //
+    // Earned Leave is the one exception: if it currently has automatic
+    // accrual configured (Leave -> Leave types), that accrual — running off
+    // this employee's own joining_date — is the SOLE source of their EL
+    // balance from here on. Seeding it too from the offer's annual_el_days
+    // would double-count on top of every accrual going forward. The offer
+    // form already zeroes/disables that field once accrual is on, but this
+    // check is the real gate, independent of whatever the form happened to
+    // submit — see the note on OfferLetterForm's elAccrual prop.
     const { elId, slId, clId } = await getElSlClLeaveTypeIds()
+    const leaveTypes = await listLeaveTypes(false)
+    const earnedLeave = leaveTypes.find(t => t.id === elId)
+    const elAccrues = !!(earnedLeave?.accrual_days && earnedLeave.accrual_interval_months)
+
     const currentYear = new Date().getFullYear()
     const leaveRows = [
-      elId && Number(offer.annual_el_days) > 0 && { leave_type_id: elId, allocated: Number(offer.annual_el_days) },
+      !elAccrues && elId && Number(offer.annual_el_days) > 0 && { leave_type_id: elId, allocated: Number(offer.annual_el_days) },
       slId && Number(offer.annual_sl_days) > 0 && { leave_type_id: slId, allocated: Number(offer.annual_sl_days) },
       clId && Number(offer.annual_cl_days) > 0 && { leave_type_id: clId, allocated: Number(offer.annual_cl_days) },
     ].filter((r): r is { leave_type_id: string; allocated: number } => !!r)

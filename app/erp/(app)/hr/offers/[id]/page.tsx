@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, FileText, Printer, UserPlus } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { getOfferLetter } from '@/lib/erp/data/offers'
+import { listLeaveTypes } from '@/lib/erp/data/leave'
 import { convertOfferToEmployee } from '@/lib/erp/actions/offers'
 import { formatDate, money, OFFER_STATUS_LABELS, OFFER_STATUS_STYLES } from '@/lib/erp/format'
 import { ROLE_LABELS } from '@/lib/erp/permissions'
@@ -51,8 +52,13 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
   const session = await requireCapability('offers.manage')
   const { id } = await params
 
-  const offer = await getOfferLetter(id)
+  const [offer, leaveTypes] = await Promise.all([getOfferLetter(id), listLeaveTypes(false)])
   if (!offer) notFound()
+
+  const earnedLeave = leaveTypes.find(t => t.name === 'Earned Leave')
+  const elAccrual = earnedLeave?.accrual_days && earnedLeave.accrual_interval_months
+    ? { days: earnedLeave.accrual_days, months: earnedLeave.accrual_interval_months }
+    : null
 
   const CONVERT_FIELDS = buildConvertFields(
     session.role === 'ADMIN' ? ROLE_OPTIONS : ROLE_OPTIONS.filter(r => r.value !== 'ADMIN'),
@@ -237,11 +243,16 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
             </dl>
           </Card>
 
-          {(offer.annual_el_days > 0 || offer.annual_sl_days > 0 || offer.annual_cl_days > 0) && (
+          {(elAccrual || offer.annual_el_days > 0 || offer.annual_sl_days > 0 || offer.annual_cl_days > 0) && (
             <Card>
               <h2 className="mb-3 text-[13px] font-semibold text-gray-800">Leave Entitlement (per year)</h2>
               <dl className="space-y-2 text-[12.5px]">
-                <div className="flex justify-between"><dt className="text-gray-500">Earned Leave</dt><dd className="text-gray-900">{offer.annual_el_days} days</dd></div>
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Earned Leave</dt>
+                  <dd className="text-gray-900">
+                    {elAccrual ? `${elAccrual.days} day(s) / ${elAccrual.months} month(s)` : `${offer.annual_el_days} days`}
+                  </dd>
+                </div>
                 <div className="flex justify-between"><dt className="text-gray-500">Sick Leave</dt><dd className="text-gray-900">{offer.annual_sl_days} days</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">Casual Leave</dt><dd className="text-gray-900">{offer.annual_cl_days} days</dd></div>
               </dl>
