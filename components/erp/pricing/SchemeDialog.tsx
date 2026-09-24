@@ -256,23 +256,30 @@ export default function SchemeDialog() {
               {product && beforeAfter && (
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Price before → after this scheme</p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {([
-                      ['DISTRIBUTOR', beforeAfter.distributor],
-                      ['CHEMIST', beforeAfter.retailer],
-                    ] as const).map(([type, leg]) => (
+                      ['DISTRIBUTOR', beforeAfter.distributor, 'vs PTR'],
+                      ['CHEMIST', beforeAfter.retailer, 'vs MRP'],
+                    ] as const).map(([type, leg, marginLabel]) => (
                       <div key={type} className="flex items-center justify-between text-[12.5px]">
                         <span className="text-gray-600">{CUSTOMER_TYPE_LABELS[type]}</span>
-                        <span className="font-medium text-gray-900">
-                          ₹{leg.before.toFixed(2)}
-                          <span className="mx-1.5 text-gray-400">&rarr;</span>
-                          {leg.after === null
-                            ? <span className="text-gray-400">— enter the details above</span>
-                            : (
-                              <span className={leg.after < leg.before ? 'text-emerald-700' : leg.after > leg.before ? 'text-red-700' : 'text-gray-500'}>
-                                ₹{leg.after.toFixed(2)}
-                              </span>
-                            )}
+                        <span className="text-right">
+                          <span className="font-medium text-gray-900">
+                            ₹{leg.before.toFixed(2)}
+                            <span className="mx-1.5 text-gray-400">&rarr;</span>
+                            {leg.after === null
+                              ? <span className="text-gray-400">— enter the details above</span>
+                              : (
+                                <span className={leg.after < leg.before ? 'text-emerald-700' : leg.after > leg.before ? 'text-red-700' : 'text-gray-500'}>
+                                  ₹{leg.after.toFixed(2)}
+                                </span>
+                              )}
+                          </span>
+                          {leg.after !== null && (
+                            <span className="block text-[11px] text-gray-400">
+                              {leg.marginBeforePct}% &rarr; {leg.marginAfterPct}% margin ({marginLabel})
+                            </span>
+                          )}
                         </span>
                       </div>
                     ))}

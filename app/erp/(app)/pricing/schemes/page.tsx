@@ -13,15 +13,18 @@ import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/compon
 
 export const metadata = { title: 'Schemes' }
 
-function BeforeAfterCell({ leg }: { leg: SchemeBeforeAfterLeg }) {
+function BeforeAfterCell({ leg, marginLabel }: { leg: SchemeBeforeAfterLeg; marginLabel: string }) {
   if (leg.after === null) return <span className="text-gray-400">—</span>
   return (
     <span className="whitespace-nowrap">
-      ₹{leg.before.toFixed(2)}
-      <span className="mx-1 text-gray-400">&rarr;</span>
-      <span className={leg.after < leg.before ? 'text-emerald-700' : leg.after > leg.before ? 'text-red-700' : 'text-gray-500'}>
-        ₹{leg.after.toFixed(2)}
+      <span className="block">
+        ₹{leg.before.toFixed(2)}
+        <span className="mx-1 text-gray-400">&rarr;</span>
+        <span className={leg.after < leg.before ? 'text-emerald-700' : leg.after > leg.before ? 'text-red-700' : 'text-gray-500'}>
+          ₹{leg.after.toFixed(2)}
+        </span>
       </span>
+      <span className="block text-[11px] text-gray-400">{leg.marginBeforePct}% &rarr; {leg.marginAfterPct}% ({marginLabel})</span>
     </span>
   )
 }
@@ -87,8 +90,8 @@ export default async function SchemesPage({ searchParams }: Props) {
                           ? `Buy ${s.buy_quantity} Get ${s.free_quantity}`
                           : `${s.calculation_method} ${s.percentage}% of ${s.calculation_basis}`}
                       </Td>
-                      <Td>{beforeAfter ? <BeforeAfterCell leg={beforeAfter.distributor} /> : '—'}</Td>
-                      <Td>{beforeAfter ? <BeforeAfterCell leg={beforeAfter.retailer} /> : '—'}</Td>
+                      <Td>{beforeAfter ? <BeforeAfterCell leg={beforeAfter.distributor} marginLabel="vs PTR" /> : '—'}</Td>
+                      <Td>{beforeAfter ? <BeforeAfterCell leg={beforeAfter.retailer} marginLabel="vs MRP" /> : '—'}</Td>
                       <Td>{formatDate(s.effective_from)}{s.effective_to && ` – ${formatDate(s.effective_to)}`}</Td>
                       <Td align="right"><SchemeStatusSelect id={s.id} status={s.status} /></Td>
                     </tr>

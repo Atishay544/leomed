@@ -41,6 +41,14 @@ export interface SchemeBeforeAfterLeg {
    *  apply — an unaffected type reports `after === before`, same rupee
    *  figure, so "no change" reads the same as "no discount here". */
   after: number | null
+  /** Margin expressed against this trade level's own conventional anchor —
+   *  MRP for the retailer, PTR (the retailer price) for the distributor —
+   *  the same two anchors saveProduct() (actions/masters.ts) already uses
+   *  to turn a flat retailer_price/distributor_price into a stored default
+   *  margin %. A 23.5% retailer margin plus a 10+1 scheme should read back
+   *  as ~30.45% effective margin, not just a rupee figure. */
+  marginBeforePct: number
+  marginAfterPct: number | null
 }
 
 /**
@@ -90,8 +98,24 @@ export function schemeBeforeAfter(
     return previewPrice(scheme.calculation_basis, scheme.calculation_method, scheme.percentage, 0, product.mrp, product.retailer_price)
   }
 
+  const marginPct = (price: number, anchor: number): number =>
+    anchor > 0 ? Math.round((1 - price / anchor) * 100 * 100) / 100 : 0
+
+  const distributorAfter = after('DISTRIBUTOR', product.distributor_price)
+  const retailerAfter    = after('CHEMIST', product.retailer_price)
+
   return {
-    distributor: { before: product.distributor_price, after: after('DISTRIBUTOR', product.distributor_price) },
-    retailer:    { before: product.retailer_price,    after: after('CHEMIST', product.retailer_price) },
+    distributor: {
+      before: product.distributor_price,
+      after: distributorAfter,
+      marginBeforePct: marginPct(product.distributor_price, product.retailer_price),
+      marginAfterPct: distributorAfter === null ? null : marginPct(distributorAfter, product.retailer_price),
+    },
+    retailer: {
+      before: product.retailer_price,
+      after: retailerAfter,
+      marginBeforePct: marginPct(product.retailer_price, product.mrp),
+      marginAfterPct: retailerAfter === null ? null : marginPct(retailerAfter, product.mrp),
+    },
   }
 }
