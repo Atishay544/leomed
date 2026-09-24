@@ -18,7 +18,7 @@ export default async function EditProductPage({ params }: PageProps) {
 
   const [{ data: product }, { data: categories }, { data: healthConcerns }, { data: hcLinks }, { data: erpProducts }, { data: erpLink }] = await Promise.all([
     admin.from('products')
-      .select('id, name, slug, description, composition, generic_name, uses, mrp, pack_size, unit, category_id, is_active, images, video_url, merchandising_tag')
+      .select('id, name, slug, description, composition, generic_name, uses, mrp, mrp_per_strip, pack_size, unit, category_id, is_active, images, video_url, merchandising_tag')
       .eq('id', id).single(),
     admin.from('categories').select('id, name').eq('taxonomy', 'product').order('name'),
     admin.from('categories').select('id, name').eq('taxonomy', 'health_concern').order('name'),

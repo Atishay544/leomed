@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       generic_name:  productData.generic_name?.trim() || null,
       uses:          productData.uses?.trim() || null,
       mrp:           productData.mrp != null && productData.mrp !== '' ? Number(productData.mrp) : null,
+      mrp_per_strip: productData.mrp_per_strip != null && productData.mrp_per_strip !== '' ? Number(productData.mrp_per_strip) : null,
       pack_size:     productData.pack_size?.trim() || null,
       unit:          productData.unit?.trim() || null,
       category_id:   productData.category_id || null,
@@ -87,6 +88,7 @@ export async function PATCH(req: NextRequest) {
   if (fields.generic_name  !== undefined) payload.generic_name  = fields.generic_name?.trim() || null
   if (fields.uses          !== undefined) payload.uses          = fields.uses?.trim() || null
   if (fields.mrp           !== undefined) payload.mrp           = fields.mrp != null && fields.mrp !== '' ? Number(fields.mrp) : null
+  if (fields.mrp_per_strip !== undefined) payload.mrp_per_strip = fields.mrp_per_strip != null && fields.mrp_per_strip !== '' ? Number(fields.mrp_per_strip) : null
   if (fields.pack_size     !== undefined) payload.pack_size     = fields.pack_size?.trim() || null
   if (fields.unit          !== undefined) payload.unit          = fields.unit?.trim() || null
   if (fields.category_id   !== undefined) payload.category_id   = fields.category_id || null
