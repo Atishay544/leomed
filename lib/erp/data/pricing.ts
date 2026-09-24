@@ -56,7 +56,7 @@ export async function listPricingRules(params: PricingRuleListParams = {}): Prom
 }
 
 export interface SchemeRow extends ErpScheme {
-  erp_products: { product_name: string; product_code: string } | null
+  erp_products: { product_name: string; product_code: string; mrp: number; distributor_price: number; retailer_price: number } | null
 }
 
 export async function listSchemes(params: { page?: number; status?: string; schemeType?: string } = {}): Promise<PageResult<SchemeRow>> {
@@ -66,7 +66,7 @@ export async function listSchemes(params: { page?: number; status?: string; sche
 
   let query = db
     .from('erp_schemes')
-    .select('*, erp_products!erp_schemes_product_id_fkey(product_name, product_code)', { count: 'exact' })
+    .select('*, erp_products!erp_schemes_product_id_fkey(product_name, product_code, mrp, distributor_price, retailer_price)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to)
 

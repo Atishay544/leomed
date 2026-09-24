@@ -1,4 +1,4 @@
-import type { CalculationBasis, CalculationMethod } from './types'
+import type { BillingCustomerType, CalculationBasis, CalculationMethod, SchemeType } from './types'
 
 /**
  * Client-side preview of what erp_apply_pricing() (the database function
@@ -32,4 +32,66 @@ export function previewPrice(
 
 export function priceInclGst(price: number, gstRate: number): number {
   return Math.round(price * (1 + gstRate / 100) * 100) / 100
+}
+
+export interface SchemeBeforeAfterLeg {
+  before: number
+  /** Null when the scheme doesn't have enough entered yet to preview
+   *  (e.g. no percentage/quantities typed), never when it simply doesn't
+   *  apply — an unaffected type reports `after === before`, same rupee
+   *  figure, so "no change" reads the same as "no discount here". */
+  after: number | null
+}
+
+/**
+ * Distributor and retailer's own price before this scheme, next to what it
+ * becomes under it — the same question a trade scheme is drawn up to
+ * answer ("what does the distributor pay now vs. before"), so the scheme
+ * dialog and list show it directly instead of just the raw
+ * basis/method/percentage a non-pricing person would have to do the maths
+ * on themselves.
+ *
+ * A PERCENTAGE_MARGIN scheme resolves to exactly one rupee rate (per
+ * erp_apply_pricing/erp_resolve_selling_price — the base is MRP or the
+ * single company-wide PTR anchor, never a per-customer-type figure), so
+ * distributor and retailer land on the SAME after-price whenever the
+ * scheme applies to both. A scheme scoped to just one customer_type leaves
+ * the other type's price unchanged (after === before).
+ *
+ * A FREE_QUANTITY scheme never changes the unit price at all — what
+ * changes is the effective price once the free units are averaged in
+ * (buy 10 get 1 free = paying for 10 to receive 11), computed against
+ * each type's OWN current price, so this is the one case where
+ * distributor and retailer genuinely differ.
+ */
+export function schemeBeforeAfter(
+  scheme: {
+    scheme_type: SchemeType
+    customer_type: BillingCustomerType | null
+    calculation_basis: CalculationBasis | null
+    calculation_method: CalculationMethod | null
+    percentage: number | null
+    buy_quantity: number | null
+    free_quantity: number | null
+  },
+  product: { mrp: number; distributor_price: number; retailer_price: number },
+): { distributor: SchemeBeforeAfterLeg; retailer: SchemeBeforeAfterLeg } {
+  const after = (target: BillingCustomerType, before: number): number | null => {
+    if (scheme.customer_type && scheme.customer_type !== target) return before
+
+    if (scheme.scheme_type === 'FREE_QUANTITY') {
+      const buy = scheme.buy_quantity ?? 0
+      const free = scheme.free_quantity ?? 0
+      if (buy <= 0 || free <= 0) return null
+      return Math.round((before * buy / (buy + free)) * 100) / 100
+    }
+
+    if (!scheme.calculation_basis || !scheme.calculation_method || scheme.percentage == null) return null
+    return previewPrice(scheme.calculation_basis, scheme.calculation_method, scheme.percentage, 0, product.mrp, product.retailer_price)
+  }
+
+  return {
+    distributor: { before: product.distributor_price, after: after('DISTRIBUTOR', product.distributor_price) },
+    retailer:    { before: product.retailer_price,    after: after('CHEMIST', product.retailer_price) },
+  }
 }

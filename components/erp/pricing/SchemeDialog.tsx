@@ -6,7 +6,7 @@ import { Loader2, Plus, X } from 'lucide-react'
 import { lookupBillingCustomers, lookupProducts, type BillingCustomerOption, type ProductOption } from '@/lib/erp/actions/lookup'
 import { saveScheme } from '@/lib/erp/actions/pricing'
 import { isoDate } from '@/lib/erp/format'
-import { previewPrice, priceInclGst } from '@/lib/erp/pricing-preview'
+import { schemeBeforeAfter } from '@/lib/erp/pricing-preview'
 import { BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS } from '@/lib/erp/types'
 import type { BillingCustomerType } from '@/lib/erp/types'
 
@@ -64,8 +64,19 @@ export default function SchemeDialog() {
     return () => { if (debounce.current) clearTimeout(debounce.current) }
   }, [targetTerm, customerType, open])
 
-  const preview = product && schemeType === 'PERCENTAGE_MARGIN'
-    ? previewPrice(basis, method, parseFloat(percentage) || 0, 0, product.mrp, product.retailer_price)
+  const beforeAfter = product
+    ? schemeBeforeAfter(
+        {
+          scheme_type:         schemeType,
+          customer_type:       customerType || null,
+          calculation_basis:   schemeType === 'PERCENTAGE_MARGIN' ? basis : null,
+          calculation_method:  schemeType === 'PERCENTAGE_MARGIN' ? method : null,
+          percentage:          schemeType === 'PERCENTAGE_MARGIN' ? (percentage === '' ? null : Number(percentage)) : null,
+          buy_quantity:        schemeType === 'FREE_QUANTITY' ? (buyQty === '' ? null : Number(buyQty)) : null,
+          free_quantity:       schemeType === 'FREE_QUANTITY' ? (freeQty === '' ? null : Number(freeQty)) : null,
+        },
+        product,
+      )
     : null
 
   function reset() {
@@ -234,18 +245,49 @@ export default function SchemeDialog() {
                     <label className="mb-1 block text-[12px] font-medium text-gray-700">Percentage</label>
                     <input type="number" onFocus={e => e.target.select()} min="0" max="100" step="0.01" value={percentage} onChange={e => setPercentage(e.target.value)} className={inputClass} />
                   </div>
-                  {preview !== null && product && (
-                    <p className="text-[11.5px] text-gray-500">
-                      Works out to <strong className="text-gray-700">₹{preview.toFixed(2)}</strong>
-                      {' '}(≈ ₹{priceInclGst(preview, product.gst_rate).toFixed(2)} incl. {product.gst_rate}% GST)
-                    </p>
-                  )}
                   {basis === 'COST' && (
                     <p className="text-[11.5px] text-gray-500">
                       COST has no single preview — it&apos;s whichever batch&apos;s actual purchase rate is on hand at sale time.
                     </p>
                   )}
                 </>
+              )}
+
+              {product && beforeAfter && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Price before → after this scheme</p>
+                  <div className="space-y-1.5">
+                    {([
+                      ['DISTRIBUTOR', beforeAfter.distributor],
+                      ['CHEMIST', beforeAfter.retailer],
+                    ] as const).map(([type, leg]) => (
+                      <div key={type} className="flex items-center justify-between text-[12.5px]">
+                        <span className="text-gray-600">{CUSTOMER_TYPE_LABELS[type]}</span>
+                        <span className="font-medium text-gray-900">
+                          ₹{leg.before.toFixed(2)}
+                          <span className="mx-1.5 text-gray-400">&rarr;</span>
+                          {leg.after === null
+                            ? <span className="text-gray-400">— enter the details above</span>
+                            : (
+                              <span className={leg.after < leg.before ? 'text-emerald-700' : leg.after > leg.before ? 'text-red-700' : 'text-gray-500'}>
+                                ₹{leg.after.toFixed(2)}
+                              </span>
+                            )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {schemeType === 'FREE_QUANTITY' && (
+                    <p className="mt-2 text-[11px] text-gray-500">
+                      The unit price itself doesn&apos;t change — this is the effective price once the free units are averaged in.
+                    </p>
+                  )}
+                  {customerType && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Scoped to {CUSTOMER_TYPE_LABELS[customerType]} only — the other type&apos;s price is unaffected.
+                    </p>
+                  )}
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
