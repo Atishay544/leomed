@@ -261,6 +261,7 @@ export default function OfferLetterForm({
                   className={inputClass} />
         <p className="mt-1 text-[11px] text-gray-400">
           Describe incentive eligibility here, not as a row below — it&apos;s conditional/variable pay, never part of the guaranteed compensation table.
+          Wrap a phrase in <span className="font-semibold">**double asterisks**</span> to print it bold — this is plain text, not a rich-text editor, so that&apos;s the one formatting it understands.
         </p>
       </div>
 
@@ -318,7 +319,18 @@ export default function OfferLetterForm({
                 {OFFER_COMPONENT_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
               </select>
               <input type="number" min="0" step="0.01" value={row.monthly_amount} onFocus={e => e.target.select()}
-                     onChange={e => patchRow(row.uid, { monthly_amount: e.target.value })}
+                     onChange={e => {
+                       // Per annum defaults to monthly × 12 the moment monthly
+                       // is typed — still a plain editable field afterward,
+                       // for the rare component that isn't a clean × 12
+                       // (e.g. a one-time annual-only item).
+                       const monthly = e.target.value
+                       const monthlyNum = Number(monthly)
+                       const autoAnnual = monthly !== '' && Number.isFinite(monthlyNum)
+                         ? String(Math.round(monthlyNum * 12 * 100) / 100)
+                         : row.annual_amount
+                       patchRow(row.uid, { monthly_amount: monthly, annual_amount: autoAnnual })
+                     }}
                      disabled={locked} className={inputClass} />
               <input type="number" min="0" step="0.01" value={row.annual_amount} onFocus={e => e.target.select()}
                      onChange={e => patchRow(row.uid, { annual_amount: e.target.value })}
@@ -350,6 +362,9 @@ export default function OfferLetterForm({
         <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={3} disabled={locked}
                   placeholder="Anything specific to this offer, printed on the letter under Additional Terms."
                   className={inputClass} />
+        <p className="mt-1 text-[11px] text-gray-400">
+          Wrap a phrase in <span className="font-semibold">**double asterisks**</span> to print it bold.
+        </p>
       </div>
 
       {!locked && (
