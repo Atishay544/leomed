@@ -44,7 +44,7 @@ const getProductsPage = unstable_cache(
 
     let query = supabase
       .from('products')
-      .select('id,name,slug,images,merchandising_tag,mrp,pack_size,unit,composition,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
+      .select('id,name,slug,images,merchandising_tag,mrp,mrp_per_strip,pack_size,unit,composition,categories!products_category_id_fkey(name,slug)', { count: 'exact' })
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1)
@@ -162,7 +162,12 @@ function ProductCard({ product }: { product: any }) {
           </p>
         )}
         {product.mrp != null && (
-          <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(product.mrp).toFixed(2)}</p>
+          <p className="text-xs font-semibold text-gray-700 mt-0.5">
+            MRP ₹{Number(product.mrp).toFixed(2)}
+            {product.mrp_per_strip != null && (
+              <span className="font-normal text-gray-400"> · ₹{Number(product.mrp_per_strip).toFixed(2)}/strip</span>
+            )}
+          </p>
         )}
         {product.composition && (
           <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{product.composition}</p>

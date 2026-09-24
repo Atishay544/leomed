@@ -71,7 +71,7 @@ const getCategoryProducts = unstable_cache(
 
     const { data: products, count } = await supabase
       .from('products')
-      .select('id,name,slug,images,merchandising_tag,mrp,pack_size,unit,composition', { count: 'exact' })
+      .select('id,name,slug,images,merchandising_tag,mrp,mrp_per_strip,pack_size,unit,composition', { count: 'exact' })
       .eq('category_id', categoryId)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -168,7 +168,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                     </p>
                   )}
                   {p.mrp != null && (
-                    <p className="text-xs font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                    <p className="text-xs font-semibold text-gray-700 mt-0.5">
+                      MRP ₹{Number(p.mrp).toFixed(2)}
+                      {p.mrp_per_strip != null && (
+                        <span className="font-normal text-gray-400"> · ₹{Number(p.mrp_per_strip).toFixed(2)}/strip</span>
+                      )}
+                    </p>
                   )}
                   {p.composition && (
                     <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{p.composition}</p>

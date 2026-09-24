@@ -8,6 +8,7 @@ interface Product {
   slug: string
   images: string[] | null
   mrp?: number | null
+  mrp_per_strip?: number | null
   pack_size?: string | null
   unit?: string | null
   composition?: string | null
@@ -47,7 +48,12 @@ export default function RecommendedProducts({ products }: { products: Product[] 
                     </p>
                   )}
                   {p.mrp != null && (
-                    <p className="text-[11px] font-semibold text-gray-700 mt-0.5">MRP ₹{Number(p.mrp).toFixed(2)}</p>
+                    <p className="text-[11px] font-semibold text-gray-700 mt-0.5">
+                      MRP ₹{Number(p.mrp).toFixed(2)}
+                      {p.mrp_per_strip != null && (
+                        <span className="font-normal text-gray-400"> · ₹{Number(p.mrp_per_strip).toFixed(2)}/strip</span>
+                      )}
+                    </p>
                   )}
                   {p.composition && (
                     <p className="text-[10px] text-gray-400 line-clamp-1 mt-0.5">{p.composition}</p>
