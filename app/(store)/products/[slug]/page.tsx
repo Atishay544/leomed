@@ -60,7 +60,7 @@ const getRecommendedProducts = unstable_cache(
     const supabase = createPublicClient()
     const { data: fromCategory } = await supabase
       .from('products')
-      .select('id, name, slug, images, mrp, pack_size, unit, composition')
+      .select('id, name, slug, images, mrp, mrp_per_strip, pack_size, unit, composition')
       .eq('is_active', true)
       .eq('category_id', categoryId ?? '')
       .neq('id', productId)
@@ -71,7 +71,7 @@ const getRecommendedProducts = unstable_cache(
 
     const { data: fallback } = await supabase
       .from('products')
-      .select('id, name, slug, images, mrp, pack_size, unit, composition')
+      .select('id, name, slug, images, mrp, mrp_per_strip, pack_size, unit, composition')
       .eq('is_active', true)
       .neq('id', productId)
       .order('created_at', { ascending: false })

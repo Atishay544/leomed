@@ -74,7 +74,7 @@ const getStaticHomeData = unstable_cache(
   { revalidate: 600, tags: ['banners', 'categories'] }
 )
 
-type CategoryProduct = { id: string; name: string; slug: string; images: string[] | null; composition: string | null; description: string | null; category_id: string | null; mrp: number | null; pack_size: string | null; unit: string | null }
+type CategoryProduct = { id: string; name: string; slug: string; images: string[] | null; composition: string | null; description: string | null; category_id: string | null; mrp: number | null; mrp_per_strip: number | null; pack_size: string | null; unit: string | null }
 
 const PRODUCTS_PER_CATEGORY = 4
 
@@ -89,7 +89,7 @@ const getCategoryProducts = unstable_cache(
     const supabase = createPublicClient()
     const { data } = await supabase
       .from('products')
-      .select('id,name,slug,images,composition,description,category_id,mrp,pack_size,unit')
+      .select('id,name,slug,images,composition,description,category_id,mrp,mrp_per_strip,pack_size,unit')
       .eq('is_active', true)
       .in('category_id', categoryIds)
       .order('created_at', { ascending: false })
@@ -256,7 +256,12 @@ function CategoryProductCard({ product }: { product: CategoryProduct }) {
             </p>
           )}
           {product.mrp != null && (
-            <p className="text-sm font-semibold text-gray-800">MRP ₹{Number(product.mrp).toFixed(2)}</p>
+            <p className="text-sm font-semibold text-gray-800">
+              MRP ₹{Number(product.mrp).toFixed(2)}
+              {product.mrp_per_strip != null && (
+                <span className="font-normal text-gray-400"> · ₹{Number(product.mrp_per_strip).toFixed(2)}/strip</span>
+              )}
+            </p>
           )}
           {product.composition && (
             <p className="text-xs text-gray-500 line-clamp-2">{product.composition}</p>
