@@ -749,6 +749,11 @@ export interface ErpEmployeeSalary {
   gross_salary: number
   allowances: number
   standard_deductions: number
+  /** A flat per-day Dearness Allowance, unique to this employee (e.g. one MR
+   *  at ₹150/day, another at ₹300/day) — paid only for days actually
+   *  worked, never leave/holiday/week-off. Null means no DA at all, not ₹0.
+   *  See 20260924000002_mr_dearness_allowance.sql. */
+  daily_dearness_allowance: number | null
   effective_from: string
   updated_by: string | null
   created_at: string
@@ -808,6 +813,14 @@ export interface ErpPayrollRecord {
    *  period — a still-PENDING day isn't included until reviewed. See
    *  20260921000001_mr_travel_allowance.sql. */
   travel_allowance: number
+  /** The per-day DA rate snapshotted from erp_employee_salary at generation
+   *  time — reference only; dearness_allowance below is the rupee figure
+   *  actually paid. Null if this employee has no DA configured. */
+  daily_dearness_allowance: number | null
+  /** daily_dearness_allowance x days actually worked this period (present
+   *  days in full, a half day at 0.5) — never leave/holiday/week-off, even
+   *  though those are paid. See 20260924000002_mr_dearness_allowance.sql. */
+  dearness_allowance: number
   net_salary: number
   remarks: string | null
   created_at: string
