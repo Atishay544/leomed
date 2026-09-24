@@ -102,6 +102,10 @@ export interface ProductOption {
    *  is picked, without a second round trip. */
   mrp: number
   retailer_price: number
+  /** Same "not new exposure" note as retailer_price above — the scheme
+   *  dialog's before/after preview needs the distributor's own current
+   *  price too, not just the retailer anchor. */
+  distributor_price: number
 }
 
 export async function lookupProducts(term: string): Promise<ProductOption[]> {
@@ -110,7 +114,7 @@ export async function lookupProducts(term: string): Promise<ProductOption[]> {
 
   let query = db
     .from('erp_products')
-    .select('id, product_code, product_name, strength, pack_size, unit, sale_rate, gst_rate, mrp, retailer_price')
+    .select('id, product_code, product_name, strength, pack_size, unit, sale_rate, gst_rate, mrp, retailer_price, distributor_price')
     .eq('active', true)
     .order('product_name')
     .limit(15)
