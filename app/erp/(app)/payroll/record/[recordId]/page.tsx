@@ -96,6 +96,9 @@ export default async function PayrollRecordPage({ params }: Props) {
               {record.travel_allowance > 0 && (
                 <Row label="Travel allowance" value={money(record.travel_allowance)} tone="positive" />
               )}
+              {record.dearness_allowance > 0 && (
+                <Row label="Dearness allowance" value={money(record.dearness_allowance)} tone="positive" />
+              )}
               <Row label="Other earnings" value={money(record.other_earnings)} tone="positive" />
               <Row label="Deductions" value={`− ${money(record.deductions)}`} tone="negative" />
               <div className="flex justify-between border-t border-gray-100 pt-2">

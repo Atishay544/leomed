@@ -704,6 +704,9 @@ export const EmployeeSalarySchema = z.object({
   gross_salary:        money,
   allowances:          money,
   standard_deductions: money,
+  // A flat per-day Dearness Allowance unique to this employee — blank means
+  // "no DA at all", not ₹0. See erp_recalculate_payroll_record().
+  daily_dearness_allowance: optionalPositiveMoney,
   effective_from:      dateString,
 })
 
