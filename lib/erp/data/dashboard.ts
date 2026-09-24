@@ -95,6 +95,39 @@ export async function getMrPerformance(from: string, to: string): Promise<MrPerf
   return (data ?? []) as unknown as MrPerformanceRow[]
 }
 
+/** Today's and month-to-date doctor/chemist visit counts against target,
+ *  per MR — what erp_calculate_attendance() itself judges an MR's day on
+ *  (see 20260924000003_mr_visit_only_attendance.sql), surfaced here so
+ *  admin/HR can see who's tracking to plan before the day (or month) is
+ *  over, not just after attendance has already been marked. mtd_working_days
+ *  already excludes week-offs, holidays and approved leave, so
+ *  mtd_*_target is the correct denominator, not a plain days-elapsed count. */
+export interface MrVisitTargetProgressRow {
+  mr_id: string
+  mr_name: string
+  mr_code: string | null
+  territory: string | null
+  required_doctor_visits: number
+  required_chemist_visits: number
+  today_doctor_visits: number
+  today_chemist_visits: number
+  mtd_working_days: number
+  mtd_doctor_visits: number
+  mtd_doctor_target: number
+  mtd_chemist_visits: number
+  mtd_chemist_target: number
+}
+
+export async function getMrVisitTargetProgress(date: string): Promise<MrVisitTargetProgressRow[]> {
+  const db = await erpDb()
+  const { data, error } = await db.rpc('erp_mr_visit_target_progress', { p_date: date })
+  if (error) {
+    console.error('[erp] MR visit target progress failed', error.message)
+    return []
+  }
+  return (data ?? []) as unknown as MrVisitTargetProgressRow[]
+}
+
 export interface ProductPerformanceRow {
   product_id: string
   product_name: string

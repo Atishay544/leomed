@@ -36,6 +36,14 @@ const money = z.coerce.number().min(0, 'Cannot be negative').max(99_999_999)
 const positiveInt = z.coerce.number().int('Enter a whole number').positive('Must be more than zero')
 const nonNegativeInt = z.coerce.number().int().min(0)
 const percent = z.coerce.number().min(0).max(100)
+// A day-of-week checkbox group posts as a single hidden input holding a
+// comma-joined list (e.g. "0" for Sunday-only, "" for none selected) — form
+// data has no native array type, and repeated same-name checkboxes would
+// collide with formObject()'s one-value-per-key flattening used everywhere
+// else in this file. 0=Sunday .. 6=Saturday, matching Postgres extract(dow).
+const csvDayOfWeekArray = z.string().transform(v =>
+  v === '' ? [] : v.split(',').map(Number),
+).pipe(z.array(z.number().int().min(0).max(6)))
 const gstRate = z.coerce.number().min(0).max(28, 'GST cannot exceed 28%')
 // Leave-day counts — half-day leave is common enough to allow (0.5, 1.5, …),
 // so this is deliberately not nonNegativeInt.
@@ -617,6 +625,7 @@ export const AttendanceRulesSchema = z.object({
   min_gps_accuracy_meters:          z.coerce.number().positive().max(10_000),
   default_mr_doctor_visits:         nonNegativeInt,
   default_mr_chemist_visits:        nonNegativeInt,
+  default_week_off_days:            csvDayOfWeekArray,
 }).refine(v => v.min_half_day_minutes < v.min_full_day_minutes, {
   message: 'The half-day minimum must be less than the full-day minimum',
   path: ['min_half_day_minutes'],

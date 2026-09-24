@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import {
-  currentMonthRange, getDashboardSummary, getMrPerformance,
+  currentMonthRange, getDashboardSummary, getMrPerformance, getMrVisitTargetProgress,
   getGrossMarginSummary, getSalesAgingSummary, getPurchaseAgingSummary,
   getOrderInvoiceConversion, getExpiredSaleSummary, getSchemeDiscountSummary,
   getGstSummary, getExpensePeriodSummary,
@@ -45,13 +45,14 @@ export default async function DashboardPage({ searchParams }: Props) {
   const month = currentMonthRange()
 
   const [
-    summary, monthSummary, mrRows, settings, mrs, staff,
+    summary, monthSummary, mrRows, visitTargetRows, settings, mrs, staff,
     grossMargin, salesAging, purchaseAging, orderConversion, expiredSales,
     schemeDiscount, gst, expensePeriod,
   ] = await Promise.all([
     getDashboardSummary(from, to, params.mr, params.territory),
     getDashboardSummary(month.from, month.to),
     getMrPerformance(from, to),
+    getMrVisitTargetProgress(today),
     getErpSettings(),
     listMrs(),
     listErpUsers({ page: 1 }),
@@ -81,6 +82,10 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const hasFilters = !!(params.from || params.to || params.mr || params.territory)
   const activeMrs = mrRows.filter(r => r.doctor_visits > 0 || r.chemist_visits > 0).length
+
+  const mrsMetToday = visitTargetRows.filter(
+    r => r.today_doctor_visits >= r.required_doctor_visits && r.today_chemist_visits >= r.required_chemist_visits,
+  ).length
 
   return (
     <>
@@ -142,6 +147,67 @@ export default async function DashboardPage({ searchParams }: Props) {
           hint="Estimated demand"
         />
       </div>
+
+      {/* 1.5 — Field-visit target progress */}
+      {visitTargetRows.length > 0 && (
+        <div className="mb-6">
+          <Card padded={false}>
+            <CardHeader
+              title={`Field-visit target progress — ${mrsMetToday} of ${visitTargetRows.length} MRs on target today`}
+              action={
+                <Link href="/erp/attendance/rules" className="flex items-center gap-1 text-[12.5px] font-medium text-emerald-700 hover:underline">
+                  Edit targets <ArrowRight size={13} />
+                </Link>
+              }
+            />
+            <p className="border-b border-gray-100 px-5 py-2.5 text-[12px] text-gray-500">
+              What decides an MR&apos;s attendance — not clock time. Short of either target today
+              sends that day to Pending Review for admin/HR to resolve.
+            </p>
+            <TableWrap>
+              <table className="w-full min-w-[760px]">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <Th>MR</Th>
+                    <Th>Territory</Th>
+                    <Th align="right">Doctor visits — today</Th>
+                    <Th align="right">Chemist visits — today</Th>
+                    <Th align="right">Doctor visits — MTD</Th>
+                    <Th align="right">Chemist visits — MTD</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {visitTargetRows.map(row => {
+                    const todayMet = row.today_doctor_visits >= row.required_doctor_visits
+                      && row.today_chemist_visits >= row.required_chemist_visits
+                    return (
+                      <tr key={row.mr_id} className="hover:bg-gray-50/60">
+                        <Td>
+                          <span className="font-medium text-gray-900">{row.mr_name}</span>
+                          {row.mr_code && <p className="mt-0.5 font-mono text-[11px] text-gray-400">{row.mr_code}</p>}
+                        </Td>
+                        <Td>{row.territory ?? '—'}</Td>
+                        <Td align="right" className={`tabular-nums font-medium ${todayMet ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {row.today_doctor_visits}/{row.required_doctor_visits}
+                        </Td>
+                        <Td align="right" className={`tabular-nums font-medium ${todayMet ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {row.today_chemist_visits}/{row.required_chemist_visits}
+                        </Td>
+                        <Td align="right" className="tabular-nums text-gray-700">
+                          {row.mtd_doctor_visits}/{row.mtd_doctor_target}
+                        </Td>
+                        <Td align="right" className="tabular-nums text-gray-700">
+                          {row.mtd_chemist_visits}/{row.mtd_chemist_target}
+                        </Td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </div>
+      )}
 
       {/* 2 — MR performance */}
       <div className="mb-6">
