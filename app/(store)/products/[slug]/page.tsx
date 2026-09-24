@@ -39,7 +39,7 @@ const getProductBySlug = unstable_cache(
     const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, slug, description, composition, generic_name, uses, mrp, pack_size, unit, images, video_url, category_id, is_active, categories!products_category_id_fkey(name, slug)')
+      .select('id, name, slug, description, composition, generic_name, uses, mrp, mrp_per_strip, pack_size, unit, images, video_url, category_id, is_active, categories!products_category_id_fkey(name, slug)')
       .eq('slug', slug)
       .maybeSingle()
     if (error) console.error('[product page] product query:', error.message)
@@ -221,13 +221,18 @@ export default async function ProductDetailPage({ params }: Props) {
               <p className="text-sm text-gray-400 mt-1">{product.generic_name}</p>
             )}
             {(product.pack_size || product.unit || product.mrp != null) && (
-              <div className="flex items-center gap-3 mt-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3">
                 {product.mrp != null && (
                   <span className="text-lg font-bold text-gray-900">MRP ₹{Number(product.mrp).toFixed(2)}</span>
                 )}
                 {(product.pack_size || product.unit) && (
                   <span className="text-sm text-gray-500">
                     {[product.pack_size, product.unit].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+                {product.mrp_per_strip != null && (
+                  <span className="text-sm font-medium text-gray-600">
+                    (₹{Number(product.mrp_per_strip).toFixed(2)} per strip)
                   </span>
                 )}
               </div>

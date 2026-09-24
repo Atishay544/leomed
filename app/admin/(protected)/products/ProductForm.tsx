@@ -16,6 +16,7 @@ interface Product {
   generic_name?: string | null
   uses?: string | null
   mrp?: number | null
+  mrp_per_strip?: number | null
   pack_size?: string | null
   unit?: string | null
   category_id: string | null
@@ -73,6 +74,7 @@ export default function ProductForm({
   const [genericName, setGenericName] = useState(product?.generic_name ?? '')
   const [uses, setUses]             = useState(product?.uses ?? '')
   const [mrp, setMrp]               = useState(product?.mrp != null ? String(product.mrp) : '')
+  const [mrpPerStrip, setMrpPerStrip] = useState(product?.mrp_per_strip != null ? String(product.mrp_per_strip) : '')
   const [packSize, setPackSize]     = useState(product?.pack_size ?? '')
   const [unit, setUnit]             = useState(product?.unit ?? '')
   const [categoryId, setCategoryId] = useState(product?.category_id ?? '')
@@ -135,6 +137,7 @@ export default function ProductForm({
       generic_name:  genericName.trim() || null,
       uses:          uses.trim() || null,
       mrp:           mrp.trim() ? Number(mrp) : null,
+      mrp_per_strip: mrpPerStrip.trim() ? Number(mrpPerStrip) : null,
       pack_size:     packSize.trim() || null,
       unit:          unit.trim() || null,
       category_id:   categoryId || null,
@@ -242,6 +245,15 @@ export default function ProductForm({
                   placeholder="e.g. 45.00"
                   className={INPUT} />
                 <p className="text-[11px] text-gray-400 mt-1">Shown on the public product page — informational, not a checkout price.</p>
+              </div>
+              <div>
+                <label className={LABEL}>MRP per Strip (₹)</label>
+                <input type="number" min="0" step="0.01" value={mrpPerStrip}
+                  onChange={e => setMrpPerStrip(e.target.value)}
+                  onFocus={e => e.target.select()}
+                  placeholder="e.g. 4.50"
+                  className={INPUT} />
+                <p className="text-[11px] text-gray-400 mt-1">Tablets/capsules only — leave blank for syrups, injections, ointments etc.</p>
               </div>
               <div>
                 <label className={LABEL}>Pack Size</label>
