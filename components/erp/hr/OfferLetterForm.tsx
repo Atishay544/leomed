@@ -261,7 +261,7 @@ export default function OfferLetterForm({
                   className={inputClass} />
         <p className="mt-1 text-[11px] text-gray-400">
           Describe incentive eligibility here, not as a row below — it&apos;s conditional/variable pay, never part of the guaranteed compensation table.
-          Wrap a phrase in <span className="font-semibold">**double asterisks**</span> to print it bold — this is plain text, not a rich-text editor, so that&apos;s the one formatting it understands.
+          Line breaks print exactly as typed. Start a line with <span className="font-semibold">#</span> to print it as a bold heading, and wrap a phrase in <span className="font-semibold">**double asterisks**</span> to print it bold — this is plain text, not a rich-text editor, so that&apos;s all the formatting it understands.
         </p>
       </div>
 
@@ -363,7 +363,7 @@ export default function OfferLetterForm({
                   placeholder="Anything specific to this offer, printed on the letter under Additional Terms."
                   className={inputClass} />
         <p className="mt-1 text-[11px] text-gray-400">
-          Wrap a phrase in <span className="font-semibold">**double asterisks**</span> to print it bold.
+          Line breaks print exactly as typed. Start a line with <span className="font-semibold">#</span> to print it as a bold heading, and wrap a phrase in <span className="font-semibold">**double asterisks**</span> to print it bold.
         </p>
       </div>
 

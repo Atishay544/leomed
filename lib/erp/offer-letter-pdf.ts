@@ -68,23 +68,47 @@ const CATEGORY_LABEL: Record<OfferLetterPdfComponent['category'], string> = {
 }
 
 /** Incentive Terms and Additional Terms are plain textareas, no rich-text
- *  editor — this is the one bit of markup they support, so HR can bold a
- *  phrase by typing **like this**. Prints the rest of the run in the
- *  current font/colour, switching to Helvetica-Bold only for the marked
- *  segments, then restoring Helvetica — the same pattern as continuing a
- *  label into its value elsewhere in this file, just with more than one
- *  font change in the chain. `opts` (e.g. width) applies only to the final
- *  segment, matching how the un-formatted single .text() call used to take
- *  it. Falls through cleanly to a single, unstyled call when the text has
- *  no ** markers at all. */
-function renderFormatted(doc: PDFKit.PDFDocument, text: string, opts: PDFKit.Mixins.TextOptions = {}) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(p => p.length > 0)
-  parts.forEach((part, i) => {
-    const isBold = part.startsWith('**') && part.endsWith('**')
-    const content = isBold ? part.slice(2, -2) : part
-    const isLast = i === parts.length - 1
-    doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica')
-    doc.text(content, { ...(isLast ? opts : {}), continued: !isLast })
+ *  editor — two conventions are supported: a line starting with `#` prints
+ *  as a bold sub-heading, and **like this** bolds a phrase inline.
+ *
+ *  Processed one physical line at a time, deliberately. pdfkit's
+ *  `continued: true` chaining is only reliable when every call in the
+ *  chain stays on a single line — feeding it a segment that itself spans a
+ *  line break corrupts the cursor position for every call after it, which
+ *  showed up as real, garbled, overlapping text in a generated letter
+ *  (verified against the actual PDF: "eligible for a performance-based"
+ *  came out as "elpgeibfeornmuannce-based" once the text had more than one
+ *  bold span across paragraph breaks). Splitting on '\n' first and giving
+ *  each line its own chain — ending every line with a plain, non-continued
+ *  call — keeps every chain single-line and avoids that entirely. */
+function renderFormatted(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  opts: PDFKit.Mixins.TextOptions = {},
+  body: { size: number; color: string } = { size: 9.5, color: '#333' },
+) {
+  const lines = text.split('\n')
+  lines.forEach(line => {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('#')) {
+      doc.font('Helvetica-Bold').fontSize(body.size + 0.5).fillColor('#0f5132')
+        .text(trimmed.replace(/^#+\s*/, ''), opts)
+      doc.font('Helvetica').fontSize(body.size).fillColor(body.color)
+      doc.moveDown(0.15)
+      return
+    }
+    if (trimmed.length === 0) {
+      doc.moveDown(0.6)
+      return
+    }
+    const runs = line.split(/(\*\*[^*]+\*\*)/g).filter(p => p.length > 0)
+    runs.forEach((run, ri) => {
+      const isBold = run.startsWith('**') && run.endsWith('**')
+      const content = isBold ? run.slice(2, -2) : run
+      const isLastRun = ri === runs.length - 1
+      doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(body.size).fillColor(body.color)
+      doc.text(content, { ...opts, continued: !isLastRun })
+    })
   })
 }
 
@@ -185,7 +209,7 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     if (data.incentiveTerms) {
       doc.font('Helvetica-Bold').fillColor('#111').text('Incentive: ', 40, doc.y, { continued: true, width: 515 })
       doc.fillColor('#333')
-      renderFormatted(doc, data.incentiveTerms)
+      renderFormatted(doc, data.incentiveTerms, { width: 515 }, { size: 9.5, color: '#333' })
       doc.moveDown(0.6)
     }
 
@@ -222,7 +246,7 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
       doc.moveDown(0.3)
       doc.font('Helvetica-Bold').fillColor('#111').text('Additional Terms:', { continued: true })
       doc.fillColor('#333')
-      renderFormatted(doc, ` ${data.remarks}`, { width: 515 })
+      renderFormatted(doc, ` ${data.remarks}`, { width: 515 }, { size: 8.5, color: '#333' })
     }
 
     doc.moveDown(1)

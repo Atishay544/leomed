@@ -23,18 +23,21 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 /** Mirrors renderFormatted() in offer-letter-pdf.ts so this on-screen
  *  preview reads the same as the PDF HR is about to send: line breaks kept
- *  as line breaks (plain <p> collapses them) and **text** shown bold rather
- *  than printed literally with asterisks. */
+ *  as line breaks (plain <p> collapses them), a line starting with `#`
+ *  shown as a bold heading, and **text** shown bold rather than printed
+ *  literally with asterisks. */
 function FormattedText({ text }: { text: string }) {
   return (
     <>
       {text.split('\n').map((line, li, lines) => (
         <span key={li}>
-          {line.split(/(\*\*[^*]+\*\*)/g).filter(p => p.length > 0).map((part, pi) =>
-            part.startsWith('**') && part.endsWith('**')
-              ? <strong key={pi} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
-              : <span key={pi}>{part}</span>,
-          )}
+          {line.trim().startsWith('#')
+            ? <strong className="block font-semibold text-emerald-800">{line.trim().replace(/^#+\s*/, '')}</strong>
+            : line.split(/(\*\*[^*]+\*\*)/g).filter(p => p.length > 0).map((part, pi) =>
+                part.startsWith('**') && part.endsWith('**')
+                  ? <strong key={pi} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
+                  : <span key={pi}>{part}</span>,
+              )}
           {li < lines.length - 1 && <br />}
         </span>
       ))}
