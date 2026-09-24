@@ -21,6 +21,27 @@ const CATEGORY_LABELS: Record<string, string> = {
   EARNING: 'Earning', DEDUCTION: 'Deduction',
 }
 
+/** Mirrors renderFormatted() in offer-letter-pdf.ts so this on-screen
+ *  preview reads the same as the PDF HR is about to send: line breaks kept
+ *  as line breaks (plain <p> collapses them) and **text** shown bold rather
+ *  than printed literally with asterisks. */
+function FormattedText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('\n').map((line, li, lines) => (
+        <span key={li}>
+          {line.split(/(\*\*[^*]+\*\*)/g).filter(p => p.length > 0).map((part, pi) =>
+            part.startsWith('**') && part.endsWith('**')
+              ? <strong key={pi} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>
+              : <span key={pi}>{part}</span>,
+          )}
+          {li < lines.length - 1 && <br />}
+        </span>
+      ))}
+    </>
+  )
+}
+
 /** offers.manage is held by HR as well as ADMIN, but converting an offer
  *  into an ADMIN account is exactly what "admin has master role for
  *  everything" refuses HR — the erp_users insert this ultimately runs
@@ -208,7 +229,7 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
           {offer.incentive_terms && (
             <Card>
               <h2 className="mb-2 text-[13px] font-semibold text-gray-800">Incentive / Variable Pay Terms</h2>
-              <p className="text-[12.5px] leading-relaxed text-gray-700">{offer.incentive_terms}</p>
+              <p className="text-[12.5px] leading-relaxed text-gray-700"><FormattedText text={offer.incentive_terms} /></p>
               <p className="mt-2 text-[11px] text-gray-400">Printed in the letter&apos;s opening paragraphs, not in Annexure I.</p>
             </Card>
           )}
@@ -216,7 +237,7 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
           {offer.remarks && (
             <Card>
               <h2 className="mb-2 text-[13px] font-semibold text-gray-800">Additional Terms</h2>
-              <p className="text-[12.5px] leading-relaxed text-gray-700">{offer.remarks}</p>
+              <p className="text-[12.5px] leading-relaxed text-gray-700"><FormattedText text={offer.remarks} /></p>
             </Card>
           )}
         </div>
