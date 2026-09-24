@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Loader2 } from 'lucide-react'
 import { saveAttendanceRules } from '@/lib/erp/actions/attendance'
@@ -10,6 +10,14 @@ import type { ErpAttendanceRules } from '@/lib/erp/types'
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-[13px] text-gray-900 ' +
   'focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none'
+
+// 0=Sunday .. 6=Saturday, matching Postgres extract(dow) — the same numbering
+// erp_calculate_attendance() checks default_week_off_days against.
+const DAYS = [
+  { value: 0, label: 'Sun' }, { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' }, { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+]
 
 function SaveButton() {
   const { pending } = useFormStatus()
@@ -28,9 +36,15 @@ function SaveButton() {
 
 export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRules }) {
   const [state, formAction] = useActionState(saveAttendanceRules, IDLE)
+  const [weekOffDays, setWeekOffDays] = useState<number[]>(rules.default_week_off_days)
+
+  function toggleDay(day: number) {
+    setWeekOffDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort())
+  }
 
   return (
     <form action={formAction} className="space-y-5">
+      <input type="hidden" name="default_week_off_days" value={weekOffDays.join(',')} />
       {state.error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[12.5px] text-red-800">
           {state.error}
@@ -91,6 +105,28 @@ export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRul
             <input id="early_checkout_threshold_minutes" name="early_checkout_threshold_minutes" type="number" onFocus={e => e.target.select()} min={0} max={180}
                    defaultValue={rules.early_checkout_threshold_minutes} className={inputClass} />
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-[14px] font-semibold text-gray-900">Week off</h2>
+        <p className="mb-4 text-[12px] text-gray-500">
+          Company-wide default — applies to every employee, MR and non-MR alike, unless that
+          person has their own individual override set directly on their staff record.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DAYS.map(d => (
+            <button
+              key={d.value} type="button" onClick={() => toggleDay(d.value)}
+              className={`rounded-lg border px-3.5 py-2 text-[12.5px] font-medium transition ${
+                weekOffDays.includes(d.value)
+                  ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
         </div>
       </section>
 
