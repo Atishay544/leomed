@@ -1548,8 +1548,10 @@ begin
     format('mr1 met their overridden target (%s/%s doctor visits) and worked a full day — expected PRESENT, got %s', v_doc, v_req_doc, v_status);
 end $$;
 
--- ── MR below the (global default) target: an exception, never an automatic
--- absence — a doctor may simply have been unavailable ──
+-- ── MR below the (global default) target: PENDING_REVIEW, never an
+-- automatic absence — a doctor may simply have been unavailable. Admin/HR
+-- resolves it manually to PRESENT or ABSENT (erp_admin_correct_attendance,
+-- exercised elsewhere) ──
 do $$
 declare v_status public.erp_attendance_status; v_remarks text;
 begin
@@ -1571,8 +1573,8 @@ begin
   select attendance_status, remarks into v_status, v_remarks
     from public.erp_attendance where employee_id = pg_temp.id_of('mr2') and date = current_date;
 
-  assert v_status = 'PRESENT_WITH_EXCEPTION' and v_remarks ilike '%below target%',
-    format('mr2 worked a full day but is short of the global visit target — expected PRESENT_WITH_EXCEPTION, got %s', v_status);
+  assert v_status = 'PENDING_REVIEW' and v_remarks ilike '%below target%',
+    format('mr2 worked a full day but is short of the global visit target — expected PENDING_REVIEW, got %s', v_status);
 end $$;
 
 -- ── A non-MR employee is NEVER evaluated against a visit target — the most

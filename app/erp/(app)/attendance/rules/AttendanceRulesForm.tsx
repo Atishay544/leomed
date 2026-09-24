@@ -45,7 +45,8 @@ export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRul
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-[14px] font-semibold text-gray-900">General attendance</h2>
         <p className="mb-4 text-[12px] text-gray-500">
-          Applies to every non-admin employee — MR and non-MR alike.
+          Applies to non-MR employees only. An MR has no fixed workday start time or minimum
+          working minutes — their day is judged entirely by the field-visit targets below.
         </p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
           <div>
@@ -120,7 +121,11 @@ export default function AttendanceRulesForm({ rules }: { rules: ErpAttendanceRul
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-[14px] font-semibold text-gray-900">MR field activity (default)</h2>
         <p className="mb-4 text-[12px] text-gray-500">
-          Applies to every MR unless a per-MR override is set below. Never applied to non-MR employees.
+          This is what decides an MR&apos;s attendance — not clock time. Checked in and out, and hit
+          both targets for the day: PRESENT. Checked in and out but short of either target: sent
+          to Pending Review for admin/HR to mark PRESENT or ABSENT with a remark, never decided
+          automatically. Applies to every MR unless a per-MR override is set below. Never applied
+          to non-MR employees.
         </p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
           <div>
