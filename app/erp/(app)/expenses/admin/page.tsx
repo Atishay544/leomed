@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORIES, EXPENSE_STATUSES } from '@/lib/erp/types'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import Pagination from '@/components/erp/Pagination'
 import ExpenseReviewButtons from '@/components/erp/expenses/ExpenseReviewButtons'
+import CompanyExpenseDialog from '@/components/erp/expenses/CompanyExpenseDialog'
 import { Badge, Card, EmptyState, PageHeader, StatCard, TableWrap, Td, Th } from '@/components/erp/ui'
 
 export const metadata = { title: 'Expenses' }
@@ -48,7 +49,11 @@ export default async function AdminExpensesPage({ searchParams }: Props) {
 
   return (
     <>
-      <PageHeader title="Expenses" description="Company and employee expenses for the current month." />
+      <PageHeader
+        title="Expenses"
+        description="Company and employee expenses for the current month."
+        action={<CompanyExpenseDialog />}
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatCard label="Total expenses" value={money(summary.total)} icon={Wallet} />

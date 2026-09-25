@@ -34,6 +34,40 @@ export async function submitExpense(_prev: ActionState, formData: FormData): Pro
   })
 }
 
+/**
+ * Admin/HR recording a company-level cost directly (rent, utilities, a
+ * subscription renewal...) — not an employee filing a claim against
+ * themselves for later approval. Inserted already APPROVED, self-approved
+ * by whoever logged it, same as how an offline expense book would read:
+ * someone with authority wrote it down, done. employee_id is still the
+ * logger's own id (erp_expenses' RLS insert check requires it, and it
+ * matches the table's own documented convention — "an accountant logging a
+ * company-level marketing spend under their own name") — it identifies who
+ * recorded it, not who it's "for".
+ */
+export async function recordCompanyExpense(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction('Could not record the expense.', async () => {
+    const session = await assertCapability('expenses.manage')
+
+    const parsed = ExpenseSchema.safeParse(formObject(formData))
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { error } = await db.from('erp_expenses').insert({
+      ...parsed.data,
+      receipt_url: parsed.data.receipt_url || null,
+      employee_id: session.id,
+      status:      'APPROVED',
+      approved_by: session.id,
+      approved_at: new Date().toISOString(),
+    })
+    if (error) return friendlyDbError(error, 'Could not record the expense.')
+
+    revalidatePath('/erp/expenses/admin')
+    return { ok: true }
+  })
+}
+
 export async function updateMyExpense(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return runAction('Could not update the expense.', async () => {
     const session = await assertCapability('expenses.submit')
