@@ -735,7 +735,11 @@ export interface ErpMrTravelAllowance {
 
 export const EXPENSE_CATEGORIES = [
   'TRAVEL', 'FUEL', 'OFFICE', 'MARKETING', 'PROMOTIONAL', 'DOCTOR_MEETING',
-  'SAMPLES', 'EVENTS', 'LOGISTICS', 'MISCELLANEOUS', 'OTHER',
+  'SAMPLES', 'EVENTS', 'LOGISTICS',
+  // Company-level overhead — recorded directly by admin/HR, not filed as an
+  // employee claim. See 20260925000001_company_expenses.sql.
+  'RENT', 'UTILITIES', 'SUBSCRIPTION', 'MAINTENANCE', 'INSURANCE', 'PROFESSIONAL_FEES', 'BANK_CHARGES',
+  'MISCELLANEOUS', 'OTHER',
 ] as const
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 

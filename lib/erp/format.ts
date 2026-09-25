@@ -359,6 +359,13 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   SAMPLES:        'Samples',
   EVENTS:         'Events',
   LOGISTICS:      'Logistics',
+  RENT:              'Rent',
+  UTILITIES:         'Utilities',
+  SUBSCRIPTION:      'Subscription',
+  MAINTENANCE:       'Maintenance',
+  INSURANCE:         'Insurance',
+  PROFESSIONAL_FEES: 'Professional fees',
+  BANK_CHARGES:      'Bank charges',
   MISCELLANEOUS:  'Miscellaneous',
   OTHER:          'Other',
 }
