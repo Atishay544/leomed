@@ -29,7 +29,6 @@ export interface OfferLetterPdfData {
   designation: string
   department: string | null
   territory: string | null
-  reportsToName: string | null
   joiningDate: string | null
   /** Free text on incentive/variable-pay eligibility — printed in the
    *  letter's opening paragraphs, deliberately never a row in Annexure I. */
@@ -184,14 +183,13 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     doc.moveDown(0.4)
 
     const placeBit = data.territory ? ` at ${data.territory}` : ''
-    const reportsBit = data.reportsToName ? `, reporting to ${data.reportsToName}` : ''
     const joiningBit = data.joiningDate
       ? `Your date of joining will be ${formatDate(data.joiningDate)}.`
       : 'Your date of joining will be confirmed separately.'
 
     doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(
       `We are pleased to offer you employment with ${company.name} in the position of ` +
-      `${data.designation}${placeBit}${reportsBit}. ${joiningBit}`,
+      `${data.designation}${placeBit}. ${joiningBit}`,
       { width: 515, align: 'justify' },
     )
     doc.moveDown(0.6)

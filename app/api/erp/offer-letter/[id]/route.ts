@@ -39,7 +39,6 @@ export async function GET(
     designation: offer.designation,
     department: offer.department,
     territory: offer.territory,
-    reportsToName: offer.reports_to_name,
     joiningDate: offer.joining_date,
     incentiveTerms: offer.incentive_terms,
     annualElDays: Number(offer.annual_el_days),
