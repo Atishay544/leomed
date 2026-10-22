@@ -219,7 +219,7 @@ create policy erp_field_order_items_select on public.erp_field_order_items
   using (
     exists (
       select 1 from public.erp_field_orders o
-       where o.id = order_id
+       where o.id = field_order_id
          and (
            o.mr_id = public.erp_current_user_id()
            or public.erp_can_view_all_field()
