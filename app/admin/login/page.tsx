@@ -5,7 +5,7 @@ import { getErpSession } from '@/lib/erp/auth'
 import AdminLoginForm from './AdminLoginForm'
 
 export const metadata = {
-  title: 'Admin Sign In — Leomed Pharma',
+  title: 'Admin Sign In',
   // A private admin portal has no business in search results.
   robots: { index: false, follow: false },
 }

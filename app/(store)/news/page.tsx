@@ -8,7 +8,7 @@ export const revalidate = 300
 export function generateMetadata() {
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
   return {
-    title: 'News & Articles | Leomed Pharma',
+    title: 'News & Articles',
     description: 'Latest news and articles from Leomed Pharma.',
     alternates: { canonical: `${BASE_URL}/news` },
   }

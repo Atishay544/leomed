@@ -13,7 +13,7 @@ export const revalidate = 30
 export async function generateMetadata() {
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
   return {
-    title: 'All Products | Leomed Pharma',
+    title: 'All Products',
     description: 'Browse our full range of OTC medicines, health devices, and wellness products. Fast pan-India delivery.',
     alternates: { canonical: `${BASE_URL}/products` },
     openGraph: {

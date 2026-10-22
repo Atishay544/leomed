@@ -6,7 +6,7 @@ import { homeRouteFor } from '@/lib/erp/permissions'
 import ErpLoginForm from './ErpLoginForm'
 
 export const metadata = {
-  title: 'Staff Sign In — Leomed Pharma',
+  title: 'Staff Sign In',
   // A private business portal has no business in search results.
   robots: { index: false, follow: false },
 }

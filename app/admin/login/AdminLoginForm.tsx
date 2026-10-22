@@ -52,7 +52,7 @@ export default function AdminLoginForm({ redirectTo }: { redirectTo?: string }) 
           required
           autoFocus
           aria-invalid={!!state.fieldErrors?.email}
-          className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900
+          className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-base text-gray-900
                      placeholder:text-gray-400 focus:border-gray-900 focus:ring-2
                      focus:ring-gray-900/20 focus:outline-none"
           placeholder="admin@leomedpharma.com"
@@ -73,7 +73,7 @@ export default function AdminLoginForm({ redirectTo }: { redirectTo?: string }) 
           autoComplete="current-password"
           required
           aria-invalid={!!state.fieldErrors?.password}
-          className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900
+          className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-base text-gray-900
                      placeholder:text-gray-400 focus:border-gray-900 focus:ring-2
                      focus:ring-gray-900/20 focus:outline-none"
           placeholder="••••••••"
