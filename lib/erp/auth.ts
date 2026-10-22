@@ -2,7 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { can, type Capability } from './permissions'
+import { can, canAny, type Capability } from './permissions'
 import { ErpAuthError } from './errors'
 import type { ErpSession } from './types'
 
@@ -85,6 +85,21 @@ export async function assertCapability(capability: Capability): Promise<ErpSessi
   const session = await getErpSession()
   if (!session) throw new ErpAuthError('Your session has expired. Please sign in again.')
   if (!can(session.role, capability)) {
+    throw new ErpAuthError('You do not have permission to do that.')
+  }
+  return session
+}
+
+/** Same as assertCapability(), but passes if the caller holds ANY of the
+ *  given capabilities — e.g. a leave-review action reachable by either
+ *  admin/HR's unrestricted leave.manage or a manager's narrower, DB-scoped
+ *  leave.manage_team. The real scoping still lives in the database (which
+ *  specific rows a SECURITY DEFINER function will actually touch); this is
+ *  only "can you attempt this action at all". */
+export async function assertAnyCapability(capabilities: readonly Capability[]): Promise<ErpSession> {
+  const session = await getErpSession()
+  if (!session) throw new ErpAuthError('Your session has expired. Please sign in again.')
+  if (!canAny(session.role, capabilities)) {
     throw new ErpAuthError('You do not have permission to do that.')
   }
   return session

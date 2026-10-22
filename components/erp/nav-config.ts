@@ -108,6 +108,7 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/hr/offers',         label: 'Offer Letters',    icon: FileText,           capability: 'offers.manage' },
       { href: '/erp/attendance/admin', label: 'Attendance',       icon: Fingerprint,        capability: 'attendance.read.all' },
       { href: '/erp/leave/admin',      label: 'Leave Requests',   icon: CalendarDays,       capability: 'leave.manage' },
+      { href: '/erp/leave/team',       label: "My Team's Leave",  icon: CalendarDays,       capability: 'leave.manage_team' },
       { href: '/erp/leave/balances',   label: 'Leave Balances',   icon: CalendarRange,      capability: 'leave.manage' },
       { href: '/erp/attendance/rules', label: 'Attendance Rules', icon: SlidersHorizontal,  capability: 'attendance.manage' },
       { href: '/erp/payroll',            label: 'Payroll',            icon: IndianRupee,      capability: 'payroll.manage' },

@@ -93,6 +93,10 @@ export const ErpUserSchema = z.object({
   // Drives Earned Leave's per-employee accrual schedule (see
   // erp_run_leave_accruals()) — not just a record-keeping field.
   joining_date:  optionalDate,
+  // Who sanctions this person's leave and sees their requests — a Manager
+  // with direct reports, or left blank to mean "admin/HR only" (the
+  // default before this existed at all). See leave.manage_team.
+  reports_to:    optionalUuid,
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
   // silently do nothing. The edit form always renders the checkbox.
@@ -113,6 +117,7 @@ export const ErpUserCreateSchema = z.object({
   designation:   optionalText(100),
   employee_code: optionalText(30),
   joining_date:  optionalDate,
+  reports_to:    optionalUuid,
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
   message: 'An MR code is required for medical representatives',

@@ -109,6 +109,13 @@ export const CAPABILITIES = [
   'leave.apply',
   'leave.read.own',
   'leave.manage',        // approve/reject/cancel/create on anyone's behalf
+  // A direct manager (erp_users.reports_to pointing at them) reviewing
+  // leave ONLY for the employees who report to them — never leave types,
+  // never company-wide balances, never anyone else's request. Deliberately
+  // separate from leave.manage: ADMIN/HR don't need this (leave.manage
+  // already covers everyone), and the real scoping lives in the database
+  // (erp_review_leave_request()), not just this capability gate.
+  'leave.manage_team',
 
   // HR: payroll & salary — held by ADMIN and HR only (see
   // ACCOUNTANT_CAPABILITIES' note on why billing access does not imply
@@ -194,7 +201,13 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'expenses.read.own',
 ]
 
-/** Reads the whole field force and the money, changes only order status. */
+/** Reads the whole field force and the money, changes only order status.
+ *  leave.manage_team is the one real exception to "read only" here — a
+ *  Manager with direct reports (erp_users.reports_to) sanctions THEIR
+ *  leave specifically, never leave types or anyone else's balance/request
+ *  (see leave.manage_team's own note above). Expense approval is
+ *  deliberately absent — expenses.manage stays admin-only for every
+ *  employee regardless of who manages them. */
 const MANAGER_CAPABILITIES: readonly Capability[] = [
   'masters.read',
   'visits.read.own',
@@ -212,6 +225,7 @@ const MANAGER_CAPABILITIES: readonly Capability[] = [
   'attendance.read.all',
   'leave.apply',
   'leave.read.own',
+  'leave.manage_team',
   'payroll.read.own',
   'expenses.submit',
   'expenses.read.own',

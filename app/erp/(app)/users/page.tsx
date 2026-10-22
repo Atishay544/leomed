@@ -1,6 +1,7 @@
 import { Users } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listErpUsers } from '@/lib/erp/data/users'
+import { listPotentialManagers } from '@/lib/erp/data/offers'
 import { PAGE_SIZE, parsePage } from '@/lib/erp/data/query'
 import { createErpUser, setErpUserActive, updateErpUser } from '@/lib/erp/actions/admin'
 import { ROLE_LABELS } from '@/lib/erp/permissions'
@@ -27,7 +28,7 @@ function buildRoleOptions(canAssignAdmin: boolean) {
   return canAssignAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter(r => r.value !== 'ADMIN')
 }
 
-function buildCreateFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
+function buildCreateFields(roleOptions: typeof ROLE_OPTIONS, managerOptions: { value: string; label: string }[]): FieldSpec[] {
   return [
     { name: 'name',      label: 'Full name', required: true, span: 2 },
     { name: 'email',     label: 'Email (used to sign in)', type: 'email', required: true, span: 2 },
@@ -43,13 +44,18 @@ function buildCreateFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
     { name: 'territory', label: 'Territory' },
     { name: 'department', label: 'Department', hint: 'e.g. Sales, Accounts, HR, Warehouse' },
     {
+      name: 'reports_to', label: 'Reports to', type: 'select', span: 2,
+      options: [{ value: '', label: '— None (admin/HR only) —' }, ...managerOptions],
+      hint: 'Their direct manager — gives that manager leave-approval and visibility for this person specifically. Leave blank if only admin/HR should handle their leave.',
+    },
+    {
       name: 'joining_date', label: 'Joining date', type: 'date',
       hint: 'Sets when Earned Leave starts accruing for this person — see Leave → Leave types.',
     },
   ]
 }
 
-function buildEditFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
+function buildEditFields(roleOptions: typeof ROLE_OPTIONS, managerOptions: { value: string; label: string }[]): FieldSpec[] {
   return [
     { name: 'name',      label: 'Full name', required: true, span: 2 },
     { name: 'email',     label: 'Email', type: 'email', required: true, span: 2,
@@ -61,6 +67,11 @@ function buildEditFields(roleOptions: typeof ROLE_OPTIONS): FieldSpec[] {
     { name: 'phone',     label: 'Phone', type: 'tel' },
     { name: 'territory', label: 'Territory' },
     { name: 'department', label: 'Department' },
+    {
+      name: 'reports_to', label: 'Reports to', type: 'select', span: 2,
+      options: [{ value: '', label: '— None (admin/HR only) —' }, ...managerOptions],
+      hint: 'Their direct manager — gives that manager leave-approval and visibility for this person specifically.',
+    },
     {
       name: 'joining_date', label: 'Joining date', type: 'date',
       hint: 'Sets when Earned Leave starts accruing for this person — see Leave → Leave types.',
@@ -88,13 +99,15 @@ export default async function StaffPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parsePage(params.page)
 
-  const { rows, total, pageCount } = await listErpUsers({
-    q: params.q, page, role: params.role, includeInactive: true,
-  })
+  const [{ rows, total, pageCount }, managers] = await Promise.all([
+    listErpUsers({ q: params.q, page, role: params.role, includeInactive: true }),
+    listPotentialManagers(),
+  ])
 
   const roleOptions = buildRoleOptions(isAdmin)
-  const CREATE_FIELDS = buildCreateFields(roleOptions)
-  const EDIT_FIELDS = buildEditFields(roleOptions)
+  const managerOptions = managers.map(m => ({ value: m.id, label: m.name }))
+  const CREATE_FIELDS = buildCreateFields(roleOptions, managerOptions)
+  const EDIT_FIELDS = buildEditFields(roleOptions, managerOptions)
 
   return (
     <>
@@ -158,6 +171,9 @@ export default async function StaffPage({ searchParams }: Props) {
                       <span className="font-medium text-gray-900">{user.name}</span>
                       {!user.active && (
                         <Badge className="ml-2 bg-gray-100 text-gray-500 ring-gray-400/20">Inactive</Badge>
+                      )}
+                      {user.reports_to_name && (
+                        <p className="mt-0.5 text-[11.5px] text-gray-400">Reports to {user.reports_to_name}</p>
                       )}
                     </Td>
                     <Td className="text-[12.5px] text-gray-600">{user.email}</Td>

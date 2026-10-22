@@ -93,7 +93,7 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
     const db = await erpDb()
     const { data: offer, error: offerError } = await db
       .from('erp_offer_letters')
-      .select('id, status, annual_el_days, annual_sl_days, annual_cl_days, daily_travel_allowance, daily_dearness_allowance')
+      .select('id, status, annual_el_days, annual_sl_days, annual_cl_days, daily_travel_allowance, daily_dearness_allowance, reports_to')
       .eq('id', offerId)
       .maybeSingle()
     if (offerError) return friendlyDbError(offerError, 'Could not load the offer letter.')
@@ -139,6 +139,9 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
         designation:   profile.designation ?? null,
         employee_code: profile.employee_code ?? null,
         joining_date:  profile.joining_date ?? null,
+        // From the offer's own "Reports to" — the convert form doesn't ask
+        // for this again since the offer already recorded it.
+        reports_to:    offer.reports_to ?? null,
       })
       .select('id')
       .single()
