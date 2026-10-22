@@ -228,7 +228,17 @@ export default function OfferLetterForm({
           </div>
           <div>
             <label className="mb-1 block text-[12px] font-medium text-gray-700">System role on joining *</label>
-            <select value={role} onChange={e => setRole(e.target.value as ErpRole)} disabled={locked} className={inputClass}>
+            <select
+              value={role}
+              onChange={e => {
+                const nextRole = e.target.value as ErpRole
+                setRole(nextRole)
+                // DA is area-based for an MR (Masters -> Areas) — a flat
+                // rate here would just be ignored by payroll, so clear it
+                // rather than leave a misleading number in a disabled field.
+                if (nextRole === 'MR') setDailyDearnessAllowance('')
+              }}
+              disabled={locked} className={inputClass}>
               {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -310,7 +320,12 @@ export default function OfferLetterForm({
           <div>
             <label className="mb-1 block text-[12px] font-medium text-gray-700">Dearness allowance (₹/day worked)</label>
             <input type="number" min="0" step="0.01" value={dailyDearnessAllowance} onChange={e => setDailyDearnessAllowance(e.target.value)}
-                   placeholder="e.g. 150" disabled={locked} className={inputClass} />
+                   placeholder="e.g. 150" disabled={locked || role === 'MR'} className={inputClass} />
+            {role === 'MR' && (
+              <p className="mt-1 text-[11px] text-amber-600">
+                DA is area-based for an MR instead — set rates under Masters → Areas once they&apos;re hired.
+              </p>
+            )}
           </div>
         </div>
         <p className="mt-1 text-[11px] text-gray-400">

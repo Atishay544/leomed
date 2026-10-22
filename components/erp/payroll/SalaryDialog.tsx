@@ -20,7 +20,7 @@ const inputClass =
 export default function SalaryDialog({
   existing, trigger,
 }: {
-  existing?: ErpEmployeeSalary & { employeeName?: string }
+  existing?: ErpEmployeeSalary & { employeeName?: string; employeeRole?: string }
   trigger?: React.ReactNode
 }) {
   const router = useRouter()
@@ -28,11 +28,19 @@ export default function SalaryDialog({
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<EmployeeOption[]>([])
   const [employee, setEmployee] = useState<EmployeeOption | null>(
-    existing ? { id: existing.employee_id, name: existing.employeeName ?? 'Employee', role: '', mr_code: null, employee_code: null, department: null } : null,
+    existing ? {
+      id: existing.employee_id, name: existing.employeeName ?? 'Employee',
+      role: existing.employeeRole ?? '', mr_code: null, employee_code: null, department: null,
+    } : null,
   )
   const [state, setState] = useState<ActionState>(IDLE)
   const [pending, startTransition] = useTransition()
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // DA is area-based for an MR (Masters -> Areas), never the flat rate below
+  // — erp_recalculate_payroll_record() ignores this field entirely for an
+  // MR, so leave it disabled rather than let it look live and do nothing.
+  const isMr = employee?.role === 'MR'
 
   useEffect(() => {
     if (!open || existing) return
@@ -159,8 +167,14 @@ export default function SalaryDialog({
                     Dearness allowance (₹/day worked)
                   </label>
                   <input id="daily_dearness_allowance" name="daily_dearness_allowance" type="number" onFocus={e => e.target.select()} min="0" step="0.01"
-                         defaultValue={existing?.daily_dearness_allowance ?? ''} placeholder="e.g. 150" className={inputClass} />
-                  <p className="mt-1 text-[11px] text-gray-400">Leave blank for no DA. Paid only for days actually present — never leave, holidays or week-offs.</p>
+                         defaultValue={existing?.daily_dearness_allowance ?? ''} placeholder="e.g. 150" disabled={isMr} className={inputClass} />
+                  {isMr ? (
+                    <p className="mt-1 text-[11px] text-amber-600">
+                      Ignored for an MR — DA is area-based instead (Masters → Areas), reviewed under Travel & Dearness Allowance.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-gray-400">Leave blank for no DA. Paid only for days actually present — never leave, holidays or week-offs.</p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="daily_travel_allowance" className="mb-1 block text-[12px] font-medium text-gray-700">

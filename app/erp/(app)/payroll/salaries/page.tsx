@@ -60,12 +60,16 @@ export default async function SalariesPage({ searchParams }: Props) {
                     <Td align="right" className="tabular-nums">{money(s.gross_salary)}</Td>
                     <Td align="right" className="tabular-nums">{money(s.allowances)}</Td>
                     <Td align="right" className="tabular-nums">{money(s.standard_deductions)}</Td>
-                    <Td align="right" className="tabular-nums">{s.daily_dearness_allowance != null ? money(s.daily_dearness_allowance) : '—'}</Td>
+                    <Td align="right" className="tabular-nums">
+                      {s.erp_users?.role === 'MR'
+                        ? <span className="text-[11.5px] text-gray-400">Area-based</span>
+                        : (s.daily_dearness_allowance != null ? money(s.daily_dearness_allowance) : '—')}
+                    </Td>
                     <Td align="right" className="tabular-nums">{s.daily_travel_allowance != null ? money(s.daily_travel_allowance) : '—'}</Td>
                     <Td>{formatDate(s.effective_from)}</Td>
                     <Td align="right">
                       <SalaryDialog
-                        existing={{ ...s, employeeName: s.erp_users?.name }}
+                        existing={{ ...s, employeeName: s.erp_users?.name, employeeRole: s.erp_users?.role }}
                         trigger={
                           <button type="button" className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[12px] font-medium text-gray-700 hover:bg-gray-50">
                             Edit
