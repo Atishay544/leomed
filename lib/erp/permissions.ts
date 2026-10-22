@@ -188,6 +188,17 @@ const MR_CAPABILITIES: readonly Capability[] = [
  * would break their actual job. Confirmed as the intended scope with the
  * business (2026-09-07); do not "fix" this without a product decision to
  * change it.
+ *
+ * attendance.read.all and leave.manage_team ARE included, the same two a
+ * Manager holds for the exact same reason — an accounting org chart (e.g.
+ * Accountant -> Senior Accountant -> Chief Accounting Officer -> Admin) is
+ * no less a real hierarchy than the sales one, and erp_users.reports_to
+ * doesn't care what role either end holds. Both are scoped by the same
+ * org-subtree mechanism as Manager's (erp_is_in_my_org(), 20261023000002/
+ * 3), not blanket — a Chief Accounting Officer sees and reviews leave for
+ * their own reporting line, never the whole company, and gets nothing
+ * field-force related (visits/orders/targets/reports.read.all stay absent,
+ * same reasoning as the paragraph above).
  */
 const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'masters.read',
@@ -200,8 +211,10 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'inventory.adjust',
   'attendance.checkin',
   'attendance.read.own',
+  'attendance.read.all',
   'leave.apply',
   'leave.read.own',
+  'leave.manage_team',
   'payroll.read.own',
   'expenses.submit',
   'expenses.read.own',

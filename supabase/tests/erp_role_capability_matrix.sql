@@ -29,11 +29,12 @@ declare
   v_auth_mr    uuid := gen_random_uuid();
   v_auth_mr2   uuid := gen_random_uuid();
   v_auth_acct  uuid := gen_random_uuid();
+  v_auth_acct2 uuid := gen_random_uuid();
   v_auth_mgr   uuid := gen_random_uuid();
   v_auth_view  uuid := gen_random_uuid();
   v_auth_hr1   uuid := gen_random_uuid();
   v_auth_hr2   uuid := gen_random_uuid();
-  v_admin uuid; v_mr uuid; v_mr2 uuid; v_acct uuid; v_mgr uuid; v_view uuid; v_hr1 uuid; v_hr2 uuid;
+  v_admin uuid; v_mr uuid; v_mr2 uuid; v_acct uuid; v_acct2 uuid; v_mgr uuid; v_view uuid; v_hr1 uuid; v_hr2 uuid;
   v_doctor uuid; v_chemist uuid; v_distributor uuid; v_supplier uuid;
   v_product uuid; v_batch uuid;
 begin
@@ -44,6 +45,7 @@ begin
     ('00000000-0000-0000-0000-000000000000', v_auth_mr,    'authenticated', 'authenticated', 'rtest-mr@leomed.test',    '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_mr2,   'authenticated', 'authenticated', 'rtest-mr2@leomed.test',  '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_acct,  'authenticated', 'authenticated', 'rtest-acct@leomed.test', '', now(), now(), now()),
+    ('00000000-0000-0000-0000-000000000000', v_auth_acct2, 'authenticated', 'authenticated', 'rtest-acct2@leomed.test', '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_mgr,   'authenticated', 'authenticated', 'rtest-mgr@leomed.test',  '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_view,  'authenticated', 'authenticated', 'rtest-view@leomed.test', '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_hr1,   'authenticated', 'authenticated', 'rtest-hr1@leomed.test',  '', now(), now(), now()),
@@ -60,6 +62,11 @@ begin
   values (v_auth_mr2,   'RTest MR 2',       'rtest-mr2@leomed.test',   'MR', 'RTMR02') returning id into v_mr2;
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_acct,  'RTest Accountant', 'rtest-acct@leomed.test',  'ACCOUNTANT') returning id into v_acct;
+  -- Deliberately NOT given reports_to below until after RTest Accountant
+  -- exists — the positive case for the accounting hierarchy leave tests in
+  -- section 3 (RTest Accountant 2 reports to RTest Accountant).
+  insert into public.erp_users (auth_user_id, name, email, role)
+  values (v_auth_acct2, 'RTest Accountant 2', 'rtest-acct2@leomed.test', 'ACCOUNTANT') returning id into v_acct2;
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_mgr,   'RTest Manager',    'rtest-mgr@leomed.test',   'MANAGER') returning id into v_mgr;
   insert into public.erp_users (auth_user_id, name, email, role)
@@ -73,7 +80,7 @@ begin
   -- erp_is_admin() sees an authenticated admin — which it won't outside a
   -- JWT context, regardless of this script running as the table owner (the
   -- trigger fires for every role; only auth.uid() matters). Set the claim
-  -- to RTest Admin for just these two writes, same as every as_user() call
+  -- to RTest Admin for just these writes, same as every as_user() call
   -- below does for its own statement.
   perform set_config('request.jwt.claims', json_build_object('sub', v_auth_admin, 'role', 'authenticated')::text, true);
 
@@ -85,6 +92,12 @@ begin
   -- approval hierarchy tests below (20261023000003: no more blanket "any HR
   -- approves anyone", only a direct report, same rule as Manager).
   update public.erp_users set reports_to = v_hr1 where id = v_hr2;
+
+  -- RTest Accountant 2 reports to RTest Accountant — the same hierarchy
+  -- mechanism extends to any two roles with a reports_to link between them,
+  -- accounting included (ACCOUNTANT now also holds leave.manage_team and
+  -- attendance.read.all, same as MANAGER).
+  update public.erp_users set reports_to = v_acct where id = v_acct2;
 
   perform set_config('request.jwt.claims', 'null', true);
 
@@ -126,9 +139,10 @@ begin
 
   insert into t_ids values
     ('auth_admin', v_auth_admin), ('auth_mr', v_auth_mr), ('auth_mr2', v_auth_mr2), ('auth_acct', v_auth_acct),
+    ('auth_acct2', v_auth_acct2),
     ('auth_mgr', v_auth_mgr), ('auth_view', v_auth_view),
     ('auth_hr1', v_auth_hr1), ('auth_hr2', v_auth_hr2),
-    ('admin', v_admin), ('mr', v_mr), ('mr2', v_mr2), ('acct', v_acct), ('mgr', v_mgr), ('view', v_view),
+    ('admin', v_admin), ('mr', v_mr), ('mr2', v_mr2), ('acct', v_acct), ('acct2', v_acct2), ('mgr', v_mgr), ('view', v_view),
     ('hr1', v_hr1), ('hr2', v_hr2),
     ('doctor', v_doctor), ('chemist', v_chemist), ('distributor', v_distributor), ('supplier', v_supplier),
     ('product', v_product), ('batch', v_batch);
@@ -253,11 +267,15 @@ begin
 end $$;
 
 -- ============================================================================
--- 3. ACCOUNTANT — billing and inventory, no field-force or HR administration
+-- 3. ACCOUNTANT — billing and inventory, no field-force or HR administration.
+--    Leave approval is hierarchical here too (reports_to), same mechanism
+--    as MANAGER and HR: RTest Accountant 2 reports to RTest Accountant
+--    (positive case); RTest MR reports to RTest Manager, not to RTest
+--    Accountant at all (negative case).
 -- ============================================================================
 
 do $$
-declare v_ok boolean; v_invoice uuid; v_leave uuid; v_leave_type uuid;
+declare v_ok boolean; v_invoice uuid; v_leave uuid; v_leave_type uuid; v_acct_leave uuid;
 begin
   -- Can raise a purchase invoice. invoice_number is required by this RPC
   -- (unlike sales invoices, it does not auto-generate one) — verified
@@ -301,8 +319,21 @@ begin
     'update public.erp_users set role = ''ADMIN'' where id = %L', pg_temp.id_of('acct')));
   assert not v_ok, 'ACCOUNTANT must not be able to promote themselves';
 
-  -- Cannot approve someone else's leave (no leave.manage).
+  -- Can approve a direct report's leave (RTest Accountant 2 reports to
+  -- RTest Accountant) — but not an unrelated employee's.
   select id into v_leave_type from public.erp_leave_types limit 1;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.id_of('auth_acct2'), 'role', 'authenticated')::text, true);
+  insert into public.erp_leave_requests (employee_id, leave_type_id, from_date, to_date, reason)
+  values (pg_temp.id_of('acct2'), v_leave_type, current_date + 125, current_date + 125, 'RTest Accountant 2 leave')
+  returning id into v_acct_leave;
+  reset role;
+
+  v_ok := pg_temp.as_user(pg_temp.id_of('auth_acct'), format(
+    'select public.erp_review_leave_request(%L, ''APPROVED'', ''ok'')', v_acct_leave));
+  assert v_ok, 'ACCOUNTANT must be able to approve a direct report''s leave';
+
   set local role authenticated;
   perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.id_of('auth_mr'), 'role', 'authenticated')::text, true);
   insert into public.erp_leave_requests (employee_id, leave_type_id, from_date, to_date, reason)
@@ -312,7 +343,7 @@ begin
 
   v_ok := pg_temp.as_user(pg_temp.id_of('auth_acct'), format(
     'select public.erp_review_leave_request(%L, ''APPROVED'', ''trying'')', v_leave));
-  assert not v_ok, 'ACCOUNTANT must not be able to approve another employee''s leave';
+  assert not v_ok, 'ACCOUNTANT must not be able to approve an employee outside their own reporting chain';
 
   -- Sees only the rupee figure from erp_explain_price, never the margin.
   set local role authenticated;
