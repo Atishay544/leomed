@@ -750,6 +750,26 @@ export interface ErpMrTravelAllowance {
   updated_at: string
 }
 
+/** An ad-hoc trip, any employee — admin's direct decision ("sending this
+ *  person to Delhi for 3 days, ₹500/day"), not an inference, so unlike
+ *  ErpMrTravelAllowance there is no review step; it's a third, additive
+ *  source feeding the same travel_allowance payslip line. Only days inside
+ *  [from_date, to_date] the employee was actually present (or half-day, at
+ *  half rate) earn it — see erp_recalculate_payroll_record(). Flights,
+ *  hotels etc. are NOT this — those are a company expense (Expenses ->
+ *  Record company expense), tracked entirely separately. */
+export interface ErpEmployeeTravelDay {
+  id: string
+  employee_id: string
+  from_date: string
+  to_date: string
+  daily_amount: number
+  purpose: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export const EXPENSE_CATEGORIES = [
   'TRAVEL', 'FUEL', 'OFFICE', 'MARKETING', 'PROMOTIONAL', 'DOCTOR_MEETING',
   'SAMPLES', 'EVENTS', 'LOGISTICS',

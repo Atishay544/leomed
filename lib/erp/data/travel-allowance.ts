@@ -1,6 +1,6 @@
 import 'server-only'
 import { erpDb, rangeFor, toPage, type PageResult } from './query'
-import type { DetectedTravelArea, ErpMrTravelAllowance, TravelAllowanceStatus } from '../types'
+import type { DetectedTravelArea, ErpEmployeeTravelDay, ErpMrTravelAllowance, TravelAllowanceStatus } from '../types'
 
 /**
  * MR travel allowance — admin/HR's review queue for the daily auto-computed
@@ -83,4 +83,35 @@ export async function listMyTravelAllowance(mrId: string, page = 1): Promise<Pag
   if (error) console.error('[erp] listMyTravelAllowance failed', error.message)
   const rows = (data ?? []).map(r => ({ ...r, detected_areas: (r.detected_areas ?? []) as DetectedTravelArea[] }))
   return toPage<ErpMrTravelAllowance>(rows as ErpMrTravelAllowance[], count, page)
+}
+
+export interface TravelDayRow extends ErpEmployeeTravelDay {
+  employee_name: string
+  employee_code: string | null
+}
+
+/** Ad-hoc trips, newest first — admin/HR's "who's travelling" list on the
+ *  same screen as the per-area MR review queue. */
+export async function listTravelDays(page = 1): Promise<PageResult<TravelDayRow>> {
+  const db = await erpDb()
+  const [from, to] = rangeFor(page)
+
+  const { data, count, error } = await db
+    .from('erp_employee_travel_days')
+    .select('*, erp_users!erp_employee_travel_days_employee_id_fkey(name, employee_code)', { count: 'exact' })
+    .order('from_date', { ascending: false })
+    .range(from, to)
+  if (error) console.error('[erp] listTravelDays failed', error.message)
+
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const { erp_users, ...rest } = row as Record<string, unknown> & {
+      erp_users: { name: string; employee_code: string | null } | null
+    }
+    return {
+      ...(rest as unknown as ErpEmployeeTravelDay),
+      employee_name: erp_users?.name ?? '—',
+      employee_code: erp_users?.employee_code ?? null,
+    }
+  })
+  return toPage<TravelDayRow>(rows, count, page)
 }

@@ -3,8 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { assertCapability } from '../auth'
 import { erpDb } from '../data/query'
-import { TravelAllowanceReviewSchema } from '../schemas'
+import { TravelAllowanceReviewSchema, TravelDaySchema } from '../schemas'
 import { friendlyDbError, invalid, runAction, type ActionState } from './shared'
+
+function formObject(formData: FormData): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === 'string') out[key] = value
+  }
+  return out
+}
 
 /**
  * Travel allowance review — admin/HR only (payroll.manage, the same
@@ -101,5 +109,45 @@ export async function bulkApproveTravelAllowance(ids: string[]): Promise<ActionS
 
     revalidatePath('/erp/payroll/travel-allowance')
     return { ok: true, data: { approved } }
+  })
+}
+
+/**
+ * Ad-hoc trip days — admin/HR assigns an employee a daily travel allowance
+ * for a specific date range directly (e.g. "sending them to Delhi for 3
+ * days"). A decision, not an inference, so unlike the per-area MR rows
+ * above there's no review step — it's live for payroll the moment it's
+ * saved (erp_recalculate_payroll_record only counts days within the range
+ * the employee was actually present).
+ */
+export async function saveTravelDay(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return runAction('Could not save the travel days.', async () => {
+    const session = await assertCapability('payroll.manage')
+
+    const parsed = TravelDaySchema.safeParse(formObject(formData))
+    if (!parsed.success) return invalid(parsed.error)
+
+    const db = await erpDb()
+    const { error } = await db.from('erp_employee_travel_days').insert({
+      ...parsed.data,
+      created_by: session.id,
+    })
+    if (error) return friendlyDbError(error, 'Could not save the travel days.')
+
+    revalidatePath('/erp/payroll/travel-allowance')
+    return { ok: true }
+  })
+}
+
+export async function deleteTravelDay(id: string): Promise<ActionState> {
+  return runAction('Could not remove the travel days.', async () => {
+    await assertCapability('payroll.manage')
+
+    const db = await erpDb()
+    const { error } = await db.from('erp_employee_travel_days').delete().eq('id', id)
+    if (error) return friendlyDbError(error, 'Could not remove the travel days.')
+
+    revalidatePath('/erp/payroll/travel-allowance')
+    return { ok: true }
   })
 }

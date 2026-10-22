@@ -251,6 +251,19 @@ export const TravelAllowanceReviewSchema = z.object({
   notes:              optionalText(500),
 })
 
+/** Admin's direct assignment of an ad-hoc trip — any employee, not just an
+ *  MR, and no review step (it's a decision, not an inference). */
+export const TravelDaySchema = z.object({
+  employee_id:  uuid,
+  from_date:    dateString,
+  to_date:      dateString,
+  daily_amount: z.coerce.number().positive('Enter an amount above zero').max(99_999),
+  purpose:      optionalText(200),
+}).refine(v => v.to_date >= v.from_date, {
+  message: 'The end date must be on or after the start date',
+  path: ['to_date'],
+})
+
 export const ReassignMrSchema = z.object({
   from_mr_id: uuid,
   to_mr_id:   uuid,
@@ -884,5 +897,6 @@ export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>
 export type TerritoryInput            = z.infer<typeof TerritorySchema>
 export type AreaInput                 = z.infer<typeof AreaSchema>
 export type TravelAllowanceReviewInput = z.infer<typeof TravelAllowanceReviewSchema>
+export type TravelDayInput             = z.infer<typeof TravelDaySchema>
 export type ReassignMrInput           = z.infer<typeof ReassignMrSchema>
 export type ReassignDistributorInput  = z.infer<typeof ReassignDistributorSchema>
