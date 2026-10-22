@@ -17,8 +17,6 @@ import type { OfferDetail } from '@/lib/erp/data/offers'
  * plain <form> can't express.
  */
 
-interface ManagerOption { id: string; name: string }
-
 interface ComponentRow {
   uid: string
   component_name: string
@@ -57,10 +55,9 @@ function emptyRow(): ComponentRow {
 }
 
 export default function OfferLetterForm({
-  initial, managers, elAccrual,
+  initial, elAccrual,
 }: {
   initial?: OfferDetail
-  managers: ManagerOption[]
   /** Set when Earned Leave currently has automatic accrual configured
    *  (Leave -> Leave types) — in that case the EL entitlement isn't a fixed
    *  annual number anymore, so the field below is disabled/zeroed and the
@@ -81,7 +78,6 @@ export default function OfferLetterForm({
   const [role, setRole]                         = useState<ErpRole>(initial?.role ?? 'MR')
   const [department, setDepartment]             = useState(initial?.department ?? '')
   const [territory, setTerritory]               = useState(initial?.territory ?? '')
-  const [reportsTo, setReportsTo]               = useState(initial?.reports_to ?? '')
   const [offerDate, setOfferDate]               = useState(initial?.offer_date ?? new Date().toISOString().slice(0, 10))
   const [joiningDate, setJoiningDate]           = useState(initial?.joining_date ?? '')
   const [incentiveTerms, setIncentiveTerms]     = useState(initial?.incentive_terms ?? '')
@@ -143,7 +139,6 @@ export default function OfferLetterForm({
       role,
       department: department.trim() || undefined,
       territory: territory.trim() || undefined,
-      reports_to: reportsTo || undefined,
       offer_date: offerDate,
       joining_date: joiningDate || undefined,
       incentive_terms: incentiveTerms.trim() || undefined,
@@ -240,13 +235,6 @@ export default function OfferLetterForm({
               }}
               disabled={locked} className={inputClass}>
               {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-[12px] font-medium text-gray-700">Reports to</label>
-            <select value={reportsTo} onChange={e => setReportsTo(e.target.value)} disabled={locked} className={inputClass}>
-              <option value="">— None —</option>
-              {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
           <div>

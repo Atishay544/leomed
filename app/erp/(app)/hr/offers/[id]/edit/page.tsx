@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireCapability } from '@/lib/erp/auth'
-import { getOfferLetter, listPotentialManagers } from '@/lib/erp/data/offers'
+import { getOfferLetter } from '@/lib/erp/data/offers'
 import { listLeaveTypes } from '@/lib/erp/data/leave'
 import { PageHeader } from '@/components/erp/ui'
 import OfferLetterForm from '@/components/erp/hr/OfferLetterForm'
@@ -11,9 +11,8 @@ export default async function EditOfferLetterPage({ params }: { params: Promise<
   await requireCapability('offers.manage')
   const { id } = await params
 
-  const [offer, managers, leaveTypes] = await Promise.all([
+  const [offer, leaveTypes] = await Promise.all([
     getOfferLetter(id),
-    listPotentialManagers(),
     listLeaveTypes(false),
   ])
   if (!offer) notFound()
@@ -27,7 +26,7 @@ export default async function EditOfferLetterPage({ params }: { params: Promise<
     <>
       <PageHeader title={`Edit Offer — ${offer.candidate_name}`} description={offer.offer_number} />
       <div className="max-w-3xl">
-        <OfferLetterForm initial={offer} managers={managers} elAccrual={elAccrual} />
+        <OfferLetterForm initial={offer} elAccrual={elAccrual} />
       </div>
     </>
   )

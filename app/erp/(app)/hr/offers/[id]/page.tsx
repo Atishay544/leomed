@@ -261,7 +261,6 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
               <div className="flex justify-between"><dt className="text-gray-500">System role</dt><dd className="text-gray-900">{ROLE_LABELS[offer.role]}</dd></div>
               {offer.department && <div className="flex justify-between"><dt className="text-gray-500">Department</dt><dd className="text-gray-900">{offer.department}</dd></div>}
               {offer.territory && <div className="flex justify-between"><dt className="text-gray-500">Territory / HQ</dt><dd className="text-gray-900">{offer.territory}</dd></div>}
-              {offer.reports_to_name && <div className="flex justify-between"><dt className="text-gray-500">Reports to</dt><dd className="text-gray-900">{offer.reports_to_name}</dd></div>}
               <div className="flex justify-between"><dt className="text-gray-500">Offer date</dt><dd className="text-gray-900">{formatDate(offer.offer_date)}</dd></div>
               <div className="flex justify-between"><dt className="text-gray-500">Joining date</dt><dd className="text-gray-900">{offer.joining_date ? formatDate(offer.joining_date) : '—'}</dd></div>
             </dl>

@@ -143,7 +143,6 @@ export const OfferLetterSchema = z.object({
   role:              z.enum(ERP_ROLES),
   department:        optionalText(100),
   territory:         optionalText(100),
-  reports_to:        optionalUuid,
   offer_date:        dateString,
   joining_date:      optionalDate,
   incentive_terms:   optionalText(2000),

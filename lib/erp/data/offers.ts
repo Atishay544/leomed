@@ -10,9 +10,7 @@ export interface OfferListParams {
   status?: string
 }
 
-export interface OfferListRow extends OfferLetter {
-  reports_to_name: string | null
-}
+export type OfferListRow = OfferLetter
 
 /** Offer letters, newest first — admin/HR's candidate pipeline. */
 export async function listOfferLetters(params: OfferListParams = {}): Promise<PageResult<OfferListRow>> {
@@ -22,7 +20,7 @@ export async function listOfferLetters(params: OfferListParams = {}): Promise<Pa
 
   let query = db
     .from('erp_offer_letters')
-    .select('*, erp_users!erp_offer_letters_reports_to_fkey(name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to)
 
@@ -37,11 +35,7 @@ export async function listOfferLetters(params: OfferListParams = {}): Promise<Pa
   }
 
   const { data, count } = await query
-  const rows = (data ?? []).map((row: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-    const { erp_users, ...rest } = row
-    return { ...rest, reports_to_name: erp_users?.name ?? null } as OfferListRow
-  })
-  return toPage<OfferListRow>(rows, count, page)
+  return toPage<OfferListRow>((data ?? []) as OfferListRow[], count, page)
 }
 
 /** Every active employee, for the "Reports To" dropdown on both the offer
@@ -65,7 +59,6 @@ export async function listPotentialManagers(): Promise<{ id: string; name: strin
 
 export interface OfferDetail extends OfferLetter {
   components: OfferLetterComponent[]
-  reports_to_name: string | null
   converted_employee_name: string | null
 }
 
@@ -76,7 +69,6 @@ export async function getOfferLetter(id: string): Promise<OfferDetail | null> {
     .select(
       `*,
        erp_offer_letter_components(*),
-       reports_to_user:erp_users!erp_offer_letters_reports_to_fkey(name),
        converted_user:erp_users!erp_offer_letters_converted_employee_id_fkey(name)`,
     )
     .eq('id', id)
@@ -84,13 +76,12 @@ export async function getOfferLetter(id: string): Promise<OfferDetail | null> {
 
   if (!data) return null
   const row = data as any // eslint-disable-line @typescript-eslint/no-explicit-any
-  const { erp_offer_letter_components, reports_to_user, converted_user, ...rest } = row
+  const { erp_offer_letter_components, converted_user, ...rest } = row
   return {
     ...rest,
     components: (erp_offer_letter_components ?? []).sort(
       (a: OfferLetterComponent, b: OfferLetterComponent) => a.sort_order - b.sort_order,
     ),
-    reports_to_name: reports_to_user?.name ?? null,
     converted_employee_name: converted_user?.name ?? null,
   } as OfferDetail
 }

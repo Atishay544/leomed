@@ -68,7 +68,6 @@ export default async function OfferLettersPage({ searchParams }: Props) {
                   <Th>Offer No</Th>
                   <Th>Candidate</Th>
                   <Th>Designation</Th>
-                  <Th>Reports To</Th>
                   <Th>Offer Date</Th>
                   <Th>Joining Date</Th>
                   <Th>Status</Th>
@@ -91,7 +90,6 @@ export default async function OfferLettersPage({ searchParams }: Props) {
                       {o.designation}
                       <p className="mt-0.5 text-[11.5px] text-gray-400">{ROLE_LABELS[o.role]}</p>
                     </Td>
-                    <Td className="text-[12.5px] text-gray-600">{o.reports_to_name ?? '—'}</Td>
                     <Td className="text-[12px] text-gray-500">{formatDate(o.offer_date)}</Td>
                     <Td className="text-[12px] text-gray-500">{o.joining_date ? formatDate(o.joining_date) : '—'}</Td>
                     <Td>
