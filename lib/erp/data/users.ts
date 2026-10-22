@@ -33,7 +33,8 @@ export async function listErpUsers(params: {
   const term = safeSearch(params.q)
   if (term) query = query.or(ilikeAny(['name', 'email', 'mr_code', 'territory'], term))
 
-  const { data, count } = await query
+  const { data, error, count } = await query
+  if (error) console.error('[erp] listErpUsers failed', error.message)
   const rows = (data ?? []).map((row: Record<string, unknown>) => {
     const { reports_to_user, ...rest } = row as Record<string, unknown> & { reports_to_user: { name: string } | null }
     return { ...(rest as unknown as ErpUser), reports_to_name: reports_to_user?.name ?? null }
