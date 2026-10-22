@@ -7,7 +7,17 @@ export interface StaffListRow extends ErpUser {
 }
 
 /** RLS decides visibility here: an MR reading this table sees only their own
- *  row, an admin sees everyone. No extra filtering is needed in the query. */
+ *  row, an admin sees everyone. No extra filtering is needed in the query.
+ *
+ *  Deliberately two queries, not one with an embedded
+ *  erp_users!erp_users_reports_to_fkey(name) self-join: erp_users embedding
+ *  itself through a column that's also subject to erp_users' own RLS policy
+ *  made PostgREST treat the embed as effectively required, so any row whose
+ *  reports_to didn't resolve under RLS — including a top-level admin with no
+ *  manager at all — silently vanished from the result instead of just
+ *  getting a null reports_to_name. Found when an admin with exactly one
+ *  erp_users row (reports_to null) saw zero rows on the Staff page despite
+ *  the row existing and RLS allowing it under a direct, non-embedded query. */
 export async function listErpUsers(params: {
   q?: string
   page?: number
@@ -18,12 +28,9 @@ export async function listErpUsers(params: {
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
 
-  // erp_users has more than one FK to itself (reports_to, created_by,
-  // updated_by) — an unqualified erp_users(...) embed is ambiguous, same
-  // fix as Territories/Areas/Offer letters needed.
   let query = db
     .from('erp_users')
-    .select('*, reports_to_user:erp_users!erp_users_reports_to_fkey(name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('name', { ascending: true })
     .range(from, to)
 
@@ -35,10 +42,23 @@ export async function listErpUsers(params: {
 
   const { data, error, count } = await query
   if (error) console.error('[erp] listErpUsers failed', error.message)
-  const rows = (data ?? []).map((row: Record<string, unknown>) => {
-    const { reports_to_user, ...rest } = row as Record<string, unknown> & { reports_to_user: { name: string } | null }
-    return { ...(rest as unknown as ErpUser), reports_to_name: reports_to_user?.name ?? null }
-  })
+  const erpUsers = (data ?? []) as unknown as ErpUser[]
+
+  const managerIds = [...new Set(erpUsers.map(u => u.reports_to).filter((id): id is string => !!id))]
+  const managerNames = new Map<string, string>()
+  if (managerIds.length > 0) {
+    const { data: managers, error: managerError } = await db
+      .from('erp_users')
+      .select('id, name')
+      .in('id', managerIds)
+    if (managerError) console.error('[erp] listErpUsers manager lookup failed', managerError.message)
+    for (const m of (managers ?? []) as { id: string; name: string }[]) managerNames.set(m.id, m.name)
+  }
+
+  const rows = erpUsers.map(u => ({
+    ...u,
+    reports_to_name: u.reports_to ? (managerNames.get(u.reports_to) ?? null) : null,
+  }))
   return toPage<StaffListRow>(rows, count, page)
 }
 
