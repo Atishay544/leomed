@@ -44,15 +44,21 @@ export async function listOfferLetters(params: OfferListParams = {}): Promise<Pa
   return toPage<OfferListRow>(rows, count, page)
 }
 
-/** Active admins/managers, for the offer form's "Reports To" dropdown — a
- *  short list (unlike the full staff directory), so unpaginated is fine. */
+/** Every active employee, for the "Reports To" dropdown on both the offer
+ *  form and the Staff page — unpaginated, same as before, but no longer
+ *  role-filtered. erp_users.reports_to itself carries no role restriction
+ *  on either end (an HR can report to another HR, same as a sales
+ *  hierarchy's MR -> Manager chain — both are exercised in
+ *  erp_role_capability_matrix.sql), and admin/HR are the only two roles who
+ *  can ever set this field at all (erp_guard_user_self_update(), 20260918
+ *  000006_hr_role.sql) — so there is no role this list needs to hide from
+ *  them. */
 export async function listPotentialManagers(): Promise<{ id: string; name: string }[]> {
   const db = await erpDb()
   const { data } = await db
     .from('erp_users')
     .select('id, name')
     .eq('active', true)
-    .in('role', ['ADMIN', 'MANAGER'])
     .order('name', { ascending: true })
   return (data ?? []) as { id: string; name: string }[]
 }
