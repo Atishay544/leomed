@@ -69,6 +69,14 @@ begin
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_hr2,   'RTest HR 2',       'rtest-hr2@leomed.test',   'HR') returning id into v_hr2;
 
+  -- erp_guard_user_self_update() blocks any reports_to change unless
+  -- erp_is_admin() sees an authenticated admin — which it won't outside a
+  -- JWT context, regardless of this script running as the table owner (the
+  -- trigger fires for every role; only auth.uid() matters). Set the claim
+  -- to RTest Admin for just these two writes, same as every as_user() call
+  -- below does for its own statement.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_auth_admin, 'role', 'authenticated')::text, true);
+
   -- RTest MR reports to RTest Manager — the positive case for the org-chart
   -- visibility tests below (erp_is_in_my_org must return true for this one).
   update public.erp_users set reports_to = v_mgr where id = v_mr;
@@ -77,6 +85,8 @@ begin
   -- approval hierarchy tests below (20261023000003: no more blanket "any HR
   -- approves anyone", only a direct report, same rule as Manager).
   update public.erp_users set reports_to = v_hr1 where id = v_hr2;
+
+  perform set_config('request.jwt.claims', 'null', true);
 
   insert into public.erp_doctors (doctor_name, city, created_by)
   values ('Dr. RTest', 'Indore', v_admin) returning id into v_doctor;
