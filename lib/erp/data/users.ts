@@ -2,6 +2,10 @@ import 'server-only'
 import { erpDb, rangeFor, safeSearch, ilikeAny, toPage, type PageResult } from './query'
 import type { ErpUser } from '../types'
 
+export interface StaffListRow extends ErpUser {
+  reports_to_name: string | null
+}
+
 /** RLS decides visibility here: an MR reading this table sees only their own
  *  row, an admin sees everyone. No extra filtering is needed in the query. */
 export async function listErpUsers(params: {
@@ -9,14 +13,17 @@ export async function listErpUsers(params: {
   page?: number
   role?: string
   includeInactive?: boolean
-} = {}): Promise<PageResult<ErpUser>> {
+} = {}): Promise<PageResult<StaffListRow>> {
   const db = await erpDb()
   const page = params.page ?? 1
   const [from, to] = rangeFor(page)
 
+  // erp_users has more than one FK to itself (reports_to, created_by,
+  // updated_by) — an unqualified erp_users(...) embed is ambiguous, same
+  // fix as Territories/Areas/Offer letters needed.
   let query = db
     .from('erp_users')
-    .select('*', { count: 'exact' })
+    .select('*, reports_to_user:erp_users!erp_users_reports_to_fkey(name)', { count: 'exact' })
     .order('name', { ascending: true })
     .range(from, to)
 
@@ -27,7 +34,11 @@ export async function listErpUsers(params: {
   if (term) query = query.or(ilikeAny(['name', 'email', 'mr_code', 'territory'], term))
 
   const { data, count } = await query
-  return toPage<ErpUser>(data as ErpUser[] | null, count, page)
+  const rows = (data ?? []).map((row: Record<string, unknown>) => {
+    const { reports_to_user, ...rest } = row as Record<string, unknown> & { reports_to_user: { name: string } | null }
+    return { ...(rest as unknown as ErpUser), reports_to_name: reports_to_user?.name ?? null }
+  })
+  return toPage<StaffListRow>(rows, count, page)
 }
 
 /** One employee's own directory row — RLS returns null if the caller may not

@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props) {
   if (!article) return { title: 'Article Not Found' }
   const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.leomedpharma.in'
   return {
-    title: `${article.title} | Leomed Pharma`,
+    title: article.title,
     description: article.excerpt ?? article.title,
     alternates: { canonical: `${BASE_URL}/news/${slug}` },
     ...(article.cover_image_url && {

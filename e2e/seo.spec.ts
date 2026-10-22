@@ -3,12 +3,12 @@ import { test, expect } from '@playwright/test'
 test.describe('SEO & metadata', () => {
   test('homepage has correct meta title', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveTitle('My Store')
+    await expect(page).toHaveTitle('Leomed Pharma — OTC Medicines & Wellness Online India')
   })
 
   test('products page has correct meta title', async ({ page }) => {
     await page.goto('/products')
-    await expect(page).toHaveTitle(/All Products.*My Store/)
+    await expect(page).toHaveTitle('All Products | Leomed Pharma')
   })
 
   test('product detail page has product name in title', async ({ page }) => {
@@ -18,8 +18,8 @@ test.describe('SEO & metadata', () => {
     if (href) {
       await page.goto(href)
       const title = await page.title()
-      // Title should NOT be "My Store" alone — product name should be in it
-      expect(title).toMatch(/\|.*My Store|My Store.*\|/)
+      // Title should NOT be the site name alone — product name should be in it
+      expect(title).toMatch(/\|.*Leomed Pharma|Leomed Pharma.*\|/)
     }
   })
 
@@ -34,7 +34,9 @@ test.describe('SEO & metadata', () => {
     const res = await page.goto('/robots.txt')
     expect(res?.status()).toBe(200)
     const content = await page.content()
-    expect(content).toContain('User-agent')
+    // Directive names are case-insensitive to real crawlers (and this repo's
+    // own robots.ts emits "User-Agent") — match either casing.
+    expect(content).toMatch(/user-agent/i)
   })
 
   test('admin routes are blocked in robots.txt', async ({ page }) => {

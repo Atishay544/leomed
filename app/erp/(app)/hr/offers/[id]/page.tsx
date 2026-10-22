@@ -261,7 +261,6 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
               <div className="flex justify-between"><dt className="text-gray-500">System role</dt><dd className="text-gray-900">{ROLE_LABELS[offer.role]}</dd></div>
               {offer.department && <div className="flex justify-between"><dt className="text-gray-500">Department</dt><dd className="text-gray-900">{offer.department}</dd></div>}
               {offer.territory && <div className="flex justify-between"><dt className="text-gray-500">Territory / HQ</dt><dd className="text-gray-900">{offer.territory}</dd></div>}
-              {offer.reports_to_name && <div className="flex justify-between"><dt className="text-gray-500">Reports to</dt><dd className="text-gray-900">{offer.reports_to_name}</dd></div>}
               <div className="flex justify-between"><dt className="text-gray-500">Offer date</dt><dd className="text-gray-900">{formatDate(offer.offer_date)}</dd></div>
               <div className="flex justify-between"><dt className="text-gray-500">Joining date</dt><dd className="text-gray-900">{offer.joining_date ? formatDate(offer.joining_date) : '—'}</dd></div>
             </dl>
@@ -280,6 +279,21 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
                 <div className="flex justify-between"><dt className="text-gray-500">Sick Leave</dt><dd className="text-gray-900">{offer.annual_sl_days} days</dd></div>
                 <div className="flex justify-between"><dt className="text-gray-500">Casual Leave</dt><dd className="text-gray-900">{offer.annual_cl_days} days</dd></div>
               </dl>
+            </Card>
+          )}
+
+          {(offer.daily_travel_allowance != null || offer.daily_dearness_allowance != null) && (
+            <Card>
+              <h2 className="mb-3 text-[13px] font-semibold text-gray-800">Travel &amp; Dearness Allowance</h2>
+              <dl className="space-y-2 text-[12.5px]">
+                {offer.daily_travel_allowance != null && (
+                  <div className="flex justify-between"><dt className="text-gray-500">Travel allowance</dt><dd className="text-gray-900">{money(offer.daily_travel_allowance)} / day</dd></div>
+                )}
+                {offer.daily_dearness_allowance != null && (
+                  <div className="flex justify-between"><dt className="text-gray-500">Dearness allowance</dt><dd className="text-gray-900">{money(offer.daily_dearness_allowance)} / day</dd></div>
+                )}
+              </dl>
+              <p className="mt-2 text-[11px] text-gray-400">Seeded onto the employee&apos;s salary structure on conversion — not part of Annexure I.</p>
             </Card>
           )}
         </div>

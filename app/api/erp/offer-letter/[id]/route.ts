@@ -39,7 +39,6 @@ export async function GET(
     designation: offer.designation,
     department: offer.department,
     territory: offer.territory,
-    reportsToName: offer.reports_to_name,
     joiningDate: offer.joining_date,
     incentiveTerms: offer.incentive_terms,
     annualElDays: Number(offer.annual_el_days),
@@ -47,6 +46,8 @@ export async function GET(
     annualClDays: Number(offer.annual_cl_days),
     elAccrualDays,
     elAccrualIntervalMonths,
+    dailyTravelAllowance: offer.daily_travel_allowance,
+    dailyDearnessAllowance: offer.daily_dearness_allowance,
     remarks: offer.remarks,
     components: offer.components.map(c => ({
       name: c.component_name,

@@ -216,6 +216,10 @@ export interface Area {
    *  null means "not a chargeable trip" (typical for a home-base city
    *  locality). See erp_compute_daily_travel_allowance(). */
   daily_travel_allowance: number | null
+  /** Same idea, for Dearness Allowance — a DA rate that varies by area
+   *  rather than being flat per MR. Additive to (not a replacement for) an
+   *  employee's flat erp_employee_salary.daily_dearness_allowance. */
+  daily_dearness_allowance: number | null
   active: boolean
   created_at: string
   updated_at: string
@@ -528,6 +532,12 @@ export interface OfferLetter {
   annual_el_days: number
   annual_sl_days: number
   annual_cl_days: number
+  /** Flat per-day TA/DA promised in writing — seeded onto the new hire's
+   *  erp_employee_salary the moment this offer is converted, same as the
+   *  leave fields above. Null means none, not ₹0. See
+   *  20261022000001_universal_ta_da_and_offer_allowances.sql. */
+  daily_travel_allowance: number | null
+  daily_dearness_allowance: number | null
   status: OfferStatus
   /** Bumped every time an existing offer is saved again — editing a Sent/
    *  Accepted/Rejected/Withdrawn offer also resets status back to DRAFT,
@@ -707,28 +717,55 @@ export type TravelAllowanceStatus = (typeof TRAVEL_ALLOWANCE_STATUSES)[number]
 
 /** One area an MR's day was auto-detected as covering — a snapshot inside
  *  ErpMrTravelAllowance.detected_areas, not its own table (see the
- *  migration note on why). */
+ *  migration note on why). `rate` is the TA rate; `da_rate` the DA rate —
+ *  either can be null/absent if that area only has the other configured
+ *  (or, for a row computed before DA existed, absent entirely). */
 export interface DetectedTravelArea {
   area_id: string
   area_name: string
-  rate: number
+  rate: number | null
+  da_rate?: number | null
 }
 
-/** One day's travel allowance for one MR, auto-computed from that day's
- *  doctor/chemist visits and awaiting (or having received) HR's review.
- *  Only ever reaches payroll once status is APPROVED — see
- *  erp_recalculate_payroll_record(). */
+/** One day's travel + dearness allowance for one MR, auto-computed from
+ *  that day's doctor/chemist visits and awaiting (or having received) HR's
+ *  review — a single decision covers both figures. Only ever reaches
+ *  payroll once status is APPROVED — see erp_recalculate_payroll_record(),
+ *  which sums these in as one of two sources for each allowance (the other
+ *  being the flat per-employee rate on erp_employee_salary). */
 export interface ErpMrTravelAllowance {
   id: string
   mr_id: string
   allowance_date: string
   detected_areas: DetectedTravelArea[]
-  computed_amount: number
-  approved_amount: number | null
+  computed_ta_amount: number
+  approved_ta_amount: number | null
+  computed_da_amount: number
+  approved_da_amount: number | null
   status: TravelAllowanceStatus
   reviewed_by: string | null
   reviewed_at: string | null
   notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** An ad-hoc trip, any employee — admin's direct decision ("sending this
+ *  person to Delhi for 3 days, ₹500/day"), not an inference, so unlike
+ *  ErpMrTravelAllowance there is no review step; it's a third, additive
+ *  source feeding the same travel_allowance payslip line. Only days inside
+ *  [from_date, to_date] the employee was actually present (or half-day, at
+ *  half rate) earn it — see erp_recalculate_payroll_record(). Flights,
+ *  hotels etc. are NOT this — those are a company expense (Expenses ->
+ *  Record company expense), tracked entirely separately. */
+export interface ErpEmployeeTravelDay {
+  id: string
+  employee_id: string
+  from_date: string
+  to_date: string
+  daily_amount: number
+  purpose: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
 }
@@ -758,6 +795,11 @@ export interface ErpEmployeeSalary {
    *  worked, never leave/holiday/week-off. Null means no DA at all, not ₹0.
    *  See 20260924000002_mr_dearness_allowance.sql. */
   daily_dearness_allowance: number | null
+  /** Flat per-day Travel Allowance, any employee — additive to (not a
+   *  replacement for) an MR's HR-reviewed per-area travel allowance; both
+   *  land on the same payslip line. Null means none, not ₹0. See
+   *  20261022000001_universal_ta_da_and_offer_allowances.sql. */
+  daily_travel_allowance: number | null
   effective_from: string
   updated_by: string | null
   created_at: string
@@ -813,10 +855,19 @@ export interface ErpPayrollRecord {
    *  what net_salary actually pays out. See 20260918000011_payroll_lop_
    *  deduction.sql. */
   lop_deduction_amount: number
-  /** Sum of this employee's APPROVED erp_mr_travel_allowance rows for the
-   *  period — a still-PENDING day isn't included until reviewed. See
-   *  20260921000001_mr_travel_allowance.sql. */
+  /** Sum of two sources: this employee's APPROVED erp_mr_travel_allowance
+   *  rows for the period (per-area, MR-only, HR-reviewed — a still-PENDING
+   *  day isn't included until reviewed), PLUS daily_travel_allowance below
+   *  x days actually worked (any employee, no review step). For a non-MR
+   *  employee the first source is always 0. See
+   *  20260921000001_mr_travel_allowance.sql and
+   *  20261022000001_universal_ta_da_and_offer_allowances.sql. */
   travel_allowance: number
+  /** The flat per-day TA rate snapshotted from erp_employee_salary at
+   *  generation time — reference only; travel_allowance above is the rupee
+   *  figure actually paid (and may include the per-area source too). Null
+   *  if this employee has no flat TA configured. */
+  daily_travel_allowance: number | null
   /** The per-day DA rate snapshotted from erp_employee_salary at generation
    *  time — reference only; dearness_allowance below is the rupee figure
    *  actually paid. Null if this employee has no DA configured. */

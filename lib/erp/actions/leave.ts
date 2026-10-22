@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { assertCapability } from '../auth'
+import { assertAnyCapability, assertCapability } from '../auth'
 import { erpDb } from '../data/query'
 import { getElSlClLeaveTypeIds, getLeaveBalance, getLeaveDaysUsedInMonth, listLeaveTypes } from '../data/leave'
 import {
@@ -135,9 +135,14 @@ export async function cancelMyLeaveRequest(leaveId: string): Promise<ActionState
   })
 }
 
+/** Reachable by either admin/HR's leave.manage or a manager's narrower
+ *  leave.manage_team — the real scoping is enforced inside
+ *  erp_review_leave_request() itself: admin can review anyone, but everyone
+ *  else (HR included) only a request whose employee reports directly to
+ *  them, not here. */
 export async function reviewLeaveRequest(input: unknown): Promise<ActionState> {
   return runAction('Could not update the leave request.', async () => {
-    await assertCapability('leave.manage')
+    await assertAnyCapability(['leave.manage', 'leave.manage_team'])
 
     const parsed = LeaveReviewSchema.safeParse(input)
     if (!parsed.success) return invalid(parsed.error)
@@ -151,6 +156,7 @@ export async function reviewLeaveRequest(input: unknown): Promise<ActionState> {
     if (error) return friendlyDbError(error, 'Could not update the leave request.')
 
     revalidatePath('/erp/leave/admin')
+    revalidatePath('/erp/leave/team')
     revalidatePath('/erp/attendance/admin')
     return { ok: true }
   })

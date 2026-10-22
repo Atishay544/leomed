@@ -29,7 +29,6 @@ export interface OfferLetterPdfData {
   designation: string
   department: string | null
   territory: string | null
-  reportsToName: string | null
   joiningDate: string | null
   /** Free text on incentive/variable-pay eligibility — printed in the
    *  letter's opening paragraphs, deliberately never a row in Annexure I. */
@@ -48,6 +47,10 @@ export interface OfferLetterPdfData {
    *  balance. Null means EL is a plain fixed annual number, same as SL/CL. */
   elAccrualDays: number | null
   elAccrualIntervalMonths: number | null
+  /** Flat per-day TA/DA promised in writing — also seeded onto
+   *  erp_employee_salary when this offer is converted. Null means none. */
+  dailyTravelAllowance: number | null
+  dailyDearnessAllowance: number | null
   remarks: string | null
   components: OfferLetterPdfComponent[]
 }
@@ -180,14 +183,13 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
     doc.moveDown(0.4)
 
     const placeBit = data.territory ? ` at ${data.territory}` : ''
-    const reportsBit = data.reportsToName ? `, reporting to ${data.reportsToName}` : ''
     const joiningBit = data.joiningDate
       ? `Your date of joining will be ${formatDate(data.joiningDate)}.`
       : 'Your date of joining will be confirmed separately.'
 
     doc.font('Helvetica').fontSize(9.5).fillColor('#333').text(
       `We are pleased to offer you employment with ${company.name} in the position of ` +
-      `${data.designation}${placeBit}${reportsBit}. ${joiningBit}`,
+      `${data.designation}${placeBit}. ${joiningBit}`,
       { width: 515, align: 'justify' },
     )
     doc.moveDown(0.6)
@@ -222,6 +224,18 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
       doc.font('Helvetica').fillColor('#333').text(
         `You will be entitled to ${elText}, ${data.annualSlDays} day(s) of Sick Leave ` +
         `and ${data.annualClDays} day(s) of Casual Leave per calendar year, as per the Company's leave policy.`,
+      )
+      doc.moveDown(0.6)
+    }
+
+    if (data.dailyTravelAllowance || data.dailyDearnessAllowance) {
+      const allowanceParts = [
+        data.dailyDearnessAllowance ? `a Dearness Allowance of ${pdfMoney(data.dailyDearnessAllowance)} per day` : null,
+        data.dailyTravelAllowance ? `a Travel Allowance of ${pdfMoney(data.dailyTravelAllowance)} per day` : null,
+      ].filter(Boolean).join(' and ')
+      doc.font('Helvetica-Bold').fillColor('#111').text('Allowances: ', 40, doc.y, { continued: true, width: 515 })
+      doc.font('Helvetica').fillColor('#333').text(
+        `You will be entitled to ${allowanceParts}, payable for each day you are actually present at work.`,
       )
       doc.moveDown(0.6)
     }

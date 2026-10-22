@@ -51,6 +51,10 @@ export default async function AreasPage({ searchParams }: Props) {
       name: 'daily_travel_allowance', label: 'Daily travel allowance (₹)', type: 'number', min: '0', step: '1', span: 2,
       hint: 'Leave blank if visiting here isn\'t a chargeable trip (e.g. a home-base city locality). Paid once per day an MR visits a doctor/chemist here, reviewed under Payroll → Travel Allowance.',
     },
+    {
+      name: 'daily_dearness_allowance', label: 'Daily dearness allowance (₹)', type: 'number', min: '0', step: '1', span: 2,
+      hint: 'Same idea, for DA — leave blank if it doesn\'t vary for this area. Additive to an employee\'s own flat DA rate, if they have one set on Payroll → Salaries.',
+    },
   ]
 
   const reassignMrOptions = allMrs.map(m => ({ id: m.id, name: m.active ? m.name : `${m.name} (inactive)` }))
@@ -109,7 +113,7 @@ export default async function AreasPage({ searchParams }: Props) {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[820px]">
+            <table className="w-full min-w-[960px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Area</Th>
@@ -117,6 +121,7 @@ export default async function AreasPage({ searchParams }: Props) {
                   <Th>MR (in effect)</Th>
                   <Th>Distributor (in effect)</Th>
                   <Th align="right">Travel allowance</Th>
+                  <Th align="right">Dearness allowance</Th>
                   <Th align="right">Actions</Th>
                 </tr>
               </thead>
@@ -138,6 +143,9 @@ export default async function AreasPage({ searchParams }: Props) {
                     </Td>
                     <Td align="right" className="tabular-nums text-[12.5px] text-gray-600">
                       {a.daily_travel_allowance != null ? `${money(a.daily_travel_allowance)}/day` : '—'}
+                    </Td>
+                    <Td align="right" className="tabular-nums text-[12.5px] text-gray-600">
+                      {a.daily_dearness_allowance != null ? `${money(a.daily_dearness_allowance)}/day` : '—'}
                     </Td>
                     <Td align="right">
                       <div className="flex items-center justify-end gap-2">

@@ -17,8 +17,6 @@ import type { OfferDetail } from '@/lib/erp/data/offers'
  * plain <form> can't express.
  */
 
-interface ManagerOption { id: string; name: string }
-
 interface ComponentRow {
   uid: string
   component_name: string
@@ -57,10 +55,9 @@ function emptyRow(): ComponentRow {
 }
 
 export default function OfferLetterForm({
-  initial, managers, elAccrual,
+  initial, elAccrual,
 }: {
   initial?: OfferDetail
-  managers: ManagerOption[]
   /** Set when Earned Leave currently has automatic accrual configured
    *  (Leave -> Leave types) — in that case the EL entitlement isn't a fixed
    *  annual number anymore, so the field below is disabled/zeroed and the
@@ -81,13 +78,14 @@ export default function OfferLetterForm({
   const [role, setRole]                         = useState<ErpRole>(initial?.role ?? 'MR')
   const [department, setDepartment]             = useState(initial?.department ?? '')
   const [territory, setTerritory]               = useState(initial?.territory ?? '')
-  const [reportsTo, setReportsTo]               = useState(initial?.reports_to ?? '')
   const [offerDate, setOfferDate]               = useState(initial?.offer_date ?? new Date().toISOString().slice(0, 10))
   const [joiningDate, setJoiningDate]           = useState(initial?.joining_date ?? '')
   const [incentiveTerms, setIncentiveTerms]     = useState(initial?.incentive_terms ?? '')
   const [annualElDays, setAnnualElDays]         = useState(String(elAccrual ? 0 : (initial?.annual_el_days ?? 0)))
   const [annualSlDays, setAnnualSlDays]         = useState(String(initial?.annual_sl_days ?? 0))
   const [annualClDays, setAnnualClDays]         = useState(String(initial?.annual_cl_days ?? 0))
+  const [dailyTravelAllowance, setDailyTravelAllowance]     = useState(initial?.daily_travel_allowance != null ? String(initial.daily_travel_allowance) : '')
+  const [dailyDearnessAllowance, setDailyDearnessAllowance] = useState(initial?.daily_dearness_allowance != null ? String(initial.daily_dearness_allowance) : '')
   const [remarks, setRemarks]                   = useState(initial?.remarks ?? '')
   const [rows, setRows]                         = useState<ComponentRow[]>(() => toRows(initial))
 
@@ -141,13 +139,14 @@ export default function OfferLetterForm({
       role,
       department: department.trim() || undefined,
       territory: territory.trim() || undefined,
-      reports_to: reportsTo || undefined,
       offer_date: offerDate,
       joining_date: joiningDate || undefined,
       incentive_terms: incentiveTerms.trim() || undefined,
       annual_el_days: Number(annualElDays) || 0,
       annual_sl_days: Number(annualSlDays) || 0,
       annual_cl_days: Number(annualClDays) || 0,
+      daily_travel_allowance: dailyTravelAllowance.trim() || undefined,
+      daily_dearness_allowance: dailyDearnessAllowance.trim() || undefined,
       remarks: remarks.trim() || undefined,
       components: validRows.map(r => ({
         component_name: r.component_name.trim(),
@@ -224,15 +223,18 @@ export default function OfferLetterForm({
           </div>
           <div>
             <label className="mb-1 block text-[12px] font-medium text-gray-700">System role on joining *</label>
-            <select value={role} onChange={e => setRole(e.target.value as ErpRole)} disabled={locked} className={inputClass}>
+            <select
+              value={role}
+              onChange={e => {
+                const nextRole = e.target.value as ErpRole
+                setRole(nextRole)
+                // DA is area-based for an MR (Masters -> Areas) — a flat
+                // rate here would just be ignored by payroll, so clear it
+                // rather than leave a misleading number in a disabled field.
+                if (nextRole === 'MR') setDailyDearnessAllowance('')
+              }}
+              disabled={locked} className={inputClass}>
               {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-[12px] font-medium text-gray-700">Reports to</label>
-            <select value={reportsTo} onChange={e => setReportsTo(e.target.value)} disabled={locked} className={inputClass}>
-              <option value="">— None —</option>
-              {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
           <div>
@@ -292,6 +294,32 @@ export default function OfferLetterForm({
         <p className="mt-1 text-[11px] text-gray-400">
           Printed in the letter, and seeded onto the employee&apos;s leave balance for the current year the moment this offer is converted —
           editable afterward under Leave → Leave Balances like any other employee&apos;s.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 text-[14px] font-semibold text-gray-900">Travel &amp; Dearness Allowance (optional)</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-[12px] font-medium text-gray-700">Travel allowance (₹/day worked)</label>
+            <input type="number" min="0" step="0.01" value={dailyTravelAllowance} onChange={e => setDailyTravelAllowance(e.target.value)}
+                   placeholder="e.g. 100" disabled={locked} className={inputClass} />
+          </div>
+          <div>
+            <label className="mb-1 block text-[12px] font-medium text-gray-700">Dearness allowance (₹/day worked)</label>
+            <input type="number" min="0" step="0.01" value={dailyDearnessAllowance} onChange={e => setDailyDearnessAllowance(e.target.value)}
+                   placeholder="e.g. 150" disabled={locked || role === 'MR'} className={inputClass} />
+            {role === 'MR' && (
+              <p className="mt-1 text-[11px] text-amber-600">
+                DA is area-based for an MR instead — set rates under Masters → Areas once they&apos;re hired.
+              </p>
+            )}
+          </div>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-400">
+          Leave either blank for none. Seeded onto the employee&apos;s salary structure the moment this offer is converted —
+          editable afterward under Payroll → Salaries like any other employee&apos;s. Paid only for days actually present,
+          never leave, holidays or week-offs.
         </p>
       </div>
 

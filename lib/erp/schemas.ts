@@ -93,6 +93,10 @@ export const ErpUserSchema = z.object({
   // Drives Earned Leave's per-employee accrual schedule (see
   // erp_run_leave_accruals()) — not just a record-keeping field.
   joining_date:  optionalDate,
+  // Who sanctions this person's leave and sees their requests — a Manager
+  // with direct reports, or left blank to mean "admin/HR only" (the
+  // default before this existed at all). See leave.manage_team.
+  reports_to:    optionalUuid,
   // Defaults to false, not true: an unchecked checkbox is simply absent from
   // FormData, so defaulting to true would make "deactivate this account"
   // silently do nothing. The edit form always renders the checkbox.
@@ -113,6 +117,7 @@ export const ErpUserCreateSchema = z.object({
   designation:   optionalText(100),
   employee_code: optionalText(30),
   joining_date:  optionalDate,
+  reports_to:    optionalUuid,
   password:  z.string().min(8, 'Password must be at least 8 characters').max(128),
 }).refine(v => v.role !== 'MR' || !!v.mr_code, {
   message: 'An MR code is required for medical representatives',
@@ -138,7 +143,6 @@ export const OfferLetterSchema = z.object({
   role:              z.enum(ERP_ROLES),
   department:        optionalText(100),
   territory:         optionalText(100),
-  reports_to:        optionalUuid,
   offer_date:        dateString,
   joining_date:      optionalDate,
   incentive_terms:   optionalText(2000),
@@ -148,6 +152,10 @@ export const OfferLetterSchema = z.object({
   annual_el_days:    nonNegativeDays.default(0),
   annual_sl_days:    nonNegativeDays.default(0),
   annual_cl_days:    nonNegativeDays.default(0),
+  // Flat per-day TA/DA — seeded onto erp_employee_salary the same way, at
+  // the same moment, as the leave fields above.
+  daily_travel_allowance:   optionalPositiveMoney,
+  daily_dearness_allowance: optionalPositiveMoney,
   components:        z.array(OfferLetterComponentSchema).max(30),
 })
 
@@ -231,6 +239,8 @@ export const AreaSchema = z.object({
   // blank means "not a chargeable trip" (typical for a home-base city
   // locality), not ₹0 specifically. See erp_compute_daily_travel_allowance().
   daily_travel_allowance: optionalPositiveMoney,
+  // Same idea, for Dearness Allowance — a DA rate that varies by area.
+  daily_dearness_allowance: optionalPositiveMoney,
 })
 
 /** HR/Admin's decision on one auto-computed day — approving may adjust the
@@ -238,10 +248,24 @@ export const AreaSchema = z.object({
  *  self-service: an MR can see their own rows (erp_mr_travel_allowance RLS)
  *  but never review/approve them. */
 export const TravelAllowanceReviewSchema = z.object({
-  id:              uuid,
-  status:          z.enum(['APPROVED', 'REJECTED']),
-  approved_amount: money.optional(),
-  notes:           optionalText(500),
+  id:                 uuid,
+  status:             z.enum(['APPROVED', 'REJECTED']),
+  approved_ta_amount: money.optional(),
+  approved_da_amount: money.optional(),
+  notes:              optionalText(500),
+})
+
+/** Admin's direct assignment of an ad-hoc trip — any employee, not just an
+ *  MR, and no review step (it's a decision, not an inference). */
+export const TravelDaySchema = z.object({
+  employee_id:  uuid,
+  from_date:    dateString,
+  to_date:      dateString,
+  daily_amount: z.coerce.number().positive('Enter an amount above zero').max(99_999),
+  purpose:      optionalText(200),
+}).refine(v => v.to_date >= v.from_date, {
+  message: 'The end date must be on or after the start date',
+  path: ['to_date'],
 })
 
 export const ReassignMrSchema = z.object({
@@ -716,6 +740,9 @@ export const EmployeeSalarySchema = z.object({
   // A flat per-day Dearness Allowance unique to this employee — blank means
   // "no DA at all", not ₹0. See erp_recalculate_payroll_record().
   daily_dearness_allowance: optionalPositiveMoney,
+  // Flat per-day Travel Allowance — additive to an MR's HR-reviewed
+  // per-area travel allowance, not a replacement for it.
+  daily_travel_allowance:   optionalPositiveMoney,
   effective_from:      dateString,
 })
 
@@ -874,5 +901,6 @@ export type OfferStatusInput          = z.infer<typeof OfferStatusSchema>
 export type TerritoryInput            = z.infer<typeof TerritorySchema>
 export type AreaInput                 = z.infer<typeof AreaSchema>
 export type TravelAllowanceReviewInput = z.infer<typeof TravelAllowanceReviewSchema>
+export type TravelDayInput             = z.infer<typeof TravelDaySchema>
 export type ReassignMrInput           = z.infer<typeof ReassignMrSchema>
 export type ReassignDistributorInput  = z.infer<typeof ReassignDistributorSchema>

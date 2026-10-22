@@ -124,16 +124,25 @@ export async function listAreas(params: { territoryId?: string; includeInactive?
   })
 }
 
-/** The areas a given MR is actually responsible for right now — their own
- *  per-area overrides, plus every area in a territory where they're the
- *  default MR. Used to scope the Area picker an MR sees when adding a new
- *  doctor/chemist during a visit, so they can only place one somewhere
- *  they're assigned rather than anywhere in the company. Existing doctors/
- *  chemists remain visitable by any MR regardless of area — this only
- *  narrows where a NEW one can be placed. */
+/** Every area in any territory this MR is associated with — either as that
+ *  territory's own default MR, or via an explicit override on at least one
+ *  area within it. Broadened from "only this MR's own areas" so that when
+ *  several MRs share a territory (each covering different areas day to
+ *  day), all of them see the WHOLE territory's areas — not just their own
+ *  individually-assigned slice — since the business rule is "work the same
+ *  territory together," not "each MR is walled off to their own areas."
+ *
+ *  This is the single chokepoint for an MR's own visibility: the Doctors/
+ *  Chemists/Distributors master lists, the new-doctor/chemist area picker,
+ *  and the visit-logging search (lookupDoctors/lookupChemists) all scope
+ *  through this one function, so broadening it here broadens all of them
+ *  together. */
 export async function listAreasForMr(mrId: string, includeInactive = false): Promise<AreaRow[]> {
   const areas = await listAreas({ includeInactive })
-  return areas.filter(a => a.effective_mr_id === mrId)
+  const myTerritoryIds = new Set(
+    areas.filter(a => a.mr_id === mrId || a.effective_mr_id === mrId).map(a => a.territory_id),
+  )
+  return areas.filter(a => myTerritoryIds.has(a.territory_id))
 }
 
 /** Active MRs, for the Area/Territory forms' "Assigned MR" dropdowns — a
