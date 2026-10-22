@@ -108,12 +108,18 @@ export const CAPABILITIES = [
   // HR: leave
   'leave.apply',
   'leave.read.own',
-  'leave.manage',        // approve/reject/cancel/create on anyone's behalf
+  'leave.manage',        // leave types, company-wide balances, create-on-anyone's-behalf;
+                          // approve/reject/cancel is gated the same as leave.manage_team below —
+                          // only a direct report (erp_users.reports_to pointing at the caller),
+                          // admin excepted — enforced in erp_review_leave_request(), not here.
   // A direct manager (erp_users.reports_to pointing at them) reviewing
   // leave ONLY for the employees who report to them — never leave types,
   // never company-wide balances, never anyone else's request. Deliberately
-  // separate from leave.manage: ADMIN/HR don't need this (leave.manage
-  // already covers everyone), and the real scoping lives in the database
+  // separate from leave.manage: ADMIN doesn't need this (always bypasses),
+  // and HR doesn't need this either (leave.manage already lets an HR
+  // employee attempt a review; the database enforces the same direct-report
+  // restriction regardless of which of the two capabilities got them past
+  // the app-layer gate). The real scoping lives in the database
   // (erp_review_leave_request()), not just this capability gate.
   'leave.manage_team',
 

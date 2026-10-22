@@ -31,7 +31,9 @@ declare
   v_auth_acct  uuid := gen_random_uuid();
   v_auth_mgr   uuid := gen_random_uuid();
   v_auth_view  uuid := gen_random_uuid();
-  v_admin uuid; v_mr uuid; v_mr2 uuid; v_acct uuid; v_mgr uuid; v_view uuid;
+  v_auth_hr1   uuid := gen_random_uuid();
+  v_auth_hr2   uuid := gen_random_uuid();
+  v_admin uuid; v_mr uuid; v_mr2 uuid; v_acct uuid; v_mgr uuid; v_view uuid; v_hr1 uuid; v_hr2 uuid;
   v_doctor uuid; v_chemist uuid; v_distributor uuid; v_supplier uuid;
   v_product uuid; v_batch uuid;
 begin
@@ -43,7 +45,9 @@ begin
     ('00000000-0000-0000-0000-000000000000', v_auth_mr2,   'authenticated', 'authenticated', 'rtest-mr2@leomed.test',  '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_acct,  'authenticated', 'authenticated', 'rtest-acct@leomed.test', '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_mgr,   'authenticated', 'authenticated', 'rtest-mgr@leomed.test',  '', now(), now(), now()),
-    ('00000000-0000-0000-0000-000000000000', v_auth_view,  'authenticated', 'authenticated', 'rtest-view@leomed.test', '', now(), now(), now());
+    ('00000000-0000-0000-0000-000000000000', v_auth_view,  'authenticated', 'authenticated', 'rtest-view@leomed.test', '', now(), now(), now()),
+    ('00000000-0000-0000-0000-000000000000', v_auth_hr1,   'authenticated', 'authenticated', 'rtest-hr1@leomed.test',  '', now(), now(), now()),
+    ('00000000-0000-0000-0000-000000000000', v_auth_hr2,   'authenticated', 'authenticated', 'rtest-hr2@leomed.test',  '', now(), now(), now());
 
   insert into public.erp_users (auth_user_id, name, email, role, mr_code)
   values (v_auth_admin, 'RTest Admin',      'rtest-admin@leomed.test', 'ADMIN', null) returning id into v_admin;
@@ -60,10 +64,19 @@ begin
   values (v_auth_mgr,   'RTest Manager',    'rtest-mgr@leomed.test',   'MANAGER') returning id into v_mgr;
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_view,  'RTest Viewer',     'rtest-view@leomed.test',  'VIEWER') returning id into v_view;
+  insert into public.erp_users (auth_user_id, name, email, role)
+  values (v_auth_hr1,   'RTest HR 1',       'rtest-hr1@leomed.test',   'HR') returning id into v_hr1;
+  insert into public.erp_users (auth_user_id, name, email, role)
+  values (v_auth_hr2,   'RTest HR 2',       'rtest-hr2@leomed.test',   'HR') returning id into v_hr2;
 
   -- RTest MR reports to RTest Manager — the positive case for the org-chart
   -- visibility tests below (erp_is_in_my_org must return true for this one).
   update public.erp_users set reports_to = v_mgr where id = v_mr;
+
+  -- RTest HR 2 reports to RTest HR 1 — the positive case for the HR leave-
+  -- approval hierarchy tests below (20261023000003: no more blanket "any HR
+  -- approves anyone", only a direct report, same rule as Manager).
+  update public.erp_users set reports_to = v_hr1 where id = v_hr2;
 
   insert into public.erp_doctors (doctor_name, city, created_by)
   values ('Dr. RTest', 'Indore', v_admin) returning id into v_doctor;
@@ -104,7 +117,9 @@ begin
   insert into t_ids values
     ('auth_admin', v_auth_admin), ('auth_mr', v_auth_mr), ('auth_mr2', v_auth_mr2), ('auth_acct', v_auth_acct),
     ('auth_mgr', v_auth_mgr), ('auth_view', v_auth_view),
+    ('auth_hr1', v_auth_hr1), ('auth_hr2', v_auth_hr2),
     ('admin', v_admin), ('mr', v_mr), ('mr2', v_mr2), ('acct', v_acct), ('mgr', v_mgr), ('view', v_view),
+    ('hr1', v_hr1), ('hr2', v_hr2),
     ('doctor', v_doctor), ('chemist', v_chemist), ('distributor', v_distributor), ('supplier', v_supplier),
     ('product', v_product), ('batch', v_batch);
 end $$;
@@ -378,7 +393,45 @@ begin
 end $$;
 
 -- ============================================================================
--- 5. VIEWER — read-only observer/audit role, writes nowhere.
+-- 5. HR — leave approval is hierarchical too (20261023000003), same rule as
+--    MANAGER: no more blanket "any HR approves anyone". RTest HR 2 reports
+--    to RTest HR 1 (positive case); RTest MR reports to RTest Manager, not
+--    to HR 1 at all (negative case).
+-- ============================================================================
+
+do $$
+declare v_ok boolean; v_leave_type uuid; v_hr_leave uuid; v_mr_leave uuid;
+begin
+  select id into v_leave_type from public.erp_leave_types limit 1;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.id_of('auth_hr2'), 'role', 'authenticated')::text, true);
+  insert into public.erp_leave_requests (employee_id, leave_type_id, from_date, to_date, reason)
+  values (pg_temp.id_of('hr2'), v_leave_type, current_date + 130, current_date + 130, 'RTest HR2 leave')
+  returning id into v_hr_leave;
+  reset role;
+
+  -- RTest HR 1 CAN approve RTest HR 2's leave — a direct report.
+  v_ok := pg_temp.as_user(pg_temp.id_of('auth_hr1'), format(
+    'select public.erp_review_leave_request(%L, ''APPROVED'', ''ok'')', v_hr_leave));
+  assert v_ok, 'HR must be able to approve a direct report''s leave';
+
+  -- RTest HR 1 CANNOT approve RTest MR's leave — RTest MR reports to RTest
+  -- Manager, not to HR 1; the old blanket "any HR approves anyone" is gone.
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.id_of('auth_mr'), 'role', 'authenticated')::text, true);
+  insert into public.erp_leave_requests (employee_id, leave_type_id, from_date, to_date, reason)
+  values (pg_temp.id_of('mr'), v_leave_type, current_date + 131, current_date + 131, 'RTest MR leave for HR test')
+  returning id into v_mr_leave;
+  reset role;
+
+  v_ok := pg_temp.as_user(pg_temp.id_of('auth_hr1'), format(
+    'select public.erp_review_leave_request(%L, ''APPROVED'', ''trying'')', v_mr_leave));
+  assert not v_ok, 'HR must NOT be able to approve an employee outside their own reporting chain';
+end $$;
+
+-- ============================================================================
+-- 6. VIEWER — read-only observer/audit role, writes nowhere.
 --    (Previously untested — this role had zero coverage.)
 -- ============================================================================
 
@@ -419,7 +472,7 @@ begin
 end $$;
 
 -- ============================================================================
--- 6. KNOWN FINDINGS — reported via NOTICE, not asserted, so the whole run
+-- 7. KNOWN FINDINGS — reported via NOTICE, not asserted, so the whole run
 --    always completes and reports everything in one pass even where the
 --    outcome is expected to reveal a real gap rather than confirm one.
 --

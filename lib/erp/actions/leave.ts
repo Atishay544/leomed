@@ -135,10 +135,11 @@ export async function cancelMyLeaveRequest(leaveId: string): Promise<ActionState
   })
 }
 
-/** Reachable by either admin/HR's unrestricted leave.manage or a manager's
- *  narrower leave.manage_team — the real scoping is enforced inside
- *  erp_review_leave_request() itself (admin/HR can review anyone; a
- *  manager only a request whose employee reports to them), not here. */
+/** Reachable by either admin/HR's leave.manage or a manager's narrower
+ *  leave.manage_team — the real scoping is enforced inside
+ *  erp_review_leave_request() itself: admin can review anyone, but everyone
+ *  else (HR included) only a request whose employee reports directly to
+ *  them, not here. */
 export async function reviewLeaveRequest(input: unknown): Promise<ActionState> {
   return runAction('Could not update the leave request.', async () => {
     await assertAnyCapability(['leave.manage', 'leave.manage_team'])
