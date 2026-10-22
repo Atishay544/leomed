@@ -9,6 +9,9 @@ test.describe('Products page', () => {
   })
 
   test('filter sidebar visible on desktop', async ({ page }) => {
+    // The sidebar is "hidden lg:block" — assert this at a desktop width
+    // regardless of which project (e.g. mobile-chrome) runs this file.
+    await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/products')
     await expect(page.locator('aside')).toBeVisible()
   })
