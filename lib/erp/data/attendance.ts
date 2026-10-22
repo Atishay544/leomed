@@ -176,13 +176,28 @@ export interface FieldActivityEvent {
 export async function getAttendanceDetail(employeeId: string, date: string) {
   const db = await erpDb()
 
-  const [{ data: attendance }, { data: employee }] = await Promise.all([
+  const [{ data: attendance }, { data: employeeRow }] = await Promise.all([
     db.from('erp_attendance').select('*').eq('employee_id', employeeId).eq('date', date).maybeSingle(),
     db.from('erp_users')
-      .select('id, name, role, department, territory, mr_code, employee_code, reports_to, reports_to_user:erp_users!erp_users_reports_to_fkey(name)')
+      .select('id, name, role, department, territory, mr_code, employee_code, reports_to')
       .eq('id', employeeId)
       .maybeSingle(),
   ])
+
+  // Deliberately a second query, not an embedded erp_users!erp_users_
+  // reports_to_fkey(name) self-join — see the same note on listErpUsers()
+  // (lib/erp/data/users.ts) for why that silently drops the row under RLS
+  // whenever reports_to is null, which it is for anyone with no manager.
+  let reportsToUser: { name: string } | null = null
+  if (employeeRow?.reports_to) {
+    const { data: manager } = await db
+      .from('erp_users')
+      .select('name')
+      .eq('id', employeeRow.reports_to)
+      .maybeSingle()
+    reportsToUser = manager ? { name: manager.name as string } : null
+  }
+  const employee = employeeRow ? { ...employeeRow, reports_to_user: reportsToUser } : null
 
   const events: FieldActivityEvent[] = []
   const att = attendance as ErpAttendance | null
