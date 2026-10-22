@@ -528,6 +528,12 @@ export interface OfferLetter {
   annual_el_days: number
   annual_sl_days: number
   annual_cl_days: number
+  /** Flat per-day TA/DA promised in writing — seeded onto the new hire's
+   *  erp_employee_salary the moment this offer is converted, same as the
+   *  leave fields above. Null means none, not ₹0. See
+   *  20261022000001_universal_ta_da_and_offer_allowances.sql. */
+  daily_travel_allowance: number | null
+  daily_dearness_allowance: number | null
   status: OfferStatus
   /** Bumped every time an existing offer is saved again — editing a Sent/
    *  Accepted/Rejected/Withdrawn offer also resets status back to DRAFT,
@@ -758,6 +764,11 @@ export interface ErpEmployeeSalary {
    *  worked, never leave/holiday/week-off. Null means no DA at all, not ₹0.
    *  See 20260924000002_mr_dearness_allowance.sql. */
   daily_dearness_allowance: number | null
+  /** Flat per-day Travel Allowance, any employee — additive to (not a
+   *  replacement for) an MR's HR-reviewed per-area travel allowance; both
+   *  land on the same payslip line. Null means none, not ₹0. See
+   *  20261022000001_universal_ta_da_and_offer_allowances.sql. */
+  daily_travel_allowance: number | null
   effective_from: string
   updated_by: string | null
   created_at: string
@@ -813,10 +824,19 @@ export interface ErpPayrollRecord {
    *  what net_salary actually pays out. See 20260918000011_payroll_lop_
    *  deduction.sql. */
   lop_deduction_amount: number
-  /** Sum of this employee's APPROVED erp_mr_travel_allowance rows for the
-   *  period — a still-PENDING day isn't included until reviewed. See
-   *  20260921000001_mr_travel_allowance.sql. */
+  /** Sum of two sources: this employee's APPROVED erp_mr_travel_allowance
+   *  rows for the period (per-area, MR-only, HR-reviewed — a still-PENDING
+   *  day isn't included until reviewed), PLUS daily_travel_allowance below
+   *  x days actually worked (any employee, no review step). For a non-MR
+   *  employee the first source is always 0. See
+   *  20260921000001_mr_travel_allowance.sql and
+   *  20261022000001_universal_ta_da_and_offer_allowances.sql. */
   travel_allowance: number
+  /** The flat per-day TA rate snapshotted from erp_employee_salary at
+   *  generation time — reference only; travel_allowance above is the rupee
+   *  figure actually paid (and may include the per-area source too). Null
+   *  if this employee has no flat TA configured. */
+  daily_travel_allowance: number | null
   /** The per-day DA rate snapshotted from erp_employee_salary at generation
    *  time — reference only; dearness_allowance below is the rupee figure
    *  actually paid. Null if this employee has no DA configured. */

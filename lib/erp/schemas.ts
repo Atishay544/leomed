@@ -148,6 +148,10 @@ export const OfferLetterSchema = z.object({
   annual_el_days:    nonNegativeDays.default(0),
   annual_sl_days:    nonNegativeDays.default(0),
   annual_cl_days:    nonNegativeDays.default(0),
+  // Flat per-day TA/DA — seeded onto erp_employee_salary the same way, at
+  // the same moment, as the leave fields above.
+  daily_travel_allowance:   optionalPositiveMoney,
+  daily_dearness_allowance: optionalPositiveMoney,
   components:        z.array(OfferLetterComponentSchema).max(30),
 })
 
@@ -716,6 +720,9 @@ export const EmployeeSalarySchema = z.object({
   // A flat per-day Dearness Allowance unique to this employee — blank means
   // "no DA at all", not ₹0. See erp_recalculate_payroll_record().
   daily_dearness_allowance: optionalPositiveMoney,
+  // Flat per-day Travel Allowance — additive to an MR's HR-reviewed
+  // per-area travel allowance, not a replacement for it.
+  daily_travel_allowance:   optionalPositiveMoney,
   effective_from:      dateString,
 })
 

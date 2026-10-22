@@ -48,6 +48,10 @@ export interface OfferLetterPdfData {
    *  balance. Null means EL is a plain fixed annual number, same as SL/CL. */
   elAccrualDays: number | null
   elAccrualIntervalMonths: number | null
+  /** Flat per-day TA/DA promised in writing — also seeded onto
+   *  erp_employee_salary when this offer is converted. Null means none. */
+  dailyTravelAllowance: number | null
+  dailyDearnessAllowance: number | null
   remarks: string | null
   components: OfferLetterPdfComponent[]
 }
@@ -222,6 +226,18 @@ export async function generateOfferLetterPdf(data: OfferLetterPdfData, company: 
       doc.font('Helvetica').fillColor('#333').text(
         `You will be entitled to ${elText}, ${data.annualSlDays} day(s) of Sick Leave ` +
         `and ${data.annualClDays} day(s) of Casual Leave per calendar year, as per the Company's leave policy.`,
+      )
+      doc.moveDown(0.6)
+    }
+
+    if (data.dailyTravelAllowance || data.dailyDearnessAllowance) {
+      const allowanceParts = [
+        data.dailyDearnessAllowance ? `a Dearness Allowance of ${pdfMoney(data.dailyDearnessAllowance)} per day` : null,
+        data.dailyTravelAllowance ? `a Travel Allowance of ${pdfMoney(data.dailyTravelAllowance)} per day` : null,
+      ].filter(Boolean).join(' and ')
+      doc.font('Helvetica-Bold').fillColor('#111').text('Allowances: ', 40, doc.y, { continued: true, width: 515 })
+      doc.font('Helvetica').fillColor('#333').text(
+        `You will be entitled to ${allowanceParts}, payable for each day you are actually present at work.`,
       )
       doc.moveDown(0.6)
     }

@@ -282,6 +282,21 @@ export default async function OfferLetterDetailPage({ params }: { params: Promis
               </dl>
             </Card>
           )}
+
+          {(offer.daily_travel_allowance != null || offer.daily_dearness_allowance != null) && (
+            <Card>
+              <h2 className="mb-3 text-[13px] font-semibold text-gray-800">Travel &amp; Dearness Allowance</h2>
+              <dl className="space-y-2 text-[12.5px]">
+                {offer.daily_travel_allowance != null && (
+                  <div className="flex justify-between"><dt className="text-gray-500">Travel allowance</dt><dd className="text-gray-900">{money(offer.daily_travel_allowance)} / day</dd></div>
+                )}
+                {offer.daily_dearness_allowance != null && (
+                  <div className="flex justify-between"><dt className="text-gray-500">Dearness allowance</dt><dd className="text-gray-900">{money(offer.daily_dearness_allowance)} / day</dd></div>
+                )}
+              </dl>
+              <p className="mt-2 text-[11px] text-gray-400">Seeded onto the employee&apos;s salary structure on conversion — not part of Annexure I.</p>
+            </Card>
+          )}
         </div>
       </div>
     </>

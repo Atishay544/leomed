@@ -93,7 +93,7 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
     const db = await erpDb()
     const { data: offer, error: offerError } = await db
       .from('erp_offer_letters')
-      .select('id, status, annual_el_days, annual_sl_days, annual_cl_days')
+      .select('id, status, annual_el_days, annual_sl_days, annual_cl_days, daily_travel_allowance, daily_dearness_allowance')
       .eq('id', offerId)
       .maybeSingle()
     if (offerError) return friendlyDbError(offerError, 'Could not load the offer letter.')
@@ -157,15 +157,18 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
     // DEDUCTION rows (e.g. employer PF) become standard deductions; VARIABLE
     // rows (e.g. an MR's target incentive) are deliberately not carried over
     // here — incentives are calculated monthly from actual performance, not
-    // a fixed number.
+    // a fixed number. TA/DA are offer-level fields, not components, so they
+    // seed this row even when there are zero compensation components.
     const { data: components } = await db
       .from('erp_offer_letter_components')
       .select('component_name, category, monthly_amount')
       .eq('offer_letter_id', offerId)
 
-    if (components && components.length > 0) {
-      const earning = components.filter(c => c.category === 'EARNING')
-      const deduction = components.filter(c => c.category === 'DEDUCTION')
+    const hasAllowances = offer.daily_travel_allowance != null || offer.daily_dearness_allowance != null
+
+    if ((components && components.length > 0) || hasAllowances) {
+      const earning = components?.filter(c => c.category === 'EARNING') ?? []
+      const deduction = components?.filter(c => c.category === 'DEDUCTION') ?? []
       const basic = earning.find(c => c.component_name.trim().toLowerCase() === 'basic')
 
       const fixedSalary = earning.reduce((sum, c) => sum + Number(c.monthly_amount), 0)
@@ -173,13 +176,15 @@ export async function convertOfferToEmployee(_prev: ActionState, formData: FormD
       const standardDeductions = deduction.reduce((sum, c) => sum + Number(c.monthly_amount), 0)
 
       await db.from('erp_employee_salary').upsert({
-        employee_id:         newUser.id,
-        fixed_salary:        fixedSalary,
-        basic_salary:        basicSalary,
-        gross_salary:        fixedSalary,
-        allowances:          Math.max(0, fixedSalary - basicSalary),
-        standard_deductions: standardDeductions,
-        updated_by:          session.id,
+        employee_id:              newUser.id,
+        fixed_salary:             fixedSalary,
+        basic_salary:             basicSalary,
+        gross_salary:             fixedSalary,
+        allowances:               Math.max(0, fixedSalary - basicSalary),
+        standard_deductions:      standardDeductions,
+        daily_travel_allowance:   offer.daily_travel_allowance,
+        daily_dearness_allowance: offer.daily_dearness_allowance,
+        updated_by:               session.id,
       })
     }
 

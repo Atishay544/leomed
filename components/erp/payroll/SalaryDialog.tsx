@@ -163,6 +163,16 @@ export default function SalaryDialog({
                   <p className="mt-1 text-[11px] text-gray-400">Leave blank for no DA. Paid only for days actually present — never leave, holidays or week-offs.</p>
                 </div>
                 <div>
+                  <label htmlFor="daily_travel_allowance" className="mb-1 block text-[12px] font-medium text-gray-700">
+                    Travel allowance (₹/day worked)
+                  </label>
+                  <input id="daily_travel_allowance" name="daily_travel_allowance" type="number" onFocus={e => e.target.select()} min="0" step="0.01"
+                         defaultValue={existing?.daily_travel_allowance ?? ''} placeholder="e.g. 100" className={inputClass} />
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    Leave blank for no flat TA. For an MR this adds to (never replaces) their HR-reviewed per-area travel allowance.
+                  </p>
+                </div>
+                <div>
                   <label htmlFor="effective_from" className="mb-1 block text-[12px] font-medium text-gray-700">Effective from</label>
                   <input id="effective_from" name="effective_from" type="date" required
                          defaultValue={existing?.effective_from ?? isoDate()} className={inputClass} />

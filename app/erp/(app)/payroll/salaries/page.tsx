@@ -33,7 +33,7 @@ export default async function SalariesPage({ searchParams }: Props) {
           <EmptyState icon={Wallet} title="No salaries configured yet" description="Set a salary to include an employee in payroll." />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[980px]">
               <thead className="bg-gray-50">
                 <tr>
                   <Th>Employee</Th>
@@ -43,6 +43,7 @@ export default async function SalariesPage({ searchParams }: Props) {
                   <Th align="right">Allowances</Th>
                   <Th align="right">Std. deductions</Th>
                   <Th align="right">DA / day</Th>
+                  <Th align="right">TA / day</Th>
                   <Th>Effective from</Th>
                   <Th align="right">Edit</Th>
                 </tr>
@@ -60,6 +61,7 @@ export default async function SalariesPage({ searchParams }: Props) {
                     <Td align="right" className="tabular-nums">{money(s.allowances)}</Td>
                     <Td align="right" className="tabular-nums">{money(s.standard_deductions)}</Td>
                     <Td align="right" className="tabular-nums">{s.daily_dearness_allowance != null ? money(s.daily_dearness_allowance) : '—'}</Td>
+                    <Td align="right" className="tabular-nums">{s.daily_travel_allowance != null ? money(s.daily_travel_allowance) : '—'}</Td>
                     <Td>{formatDate(s.effective_from)}</Td>
                     <Td align="right">
                       <SalaryDialog
