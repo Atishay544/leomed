@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>You're offline — Leomed Pharma ERP</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f9fafb; color: #111827; padding: 24px;
+    }
+    .icon { font-size: 40px; margin-bottom: 12px; }
+    h1 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+    p { font-size: 13.5px; color: #6b7280; margin: 0 0 20px; max-width: 320px; }
+    button {
+      background: #047857; color: white; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">📡</div>
+  <h1>No connection</h1>
+  <p>This page needs the internet to load your data. Reconnect and try again — nothing you've already submitted was lost.</p>
+  <button onclick="location.reload()">Retry</button>
+</body>
+</html>
