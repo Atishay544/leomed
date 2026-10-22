@@ -27,10 +27,11 @@ do $$
 declare
   v_auth_admin uuid := gen_random_uuid();
   v_auth_mr    uuid := gen_random_uuid();
+  v_auth_mr2   uuid := gen_random_uuid();
   v_auth_acct  uuid := gen_random_uuid();
   v_auth_mgr   uuid := gen_random_uuid();
   v_auth_view  uuid := gen_random_uuid();
-  v_admin uuid; v_mr uuid; v_acct uuid; v_mgr uuid; v_view uuid;
+  v_admin uuid; v_mr uuid; v_mr2 uuid; v_acct uuid; v_mgr uuid; v_view uuid;
   v_doctor uuid; v_chemist uuid; v_distributor uuid; v_supplier uuid;
   v_product uuid; v_batch uuid;
 begin
@@ -39,6 +40,7 @@ begin
   values
     ('00000000-0000-0000-0000-000000000000', v_auth_admin, 'authenticated', 'authenticated', 'rtest-admin@leomed.test', '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_mr,    'authenticated', 'authenticated', 'rtest-mr@leomed.test',    '', now(), now(), now()),
+    ('00000000-0000-0000-0000-000000000000', v_auth_mr2,   'authenticated', 'authenticated', 'rtest-mr2@leomed.test',  '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_acct,  'authenticated', 'authenticated', 'rtest-acct@leomed.test', '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_mgr,   'authenticated', 'authenticated', 'rtest-mgr@leomed.test',  '', now(), now(), now()),
     ('00000000-0000-0000-0000-000000000000', v_auth_view,  'authenticated', 'authenticated', 'rtest-view@leomed.test', '', now(), now(), now());
@@ -47,12 +49,21 @@ begin
   values (v_auth_admin, 'RTest Admin',      'rtest-admin@leomed.test', 'ADMIN', null) returning id into v_admin;
   insert into public.erp_users (auth_user_id, name, email, role, mr_code)
   values (v_auth_mr,    'RTest MR',         'rtest-mr@leomed.test',    'MR', 'RTMR01') returning id into v_mr;
+  -- Deliberately NOT given reports_to below — stays outside RTest Manager's
+  -- org subtree, the control case for "a manager must not see someone
+  -- else's team" (erp_is_in_my_org must return false for this one).
+  insert into public.erp_users (auth_user_id, name, email, role, mr_code)
+  values (v_auth_mr2,   'RTest MR 2',       'rtest-mr2@leomed.test',   'MR', 'RTMR02') returning id into v_mr2;
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_acct,  'RTest Accountant', 'rtest-acct@leomed.test',  'ACCOUNTANT') returning id into v_acct;
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_mgr,   'RTest Manager',    'rtest-mgr@leomed.test',   'MANAGER') returning id into v_mgr;
   insert into public.erp_users (auth_user_id, name, email, role)
   values (v_auth_view,  'RTest Viewer',     'rtest-view@leomed.test',  'VIEWER') returning id into v_view;
+
+  -- RTest MR reports to RTest Manager — the positive case for the org-chart
+  -- visibility tests below (erp_is_in_my_org must return true for this one).
+  update public.erp_users set reports_to = v_mgr where id = v_mr;
 
   insert into public.erp_doctors (doctor_name, city, created_by)
   values ('Dr. RTest', 'Indore', v_admin) returning id into v_doctor;
@@ -84,10 +95,16 @@ begin
          (v_product, 'CHEMIST',     'MRP', 'MARGIN', 20, 'ACTIVE', 1, v_admin),
          (v_product, 'DOCTOR',      'MRP', 'MARGIN', 20, 'ACTIVE', 1, v_admin);
 
+  -- A visit under RTest MR 2's own name — the org-chart negative test below
+  -- confirms RTest Manager cannot see this one (RTest MR 2 is not in their
+  -- reporting chain), only RTest MR's (inserted in section 2 below).
+  insert into public.erp_doctor_visits (doctor_id, mr_id, visit_date, doctor_status, created_by)
+  values (v_doctor, v_mr2, current_date, 'EXISTING', v_mr2);
+
   insert into t_ids values
-    ('auth_admin', v_auth_admin), ('auth_mr', v_auth_mr), ('auth_acct', v_auth_acct),
+    ('auth_admin', v_auth_admin), ('auth_mr', v_auth_mr), ('auth_mr2', v_auth_mr2), ('auth_acct', v_auth_acct),
     ('auth_mgr', v_auth_mgr), ('auth_view', v_auth_view),
-    ('admin', v_admin), ('mr', v_mr), ('acct', v_acct), ('mgr', v_mgr), ('view', v_view),
+    ('admin', v_admin), ('mr', v_mr), ('mr2', v_mr2), ('acct', v_acct), ('mgr', v_mgr), ('view', v_view),
     ('doctor', v_doctor), ('chemist', v_chemist), ('distributor', v_distributor), ('supplier', v_supplier),
     ('product', v_product), ('batch', v_batch);
 end $$;
@@ -283,10 +300,16 @@ end $$;
 -- ============================================================================
 -- 4. MANAGER — reads the whole field force and the money, writes almost none
 --    of it. (Previously untested — this role had zero coverage.)
+--
+--    Visibility into visits/orders/attendance/reports is now hierarchical
+--    (erp_is_in_my_org, 20261023000002), not blanket company-wide: RTest MR
+--    reports to RTest Manager (positive case), RTest MR 2 does not
+--    (negative case, the "must not" half of this that the old version of
+--    this test never exercised).
 -- ============================================================================
 
 do $$
-declare v_ok boolean; v_sales int; v_purchases int; v_visits int; v_order uuid;
+declare v_ok boolean; v_sales int; v_purchases int; v_visits int; v_other_visits int; v_order uuid;
 begin
   -- Can read sales and purchase invoices (billing.*.read).
   set local role authenticated;
@@ -297,12 +320,15 @@ begin
   assert v_sales > 0,     'MANAGER must be able to read sales invoices';
   assert v_purchases > 0, 'MANAGER must be able to read purchase invoices';
 
-  -- Can read every MR's visits (visits.read.all), not just their own.
+  -- Can read a direct report's visits (RTest MR reports to RTest Manager) —
+  -- but NOT a different MR's who is outside their org subtree.
   set local role authenticated;
   perform set_config('request.jwt.claims', json_build_object('sub', pg_temp.id_of('auth_mgr'), 'role', 'authenticated')::text, true);
-  select count(*) into v_visits from public.erp_doctor_visits where mr_id = pg_temp.id_of('mr');
+  select count(*) into v_visits       from public.erp_doctor_visits where mr_id = pg_temp.id_of('mr');
+  select count(*) into v_other_visits from public.erp_doctor_visits where mr_id = pg_temp.id_of('mr2');
   reset role;
-  assert v_visits > 0, 'MANAGER must be able to read an MR''s visits, not just their own';
+  assert v_visits > 0, 'MANAGER must be able to read a direct report''s visits';
+  assert v_other_visits = 0, 'MANAGER must NOT be able to read a non-report MR''s visits';
 
   -- Can change a field order's fulfilment status (orders.manage_status).
   set local role authenticated;
