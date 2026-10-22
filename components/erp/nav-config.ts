@@ -114,7 +114,7 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/payroll/salaries',   label: 'Salaries',           icon: Wallet,           capability: 'payroll.manage' },
       { href: '/erp/payroll/incentives', label: 'Incentives & Bonus', icon: Gift,             capability: 'payroll.manage' },
       { href: '/erp/payroll/incentive-rules', label: 'Incentive Rules', icon: Percent,        capability: 'payroll.manage' },
-      { href: '/erp/payroll/travel-allowance', label: 'Travel Allowance', icon: Route,        capability: 'payroll.manage' },
+      { href: '/erp/payroll/travel-allowance', label: 'Travel & DA',      icon: Route,        capability: 'payroll.manage' },
       { href: '/erp/expenses/admin',   label: 'Expenses',         icon: Receipt,            capability: 'expenses.manage' },
     ],
   },

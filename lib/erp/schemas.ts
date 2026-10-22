@@ -235,6 +235,8 @@ export const AreaSchema = z.object({
   // blank means "not a chargeable trip" (typical for a home-base city
   // locality), not ₹0 specifically. See erp_compute_daily_travel_allowance().
   daily_travel_allowance: optionalPositiveMoney,
+  // Same idea, for Dearness Allowance — a DA rate that varies by area.
+  daily_dearness_allowance: optionalPositiveMoney,
 })
 
 /** HR/Admin's decision on one auto-computed day — approving may adjust the
@@ -242,10 +244,11 @@ export const AreaSchema = z.object({
  *  self-service: an MR can see their own rows (erp_mr_travel_allowance RLS)
  *  but never review/approve them. */
 export const TravelAllowanceReviewSchema = z.object({
-  id:              uuid,
-  status:          z.enum(['APPROVED', 'REJECTED']),
-  approved_amount: money.optional(),
-  notes:           optionalText(500),
+  id:                 uuid,
+  status:             z.enum(['APPROVED', 'REJECTED']),
+  approved_ta_amount: money.optional(),
+  approved_da_amount: money.optional(),
+  notes:              optionalText(500),
 })
 
 export const ReassignMrSchema = z.object({

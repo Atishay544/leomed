@@ -9,7 +9,7 @@ import { FilterForm, FilterSelect, FilterDate } from '@/components/erp/FilterFor
 import Pagination from '@/components/erp/Pagination'
 import { Card, EmptyState, PageHeader, TableWrap } from '@/components/erp/ui'
 
-export const metadata = { title: 'Travel Allowance' }
+export const metadata = { title: 'Travel & Dearness Allowance' }
 
 interface Props {
   searchParams: Promise<{ page?: string; status?: string; mr?: string; from?: string; to?: string }>
@@ -36,8 +36,8 @@ export default async function TravelAllowancePage({ searchParams }: Props) {
   return (
     <>
       <PageHeader
-        title="Travel Allowance"
-        description="Auto-detected daily from doctor/chemist visits — an MR's day is charged once per distinct chargeable area visited (see Masters → Areas). Nothing reaches payroll until approved here."
+        title="Travel & Dearness Allowance"
+        description="Auto-detected daily from doctor/chemist visits — an MR's day is charged once per distinct chargeable area visited, at that area's own TA and DA rates (see Masters → Areas). Nothing reaches payroll until approved here."
       />
 
       <Card padded={false}>

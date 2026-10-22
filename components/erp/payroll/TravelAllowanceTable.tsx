@@ -15,12 +15,14 @@ const STATUS_STYLES: Record<TravelAllowanceStatus, string> = {
   REJECTED: 'bg-red-50 text-red-600 ring-red-600/20',
 }
 
-/** One PENDING row: an editable amount (defaults to what was auto-computed)
- *  plus Approve/Reject — approving always sends whatever the input
- *  currently holds, rejecting ignores it and zeroes the row out server-side
- *  regardless (see reviewTravelAllowance). */
+/** One PENDING row: two editable amounts (TA and DA, each defaulting to
+ *  what was auto-computed) plus Approve/Reject — approving sends whatever
+ *  both inputs currently hold, rejecting ignores them and zeroes the row
+ *  out server-side regardless (see reviewTravelAllowance). One decision
+ *  covers both figures — the admin is looking at the same areas either way. */
 function ReviewRow({ row, onDone }: { row: TravelAllowanceRow; onDone: () => void }) {
-  const [amount, setAmount] = useState(String(row.computed_amount))
+  const [taAmount, setTaAmount] = useState(String(row.computed_ta_amount))
+  const [daAmount, setDaAmount] = useState(String(row.computed_da_amount))
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -28,7 +30,10 @@ function ReviewRow({ row, onDone }: { row: TravelAllowanceRow; onDone: () => voi
     setError(null)
     startTransition(async () => {
       const result = await reviewTravelAllowance({
-        id: row.id, status, approved_amount: status === 'APPROVED' ? Number(amount) || 0 : undefined,
+        id: row.id,
+        status,
+        approved_ta_amount: status === 'APPROVED' ? Number(taAmount) || 0 : undefined,
+        approved_da_amount: status === 'APPROVED' ? Number(daAmount) || 0 : undefined,
       })
       if (result.ok) onDone()
       else setError(result.error ?? 'Could not update this row.')
@@ -39,24 +44,36 @@ function ReviewRow({ row, onDone }: { row: TravelAllowanceRow; onDone: () => voi
     <div className="flex flex-col items-end gap-1">
       {error && <span className="text-[11px] text-red-600">{error}</span>}
       <div className="flex items-center gap-1.5">
-        <input
-          type="number" min="0" step="1" value={amount} onFocus={e => e.target.select()}
-          onChange={e => setAmount(e.target.value)} disabled={pending}
-          className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-[12.5px] text-gray-900
-                     focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none"
-        />
-        <button
-          type="button" onClick={() => submit('APPROVED')} disabled={pending}
-          className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
-        >
-          {pending ? <Loader2 size={12} className="animate-spin" /> : 'Approve'}
-        </button>
-        <button
-          type="button" onClick={() => submit('REJECTED')} disabled={pending}
-          className="rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-        >
-          Reject
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <input
+            type="number" min="0" step="1" value={taAmount} onFocus={e => e.target.select()}
+            onChange={e => setTaAmount(e.target.value)} disabled={pending}
+            title="Travel allowance"
+            className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-[12.5px] text-gray-900
+                       focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none"
+          />
+          <input
+            type="number" min="0" step="1" value={daAmount} onFocus={e => e.target.select()}
+            onChange={e => setDaAmount(e.target.value)} disabled={pending}
+            title="Dearness allowance"
+            className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-[12.5px] text-gray-900
+                       focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 focus:outline-none"
+          />
+        </div>
+        <div className="flex flex-col items-stretch gap-1">
+          <button
+            type="button" onClick={() => submit('APPROVED')} disabled={pending}
+            className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+          >
+            {pending ? <Loader2 size={12} className="animate-spin" /> : 'Approve'}
+          </button>
+          <button
+            type="button" onClick={() => submit('REJECTED')} disabled={pending}
+            className="rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            Reject
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -111,20 +128,21 @@ export default function TravelAllowanceTable({ rows }: { rows: TravelAllowanceRo
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
             >
               {bulkPending && <Loader2 size={12} className="animate-spin" />}
-              Approve selected at computed amount ({selected.size})
+              Approve selected at computed amounts ({selected.size})
             </button>
           </div>
         </div>
       )}
 
-      <table className="w-full min-w-[900px]">
+      <table className="w-full min-w-[980px]">
         <thead className="bg-gray-50">
           <tr>
             <Th></Th>
             <Th>Date</Th>
             <Th>MR</Th>
             <Th>Areas visited</Th>
-            <Th align="right">Computed</Th>
+            <Th align="right">Computed TA</Th>
+            <Th align="right">Computed DA</Th>
             <Th>Status</Th>
             <Th align="right">Review</Th>
           </tr>
@@ -148,14 +166,23 @@ export default function TravelAllowanceTable({ rows }: { rows: TravelAllowanceRo
               <Td className="max-w-[260px] text-[12px] text-gray-600">
                 {row.detected_areas.length === 0
                   ? '—'
-                  : row.detected_areas.map(a => `${a.area_name} (${money(a.rate)})`).join(', ')}
+                  : row.detected_areas.map(a => {
+                      const parts = [
+                        a.rate != null ? `TA ${money(a.rate)}` : null,
+                        a.da_rate != null ? `DA ${money(a.da_rate)}` : null,
+                      ].filter(Boolean).join(', ')
+                      return `${a.area_name} (${parts || '—'})`
+                    }).join('; ')}
               </Td>
-              <Td align="right" className="tabular-nums font-medium text-gray-900">{money(row.computed_amount)}</Td>
+              <Td align="right" className="tabular-nums font-medium text-gray-900">{money(row.computed_ta_amount)}</Td>
+              <Td align="right" className="tabular-nums font-medium text-gray-900">{money(row.computed_da_amount)}</Td>
               <Td>
                 <Badge className={STATUS_STYLES[row.status]}>{row.status}</Badge>
-                {row.status !== 'PENDING' && row.approved_amount != null && (
+                {row.status !== 'PENDING' && (row.approved_ta_amount != null || row.approved_da_amount != null) && (
                   <p className="mt-0.5 text-[11px] text-gray-400">
-                    {row.status === 'APPROVED' ? `Approved at ${money(row.approved_amount)}` : 'Rejected'}
+                    {row.status === 'APPROVED'
+                      ? `Approved: TA ${money(row.approved_ta_amount ?? 0)}, DA ${money(row.approved_da_amount ?? 0)}`
+                      : 'Rejected'}
                   </p>
                 )}
               </Td>

@@ -24,23 +24,28 @@ export async function reviewTravelAllowance(input: unknown): Promise<ActionState
     const db = await erpDb()
     const { data: existing, error: fetchError } = await db
       .from('erp_mr_travel_allowance')
-      .select('computed_amount')
+      .select('computed_ta_amount, computed_da_amount')
       .eq('id', parsed.data.id)
       .maybeSingle()
     if (fetchError) return friendlyDbError(fetchError, 'Could not load the travel allowance.')
     if (!existing) return { ok: false, error: 'Travel allowance record not found.' }
 
     // Approving without typing a different figure just accepts what was
-    // computed; rejecting always zeroes it out regardless of what was typed.
-    const approvedAmount = parsed.data.status === 'REJECTED'
+    // computed; rejecting always zeroes both out regardless of what was
+    // typed — one decision for the day, covering TA and DA together.
+    const approvedTaAmount = parsed.data.status === 'REJECTED'
       ? 0
-      : parsed.data.approved_amount ?? existing.computed_amount
+      : parsed.data.approved_ta_amount ?? existing.computed_ta_amount
+    const approvedDaAmount = parsed.data.status === 'REJECTED'
+      ? 0
+      : parsed.data.approved_da_amount ?? existing.computed_da_amount
 
     const { error } = await db
       .from('erp_mr_travel_allowance')
       .update({
         status: parsed.data.status,
-        approved_amount: approvedAmount,
+        approved_ta_amount: approvedTaAmount,
+        approved_da_amount: approvedDaAmount,
         notes: parsed.data.notes ?? null,
         reviewed_by: session.id,
         reviewed_at: new Date().toISOString(),
@@ -54,15 +59,16 @@ export async function reviewTravelAllowance(input: unknown): Promise<ActionState
 }
 
 /** Approves every still-PENDING row currently shown (whatever the caller's
- *  filters landed on) at its OWN computed amount, in one action — the
- *  practical "review the whole month at once" path once the daily entries
- *  have piled up and none of them need adjusting individually.
+ *  filters landed on) at its OWN computed TA and DA amounts, in one action —
+ *  the practical "review the whole month at once" path once the daily
+ *  entries have piled up and none of them need adjusting individually.
  *
- *  Each row's approved_amount has to match ITS OWN computed_amount, not one
- *  shared value, so this can't be a single UPDATE ... SET approved_amount =
- *  <literal> — it fetches the current computed_amount per row first, then
- *  issues one update per row. A handful of rows at a time (a month's worth
- *  of pending days), not a scale where that round-trip count matters. */
+ *  Each row's approved amounts have to match ITS OWN computed amounts, not
+ *  one shared value, so this can't be a single UPDATE ... SET approved_ta_
+ *  amount = <literal> — it fetches the current computed amounts per row
+ *  first, then issues one update per row. A handful of rows at a time (a
+ *  month's worth of pending days), not a scale where that round-trip count
+ *  matters. */
 export async function bulkApproveTravelAllowance(ids: string[]): Promise<ActionState> {
   return runAction('Could not approve the travel allowances.', async () => {
     const session = await assertCapability('payroll.manage')
@@ -71,7 +77,7 @@ export async function bulkApproveTravelAllowance(ids: string[]): Promise<ActionS
     const db = await erpDb()
     const { data: rows, error: fetchError } = await db
       .from('erp_mr_travel_allowance')
-      .select('id, computed_amount')
+      .select('id, computed_ta_amount, computed_da_amount')
       .in('id', ids)
       .eq('status', 'PENDING')
     if (fetchError) return friendlyDbError(fetchError, 'Could not load the travel allowances.')
@@ -84,7 +90,8 @@ export async function bulkApproveTravelAllowance(ids: string[]): Promise<ActionS
         .from('erp_mr_travel_allowance')
         .update({
           status: 'APPROVED',
-          approved_amount: row.computed_amount,
+          approved_ta_amount: row.computed_ta_amount,
+          approved_da_amount: row.computed_da_amount,
           reviewed_by: session.id,
           reviewed_at: nowIso,
         })

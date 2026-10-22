@@ -216,6 +216,10 @@ export interface Area {
    *  null means "not a chargeable trip" (typical for a home-base city
    *  locality). See erp_compute_daily_travel_allowance(). */
   daily_travel_allowance: number | null
+  /** Same idea, for Dearness Allowance — a DA rate that varies by area
+   *  rather than being flat per MR. Additive to (not a replacement for) an
+   *  employee's flat erp_employee_salary.daily_dearness_allowance. */
+  daily_dearness_allowance: number | null
   active: boolean
   created_at: string
   updated_at: string
@@ -713,24 +717,31 @@ export type TravelAllowanceStatus = (typeof TRAVEL_ALLOWANCE_STATUSES)[number]
 
 /** One area an MR's day was auto-detected as covering — a snapshot inside
  *  ErpMrTravelAllowance.detected_areas, not its own table (see the
- *  migration note on why). */
+ *  migration note on why). `rate` is the TA rate; `da_rate` the DA rate —
+ *  either can be null/absent if that area only has the other configured
+ *  (or, for a row computed before DA existed, absent entirely). */
 export interface DetectedTravelArea {
   area_id: string
   area_name: string
-  rate: number
+  rate: number | null
+  da_rate?: number | null
 }
 
-/** One day's travel allowance for one MR, auto-computed from that day's
- *  doctor/chemist visits and awaiting (or having received) HR's review.
- *  Only ever reaches payroll once status is APPROVED — see
- *  erp_recalculate_payroll_record(). */
+/** One day's travel + dearness allowance for one MR, auto-computed from
+ *  that day's doctor/chemist visits and awaiting (or having received) HR's
+ *  review — a single decision covers both figures. Only ever reaches
+ *  payroll once status is APPROVED — see erp_recalculate_payroll_record(),
+ *  which sums these in as one of two sources for each allowance (the other
+ *  being the flat per-employee rate on erp_employee_salary). */
 export interface ErpMrTravelAllowance {
   id: string
   mr_id: string
   allowance_date: string
   detected_areas: DetectedTravelArea[]
-  computed_amount: number
-  approved_amount: number | null
+  computed_ta_amount: number
+  approved_ta_amount: number | null
+  computed_da_amount: number
+  approved_da_amount: number | null
   status: TravelAllowanceStatus
   reviewed_by: string | null
   reviewed_at: string | null
