@@ -38,13 +38,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // Same reasoning as typescript.ignoreBuildErrors above: lint cleanliness
-    // is tracked separately (npm run lint / CI), not a deploy gate. Without
-    // this, `next build` shells out to the `lint` npm script and fails the
-    // Vercel build on pre-existing warnings-as-errors across the codebase.
-    ignoreDuringBuilds: true,
-  },
+  // No `eslint` key here: this Next.js version dropped `next build`'s built-in
+  // ESLint integration entirely (lint now runs standalone via `npm run lint` /
+  // `eslint .`, see package.json), so the old `eslint.ignoreDuringBuilds` key
+  // is unrecognized and did nothing but print a build-time warning.
   experimental: {
     // Cache dynamic RSC pages in the browser router for 30s
     // Eliminates the 500ms skeleton flash when navigating back to /products, /category, etc.
