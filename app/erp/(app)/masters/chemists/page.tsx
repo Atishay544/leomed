@@ -4,10 +4,11 @@ import { listChemists, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { listAreas, listAreasForMr } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
 import { parsePage } from '@/lib/erp/data/query'
-import { saveChemist, setChemistActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlyChemist, saveChemist, setChemistActive } from '@/lib/erp/actions/masters'
 import { buildChemistFields } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SearchBar from '@/components/erp/SearchBar'
 import Pagination from '@/components/erp/Pagination'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
@@ -143,6 +144,13 @@ export default async function ChemistsPage({ searchParams }: Props) {
                               active={chemist.active}
                               action={setChemistActive}
                               noun="chemist"
+                            />
+                          )}
+                          {isAdmin && (
+                            <DeleteRowButton
+                              id={chemist.id}
+                              action={deletePermanentlyChemist}
+                              confirmText={`Permanently delete ${chemist.chemist_name}? This cannot be undone, and only works if they have no visits, orders or invoices recorded.`}
                             />
                           )}
                         </div>

@@ -3,13 +3,14 @@ import { requireCapability } from '@/lib/erp/auth'
 import { listErpUsers } from '@/lib/erp/data/users'
 import { listPotentialManagers } from '@/lib/erp/data/offers'
 import { PAGE_SIZE, parsePage } from '@/lib/erp/data/query'
-import { createErpUser, setErpUserActive, updateErpUser } from '@/lib/erp/actions/admin'
-import { ROLE_LABELS } from '@/lib/erp/permissions'
+import { createErpUser, deletePermanentlyErpUser, setErpUserActive, updateErpUser } from '@/lib/erp/actions/admin'
+import { can, ROLE_LABELS } from '@/lib/erp/permissions'
 import { ERP_ROLES } from '@/lib/erp/types'
 import { formatDate } from '@/lib/erp/format'
 import type { FieldSpec } from '@/components/erp/form/Field'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SearchBar from '@/components/erp/SearchBar'
 import Pagination from '@/components/erp/Pagination'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
@@ -96,6 +97,7 @@ interface Props {
 export default async function StaffPage({ searchParams }: Props) {
   const session = await requireCapability('users.manage')
   const isAdmin = session.role === 'ADMIN'
+  const canDelete = can(session.role, 'masters.delete')
   const params = await searchParams
   const page = parsePage(params.page)
 
@@ -212,6 +214,13 @@ export default async function StaffPage({ searchParams }: Props) {
                             id={user.id} active={user.active}
                             action={setErpUserActive} noun="account"
                           />
+                          {canDelete && (
+                            <DeleteRowButton
+                              id={user.id}
+                              action={deletePermanentlyErpUser}
+                              confirmText={`Permanently delete ${user.name}? This cannot be undone, and only works if they have no visits, orders, follow-ups or other history recorded.`}
+                            />
+                          )}
                         </div>
                       ) : (
                         <span className="text-[12px] text-gray-400">—</span>

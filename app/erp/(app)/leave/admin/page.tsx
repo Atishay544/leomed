@@ -5,10 +5,12 @@ import { PAGE_SIZE, parsePage } from '@/lib/erp/data/query'
 import { formatDate, LEAVE_STATUS_LABELS, LEAVE_STATUS_STYLES } from '@/lib/erp/format'
 import { LEAVE_STATUSES } from '@/lib/erp/types'
 import { LEAVE_TYPE_FIELDS } from '@/components/erp/master-fields'
-import { saveLeaveType } from '@/lib/erp/actions/leave'
+import { deletePermanentlyLeaveType, saveLeaveType } from '@/lib/erp/actions/leave'
+import { can } from '@/lib/erp/permissions'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import Pagination from '@/components/erp/Pagination'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import AdminCreateLeaveDialog from '@/components/erp/leave/AdminCreateLeaveDialog'
 import LeaveReviewButtons from '@/components/erp/leave/LeaveReviewButtons'
 import { Badge, Card, CardHeader, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
@@ -20,7 +22,8 @@ interface Props {
 }
 
 export default async function AdminLeavePage({ searchParams }: Props) {
-  await requireCapability('leave.manage')
+  const session = await requireCapability('leave.manage')
+  const canDelete = can(session.role, 'masters.delete')
   const params = await searchParams
   const page = parsePage(params.page)
 
@@ -64,24 +67,32 @@ export default async function AdminLeavePage({ searchParams }: Props) {
           />
           <div className="flex flex-wrap gap-2 px-5 py-3.5">
             {leaveTypes.map(t => (
-              <MasterFormDialog
-                key={t.id}
-                action={saveLeaveType}
-                fields={LEAVE_TYPE_FIELDS}
-                title={`Edit ${t.name}`}
-                submitLabel="Save"
-                initial={t as unknown as Record<string, unknown>}
-                trigger={
-                  <button
-                    type="button"
-                    className={`rounded-full px-3 py-1 text-[11.5px] font-medium ring-1 ring-inset ${
-                      t.active ? 'bg-gray-50 text-gray-700 ring-gray-300' : 'bg-gray-50 text-gray-400 ring-gray-200 line-through'
-                    }`}
-                  >
-                    {t.name}{!t.is_paid && ' (unpaid)'}
-                  </button>
-                }
-              />
+              <div key={t.id} className="inline-flex items-center gap-0.5">
+                <MasterFormDialog
+                  action={saveLeaveType}
+                  fields={LEAVE_TYPE_FIELDS}
+                  title={`Edit ${t.name}`}
+                  submitLabel="Save"
+                  initial={t as unknown as Record<string, unknown>}
+                  trigger={
+                    <button
+                      type="button"
+                      className={`rounded-full px-3 py-1 text-[11.5px] font-medium ring-1 ring-inset ${
+                        t.active ? 'bg-gray-50 text-gray-700 ring-gray-300' : 'bg-gray-50 text-gray-400 ring-gray-200 line-through'
+                      }`}
+                    >
+                      {t.name}{!t.is_paid && ' (unpaid)'}
+                    </button>
+                  }
+                />
+                {canDelete && (
+                  <DeleteRowButton
+                    id={t.id}
+                    action={deletePermanentlyLeaveType}
+                    confirmText={`Permanently delete "${t.name}"? This cannot be undone, and only works if no leave request has ever used it.`}
+                  />
+                )}
+              </div>
             ))}
           </div>
         </Card>

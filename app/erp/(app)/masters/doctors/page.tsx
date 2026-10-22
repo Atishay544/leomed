@@ -4,10 +4,11 @@ import { listDoctors, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { listAreas, listAreasForMr } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
 import { parsePage } from '@/lib/erp/data/query'
-import { saveDoctor, setDoctorActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlyDoctor, saveDoctor, setDoctorActive } from '@/lib/erp/actions/masters'
 import { buildDoctorFields } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SearchBar from '@/components/erp/SearchBar'
 import Pagination from '@/components/erp/Pagination'
 import {
@@ -160,6 +161,13 @@ export default async function DoctorsPage({ searchParams }: Props) {
                               active={doctor.active}
                               action={setDoctorActive}
                               noun="doctor"
+                            />
+                          )}
+                          {isAdmin && (
+                            <DeleteRowButton
+                              id={doctor.id}
+                              action={deletePermanentlyDoctor}
+                              confirmText={`Permanently delete ${doctor.doctor_name}? This cannot be undone, and only works if they have no visits, orders or invoices recorded.`}
                             />
                           )}
                         </div>

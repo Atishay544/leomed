@@ -1,9 +1,10 @@
 import { CreditCard } from 'lucide-react'
 import { listBankAccounts } from '@/lib/erp/data/bank-accounts'
-import { saveBankAccount, selectBankAccount, setBankAccountActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlyBankAccount, saveBankAccount, selectBankAccount, setBankAccountActive } from '@/lib/erp/actions/masters'
 import { BANK_ACCOUNT_FIELDS } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SelectInvoiceBankButton from '@/components/erp/SelectInvoiceBankButton'
 import { Badge, EmptyState, TableWrap, Td, Th } from '@/components/erp/ui'
 
@@ -90,6 +91,11 @@ export default async function BankAccountsSection({
                       <ToggleActiveButton
                         id={b.id} active={b.active}
                         action={setBankAccountActive} noun="bank account"
+                      />
+                      <DeleteRowButton
+                        id={b.id}
+                        action={deletePermanentlyBankAccount}
+                        confirmText={`Permanently delete ${b.bank_name}? This cannot be undone.`}
                       />
                     </div>
                   </Td>

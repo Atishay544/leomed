@@ -2,11 +2,12 @@ import { Factory } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
 import { listSuppliers, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { parsePage } from '@/lib/erp/data/query'
-import { saveSupplier, setSupplierActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlySupplier, saveSupplier, setSupplierActive } from '@/lib/erp/actions/masters'
 import { can } from '@/lib/erp/permissions'
 import { SUPPLIER_FIELDS } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SearchBar from '@/components/erp/SearchBar'
 import Pagination from '@/components/erp/Pagination'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
@@ -28,6 +29,7 @@ export default async function SuppliersPage({ searchParams }: Props) {
   })
 
   const canWrite = can(session.role, 'billing.purchase.write')
+  const canDelete = can(session.role, 'masters.delete')
 
   return (
     <>
@@ -104,6 +106,13 @@ export default async function SuppliersPage({ searchParams }: Props) {
                             id={s.id} active={s.active}
                             action={setSupplierActive} noun="supplier"
                           />
+                          {canDelete && (
+                            <DeleteRowButton
+                              id={s.id}
+                              action={deletePermanentlySupplier}
+                              confirmText={`Permanently delete ${s.supplier_name}? This cannot be undone, and only works if no purchase invoices have been raised against it.`}
+                            />
+                          )}
                         </div>
                       )}
                     </Td>

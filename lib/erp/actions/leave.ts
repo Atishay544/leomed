@@ -206,6 +206,23 @@ export async function saveLeaveType(_prev: ActionState, formData: FormData): Pro
   })
 }
 
+/** Permanently removes a leave type — distinct from the Active checkbox in
+ *  its edit dialog, which is the normal way to retire one. ADMIN-only
+ *  (masters.delete), unlike saveLeaveType's broader HR access — refuses if
+ *  any leave request already references it. */
+export async function deletePermanentlyLeaveType(id: string): Promise<ActionState> {
+  return runAction('Could not delete this leave type.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_leave_type_permanently', { p_leave_type_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this leave type.')
+
+    revalidatePath('/erp/leave/admin')
+    return { ok: true }
+  })
+}
+
 /** HR/Admin sets one employee's EL/SL/CL quota for one year in a single
  *  dialog — each number is a hard SET of `allocated`, same convention as
  *  saveEmployeeSalary(). `used` is never touched here; it only ever moves

@@ -6,8 +6,10 @@ import { formatDate } from '@/lib/erp/format'
 import { PRICING_STATUSES } from '@/lib/erp/types'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import Pagination from '@/components/erp/Pagination'
+import { deletePermanentlyPricingRule } from '@/lib/erp/actions/pricing'
 import NegotiatedPricingDialog from '@/components/erp/pricing/NegotiatedPricingDialog'
 import PricingRuleStatusButton from '@/components/erp/pricing/PricingRuleStatusButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
 
 export const metadata = { title: 'Negotiated Pricing' }
@@ -74,7 +76,16 @@ export default async function NegotiatedPricingPage({ searchParams }: Props) {
                     <Td align="right" className="tabular-nums">{r.percentage != null ? `${r.percentage}%` : `₹${r.fixed_amount}`}</Td>
                     <Td>{formatDate(r.effective_from)}{r.effective_to && ` – ${formatDate(r.effective_to)}`}</Td>
                     <Td><Badge className={STATUS_STYLES[r.status]}>{r.status}</Badge></Td>
-                    <Td align="right"><PricingRuleStatusButton id={r.id} active={r.status === 'ACTIVE'} /></Td>
+                    <Td align="right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <PricingRuleStatusButton id={r.id} active={r.status === 'ACTIVE'} />
+                        <DeleteRowButton
+                          id={r.id}
+                          action={deletePermanentlyPricingRule}
+                          confirmText={`Permanently delete this pricing rule for ${r.erp_products?.product_name ?? 'this product'}? This cannot be undone, and only works if no sales invoice line has ever used it.`}
+                        />
+                      </div>
+                    </Td>
                   </tr>
                 ))}
               </tbody>

@@ -3,11 +3,12 @@ import { requireCapability } from '@/lib/erp/auth'
 import { listDistributors, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { listAreasForMr } from '@/lib/erp/data/geography'
 import { parsePage } from '@/lib/erp/data/query'
-import { saveDistributor, setDistributorActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlyDistributor, saveDistributor, setDistributorActive } from '@/lib/erp/actions/masters'
 import { can } from '@/lib/erp/permissions'
 import { DISTRIBUTOR_FIELDS } from '@/components/erp/master-fields'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import SearchBar from '@/components/erp/SearchBar'
 import Pagination from '@/components/erp/Pagination'
 import { money } from '@/lib/erp/format'
@@ -41,6 +42,7 @@ export default async function DistributorsPage({ searchParams }: Props) {
   })
 
   const canWrite = can(session.role, 'masters.write')
+  const canDelete = can(session.role, 'masters.delete')
 
   return (
     <>
@@ -129,6 +131,13 @@ export default async function DistributorsPage({ searchParams }: Props) {
                             id={d.id} active={d.active}
                             action={setDistributorActive} noun="distributor"
                           />
+                          {canDelete && (
+                            <DeleteRowButton
+                              id={d.id}
+                              action={deletePermanentlyDistributor}
+                              confirmText={`Permanently delete ${d.distributor_name}? This cannot be undone, and only works if no sales invoices have been raised against it.`}
+                            />
+                          )}
                         </div>
                       )}
                     </Td>

@@ -28,6 +28,17 @@ export const CAPABILITIES = [
                               // UI, submit successfully past this check, and have the
                               // write silently dropped by RLS (found in pre-PR review).
   'masters.create_customer', // add a doctor or chemist (MRs do this in the field)
+  // Permanently remove a record that's never actually been used — staff,
+  // doctors, chemists, distributors, suppliers, territories, areas, bank
+  // accounts, pricing rules, schemes, leave types. ADMIN-only, held by no
+  // other role, regardless of who can edit/deactivate that same record:
+  // every erp_delete_*_permanently() function independently requires
+  // erp_is_admin() too (and always refuses once the record has any real
+  // history — see the migration's own header), so a broader role seeing
+  // this button would only ever watch it fail. Deliberately separate from
+  // products.write, which already carried this same "delete if unused"
+  // behavior for products alone before this capability existed.
+  'masters.delete',
 
   // Field force
   'visits.create',
