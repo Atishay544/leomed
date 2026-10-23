@@ -7,8 +7,10 @@ import { PRICING_STATUSES, SCHEME_TYPES } from '@/lib/erp/types'
 import { schemeBeforeAfter, type SchemeBeforeAfterLeg } from '@/lib/erp/pricing-preview'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import Pagination from '@/components/erp/Pagination'
+import { deletePermanentlyScheme } from '@/lib/erp/actions/pricing'
 import SchemeDialog from '@/components/erp/pricing/SchemeDialog'
 import SchemeStatusSelect from '@/components/erp/pricing/SchemeStatusSelect'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
 
 export const metadata = { title: 'Schemes' }
@@ -93,7 +95,16 @@ export default async function SchemesPage({ searchParams }: Props) {
                       <Td>{beforeAfter ? <BeforeAfterCell leg={beforeAfter.distributor} marginLabel="vs PTR" /> : '—'}</Td>
                       <Td>{beforeAfter ? <BeforeAfterCell leg={beforeAfter.retailer} marginLabel="vs MRP" /> : '—'}</Td>
                       <Td>{formatDate(s.effective_from)}{s.effective_to && ` – ${formatDate(s.effective_to)}`}</Td>
-                      <Td align="right"><SchemeStatusSelect id={s.id} status={s.status} /></Td>
+                      <Td align="right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <SchemeStatusSelect id={s.id} status={s.status} />
+                          <DeleteRowButton
+                            id={s.id}
+                            action={deletePermanentlyScheme}
+                            confirmText={`Permanently delete "${s.scheme_name}"? This cannot be undone, and only works if no sales invoice line has ever used it.`}
+                          />
+                        </div>
+                      </Td>
                     </tr>
                   )
                 })}

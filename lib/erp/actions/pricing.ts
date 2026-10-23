@@ -55,6 +55,22 @@ export async function setPricingRuleStatus(ruleId: string, status: 'ACTIVE' | 'I
   })
 }
 
+/** Permanently removes a pricing rule — distinct from setPricingRuleStatus's
+ *  ACTIVE/INACTIVE toggle, which is the normal way to retire one. Refuses if
+ *  any sales invoice line was ever priced using it. */
+export async function deletePermanentlyPricingRule(ruleId: string): Promise<ActionState> {
+  return runAction('Could not delete this pricing rule.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_pricing_rule_permanently', { p_pricing_rule_id: ruleId })
+    if (error) return friendlyDbError(error, 'Could not delete this pricing rule.')
+
+    revalidatePath('/erp/pricing/negotiated')
+    return { ok: true }
+  })
+}
+
 export async function saveScheme(input: unknown): Promise<ActionState> {
   return runAction('Could not save the scheme.', async () => {
     await assertCapability('pricing.manage')
@@ -88,6 +104,22 @@ export async function setSchemeStatus(input: unknown): Promise<ActionState> {
       .update({ status: parsed.data.status, updated_by: session.id })
       .eq('id', parsed.data.scheme_id)
     if (error) return friendlyDbError(error, 'Could not update the scheme.')
+
+    revalidatePath('/erp/pricing/schemes')
+    return { ok: true }
+  })
+}
+
+/** Permanently removes a scheme — distinct from setSchemeStatus's toggle,
+ *  which is the normal way to retire one. Refuses if any sales invoice
+ *  line ever used it (as either its margin or free-goods scheme). */
+export async function deletePermanentlyScheme(schemeId: string): Promise<ActionState> {
+  return runAction('Could not delete this scheme.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_scheme_permanently', { p_scheme_id: schemeId })
+    if (error) return friendlyDbError(error, 'Could not delete this scheme.')
 
     revalidatePath('/erp/pricing/schemes')
     return { ok: true }

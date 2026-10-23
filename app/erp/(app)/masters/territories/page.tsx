@@ -4,17 +4,20 @@ import { requireCapability } from '@/lib/erp/auth'
 import {
   listActiveDistributorsForDropdown, listAllDistributorsForDropdown, listActiveMRs, listTerritories,
 } from '@/lib/erp/data/geography'
-import { reassignDistributor, saveTerritory, setTerritoryActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlyTerritory, reassignDistributor, saveTerritory, setTerritoryActive } from '@/lib/erp/actions/masters'
+import { can } from '@/lib/erp/permissions'
 import type { FieldSpec } from '@/components/erp/form/Field'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import ReassignPanel from '@/components/erp/ReassignPanel'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
 
 export const metadata = { title: 'Territories' }
 
 export default async function TerritoriesPage() {
-  await requireCapability('territories.manage')
+  const session = await requireCapability('territories.manage')
+  const canDelete = can(session.role, 'masters.delete')
 
   const [territories, distributors, allDistributors, mrs] = await Promise.all([
     listTerritories(true),
@@ -122,6 +125,13 @@ export default async function TerritoriesPage() {
                           id={t.id} active={t.active}
                           action={setTerritoryActive} noun="territory"
                         />
+                        {canDelete && (
+                          <DeleteRowButton
+                            id={t.id}
+                            action={deletePermanentlyTerritory}
+                            confirmText={`Permanently delete ${t.name}? This cannot be undone, and only works if it has no areas under it.`}
+                          />
+                        )}
                       </div>
                     </Td>
                   </tr>

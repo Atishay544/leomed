@@ -164,6 +164,24 @@ export async function setDoctorActive(id: string, active: boolean): Promise<Acti
   })
 }
 
+/** Permanently removes a doctor row — distinct from setDoctorActive()'s
+ *  deactivation, which is the normal way to retire one. Refuses (with a
+ *  specific, friendly message) if any visit, order or invoice has ever
+ *  referenced this doctor; only one added by mistake or never actually
+ *  used can be deleted this way. Same shape as deletePermanentlyProduct. */
+export async function deletePermanentlyDoctor(id: string): Promise<ActionState> {
+  return runAction('Could not delete this doctor.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_doctor_permanently', { p_doctor_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this doctor.')
+
+    revalidatePath(DOCTOR.path)
+    return { ok: true }
+  })
+}
+
 // ─── Chemists ───────────────────────────────────────────────────────────────
 
 const CHEMIST: MasterConfig = {
@@ -204,6 +222,21 @@ export async function setChemistActive(id: string, active: boolean): Promise<Act
   })
 }
 
+/** Same shape as deletePermanentlyDoctor — refuses once the chemist has any
+ *  recorded visit, order or invoice. */
+export async function deletePermanentlyChemist(id: string): Promise<ActionState> {
+  return runAction('Could not delete this chemist.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_chemist_permanently', { p_chemist_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this chemist.')
+
+    revalidatePath(CHEMIST.path)
+    return { ok: true }
+  })
+}
+
 // ─── Distributors & suppliers (trade partners — accounting owns these) ──────
 
 const DISTRIBUTOR: MasterConfig = {
@@ -221,6 +254,21 @@ export async function setDistributorActive(id: string, active: boolean) {
   return setMasterActive(DISTRIBUTOR, id, active)
 }
 
+/** Refuses once any sales invoice has ever been raised against this
+ *  distributor. */
+export async function deletePermanentlyDistributor(id: string): Promise<ActionState> {
+  return runAction('Could not delete this distributor.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_distributor_permanently', { p_distributor_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this distributor.')
+
+    revalidatePath(DISTRIBUTOR.path)
+    return { ok: true }
+  })
+}
+
 const SUPPLIER: MasterConfig = {
   table: 'erp_suppliers',
   capability: 'billing.purchase.write',
@@ -234,6 +282,21 @@ export async function saveSupplier(_prev: ActionState, formData: FormData) {
 
 export async function setSupplierActive(id: string, active: boolean) {
   return setMasterActive(SUPPLIER, id, active)
+}
+
+/** Refuses once any purchase invoice has ever been raised against this
+ *  supplier. */
+export async function deletePermanentlySupplier(id: string): Promise<ActionState> {
+  return runAction('Could not delete this supplier.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_supplier_permanently', { p_supplier_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this supplier.')
+
+    revalidatePath(SUPPLIER.path)
+    return { ok: true }
+  })
 }
 
 // ─── Territories & areas ────────────────────────────────────────────────────
@@ -257,6 +320,24 @@ export async function setTerritoryActive(id: string, active: boolean) {
   return setMasterActive(TERRITORY, id, active)
 }
 
+/** Refuses once this territory still has any area under it (checked by
+ *  hand — erp_areas.territory_id is ON DELETE CASCADE, not RESTRICT, so
+ *  Postgres alone would happily cascade those areas away rather than
+ *  refuse; this keeps the same "only an empty record" rule as
+ *  everywhere else). */
+export async function deletePermanentlyTerritory(id: string): Promise<ActionState> {
+  return runAction('Could not delete this territory.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_territory_permanently', { p_territory_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this territory.')
+
+    revalidatePath(TERRITORY.path)
+    return { ok: true }
+  })
+}
+
 const AREA: MasterConfig = {
   table: 'erp_areas',
   capability: 'territories.manage',
@@ -270,6 +351,23 @@ export async function saveArea(_prev: ActionState, formData: FormData) {
 
 export async function setAreaActive(id: string, active: boolean) {
   return setMasterActive(AREA, id, active)
+}
+
+/** Refuses once any doctor or chemist is still assigned to this area
+ *  (erp_doctors.area_id/erp_chemists.area_id are ON DELETE SET NULL, not
+ *  RESTRICT, so checked by hand for the same reason as
+ *  deletePermanentlyTerritory above). */
+export async function deletePermanentlyArea(id: string): Promise<ActionState> {
+  return runAction('Could not delete this area.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_area_permanently', { p_area_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this area.')
+
+    revalidatePath(AREA.path)
+    return { ok: true }
+  })
 }
 
 /**
@@ -339,6 +437,21 @@ export async function saveBankAccount(_prev: ActionState, formData: FormData) {
 
 export async function setBankAccountActive(id: string, active: boolean) {
   return setMasterActive(BANK_ACCOUNT, id, active)
+}
+
+/** No history ever blocks this one — erp_settings.selected_bank_account_id
+ *  just goes null if this was the selected account. */
+export async function deletePermanentlyBankAccount(id: string): Promise<ActionState> {
+  return runAction('Could not delete this bank account.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_bank_account_permanently', { p_bank_account_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this bank account.')
+
+    revalidatePath(BANK_ACCOUNT.path)
+    return { ok: true }
+  })
 }
 
 export async function selectBankAccount(id: string): Promise<ActionState> {

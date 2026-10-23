@@ -4,11 +4,13 @@ import { requireCapability } from '@/lib/erp/auth'
 import {
   listActiveDistributorsForDropdown, listActiveMRs, listAllMRs, listAreas, listTerritories,
 } from '@/lib/erp/data/geography'
-import { reassignMr, saveArea, setAreaActive } from '@/lib/erp/actions/masters'
+import { deletePermanentlyArea, reassignMr, saveArea, setAreaActive } from '@/lib/erp/actions/masters'
+import { can } from '@/lib/erp/permissions'
 import { money } from '@/lib/erp/format'
 import type { FieldSpec } from '@/components/erp/form/Field'
 import MasterFormDialog from '@/components/erp/MasterFormDialog'
 import ToggleActiveButton from '@/components/erp/ToggleActiveButton'
+import DeleteRowButton from '@/components/erp/DeleteRowButton'
 import ReassignPanel from '@/components/erp/ReassignPanel'
 import { FilterForm, FilterSelect } from '@/components/erp/FilterForm'
 import { Badge, Card, EmptyState, PageHeader, TableWrap, Td, Th } from '@/components/erp/ui'
@@ -20,7 +22,8 @@ interface Props {
 }
 
 export default async function AreasPage({ searchParams }: Props) {
-  await requireCapability('territories.manage')
+  const session = await requireCapability('territories.manage')
+  const canDelete = can(session.role, 'masters.delete')
   const params = await searchParams
 
   const [areas, territories, mrs, allMrs, distributors] = await Promise.all([
@@ -165,6 +168,13 @@ export default async function AreasPage({ searchParams }: Props) {
                           id={a.id} active={a.active}
                           action={setAreaActive} noun="area"
                         />
+                        {canDelete && (
+                          <DeleteRowButton
+                            id={a.id}
+                            action={deletePermanentlyArea}
+                            confirmText={`Permanently delete ${a.name}? This cannot be undone, and only works if no doctors or chemists are assigned to it.`}
+                          />
+                        )}
                       </div>
                     </Td>
                   </tr>

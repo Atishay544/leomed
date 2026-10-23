@@ -168,6 +168,26 @@ export async function setErpUserActive(id: string, active: boolean): Promise<Act
   })
 }
 
+/** Permanently removes a staff account and its login — distinct from
+ *  setErpUserActive()'s deactivation, which is the normal way to offboard
+ *  someone. Refuses (with a specific, friendly message) if the person has
+ *  any recorded visit, order, follow-up or similar history; also refuses to
+ *  delete the account you're currently signed in as, or the last remaining
+ *  administrator. Deletes via auth.users so the login goes too, not just
+ *  the staff profile — see the DB function's own comment. */
+export async function deletePermanentlyErpUser(id: string): Promise<ActionState> {
+  return runAction('Could not delete this staff account.', async () => {
+    await assertCapability('masters.delete')
+
+    const db = await erpDb()
+    const { error } = await db.rpc('erp_delete_user_permanently', { p_user_id: id })
+    if (error) return friendlyDbError(error, 'Could not delete this staff account.')
+
+    revalidatePath('/erp/users')
+    return { ok: true }
+  })
+}
+
 // ─── Targets ────────────────────────────────────────────────────────────────
 
 export async function saveTarget(_prev: ActionState, formData: FormData): Promise<ActionState> {

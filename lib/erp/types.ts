@@ -1001,3 +1001,59 @@ export interface PriceExplanation {
   scheme_version?: number | null
   scheme_name?: string | null
 }
+
+// ─── Doctor / chemist activity requests ─────────────────────────────────────
+// Mirrors supabase/migrations/20261025000001_activity_requests.sql. The per-
+// target type lists are also a DB CHECK constraint — change both together.
+
+export const ACTIVITY_TARGETS = ['DOCTOR', 'CHEMIST'] as const
+export type ActivityTarget = (typeof ACTIVITY_TARGETS)[number]
+
+export const DOCTOR_ACTIVITY_TYPES = ['CASH_BENEFIT', 'CONFERENCE', 'GIFT', 'OTHER'] as const
+export const CHEMIST_ACTIVITY_TYPES = ['CASH_BENEFIT', 'DISPLAY', 'FLEX_BOARD', 'LIGHT_BOARD', 'OTHER'] as const
+export const ACTIVITY_TYPES = [
+  'CASH_BENEFIT', 'CONFERENCE', 'GIFT', 'DISPLAY', 'FLEX_BOARD', 'LIGHT_BOARD', 'OTHER',
+] as const
+export type ActivityType = (typeof ACTIVITY_TYPES)[number]
+
+export const ACTIVITY_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const
+export type ActivityStatus = (typeof ACTIVITY_STATUSES)[number]
+
+export const ACTIVITY_STEP_ACTIONS = ['SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED'] as const
+export type ActivityStepAction = (typeof ACTIVITY_STEP_ACTIONS)[number]
+
+export interface ErpActivityRequest {
+  id: string
+  requester_id: string
+  requester_name: string
+  target_type: ActivityTarget
+  doctor_id: string | null
+  chemist_id: string | null
+  target_name: string
+  activity_type: ActivityType
+  budget: number
+  description: string | null
+  planned_date: string | null
+  status: ActivityStatus
+  current_approver_id: string | null
+  awaiting_name: string | null
+  decided_by: string | null
+  decided_by_name: string | null
+  decided_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ErpActivityRequestStep {
+  id: string
+  request_id: string
+  actor_id: string | null
+  actor_name: string
+  action: ActivityStepAction
+  remarks: string | null
+  created_at: string
+}
+
+export interface ActivityRequestRow extends ErpActivityRequest {
+  erp_activity_request_steps: ErpActivityRequestStep[]
+}

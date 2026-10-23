@@ -35,7 +35,7 @@ declare
   v_auth_hr1   uuid := gen_random_uuid();
   v_auth_hr2   uuid := gen_random_uuid();
   v_admin uuid; v_mr uuid; v_mr2 uuid; v_acct uuid; v_acct2 uuid; v_mgr uuid; v_view uuid; v_hr1 uuid; v_hr2 uuid;
-  v_doctor uuid; v_chemist uuid; v_distributor uuid; v_supplier uuid;
+  v_doctor uuid; v_doctor_unused uuid; v_chemist uuid; v_distributor uuid; v_supplier uuid;
   v_product uuid; v_batch uuid;
 begin
   insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
@@ -103,6 +103,11 @@ begin
 
   insert into public.erp_doctors (doctor_name, city, created_by)
   values ('Dr. RTest', 'Indore', v_admin) returning id into v_doctor;
+  -- Deliberately never given a visit/order/invoice below — the positive
+  -- case for the permanent-delete tests (section 1a): a doctor with zero
+  -- history is the only kind erp_delete_doctor_permanently() allows.
+  insert into public.erp_doctors (doctor_name, city, created_by)
+  values ('Dr. RTest Unused', 'Indore', v_admin) returning id into v_doctor_unused;
   insert into public.erp_chemists (chemist_name, owner_name, city, created_by)
   values ('RTest Medical Store', 'RTest Owner', 'Indore', v_admin) returning id into v_chemist;
   insert into public.erp_distributors (distributor_name, city, created_by)
@@ -133,7 +138,7 @@ begin
 
   -- A visit under RTest MR 2's own name — the org-chart negative test below
   -- confirms RTest Manager cannot see this one (RTest MR 2 is not in their
-  -- reporting chain), only RTest MR's (inserted in section 2 below).
+  -- reporting chain), only RTest MR's (inserted in section 3 below).
   insert into public.erp_doctor_visits (doctor_id, mr_id, visit_date, doctor_status, created_by)
   values (v_doctor, v_mr2, current_date, 'EXISTING', v_mr2);
 
@@ -144,7 +149,7 @@ begin
     ('auth_hr1', v_auth_hr1), ('auth_hr2', v_auth_hr2),
     ('admin', v_admin), ('mr', v_mr), ('mr2', v_mr2), ('acct', v_acct), ('acct2', v_acct2), ('mgr', v_mgr), ('view', v_view),
     ('hr1', v_hr1), ('hr2', v_hr2),
-    ('doctor', v_doctor), ('chemist', v_chemist), ('distributor', v_distributor), ('supplier', v_supplier),
+    ('doctor', v_doctor), ('doctor_unused', v_doctor_unused), ('chemist', v_chemist), ('distributor', v_distributor), ('supplier', v_supplier),
     ('product', v_product), ('batch', v_batch);
 end $$;
 
@@ -217,7 +222,37 @@ begin
 end $$;
 
 -- ============================================================================
--- 2. MR — field work and own HR only, nothing about company money
+-- 2. PERMANENT DELETE (20261024000001) — "delete only if truly unused" for
+--    every erp_delete_*_permanently() function. Doctors stand in for the
+--    whole family (chemists/distributors/suppliers/staff/etc. share the
+--    exact same shape: admin-only, refuses once there's any history).
+-- ============================================================================
+
+do $$
+declare v_ok boolean;
+begin
+  -- Cannot permanently delete RTest Doctor — the fixtures block already gave
+  -- it one recorded visit (RTest MR 2's). The history check must refuse,
+  -- not silently succeed.
+  v_ok := pg_temp.as_user(pg_temp.id_of('auth_admin'), format(
+    'select public.erp_delete_doctor_permanently(%L)', pg_temp.id_of('doctor')));
+  assert not v_ok, 'ADMIN must not be able to permanently delete a doctor with recorded visits';
+
+  -- Can permanently delete RTest Doctor Unused — zero history anywhere.
+  v_ok := pg_temp.as_user(pg_temp.id_of('auth_admin'), format(
+    'select public.erp_delete_doctor_permanently(%L)', pg_temp.id_of('doctor_unused')));
+  assert v_ok, 'ADMIN must be able to permanently delete a doctor with no history at all';
+
+  -- Non-admin cannot, regardless of masters.create_customer/masters.write —
+  -- every erp_delete_*_permanently() function checks erp_is_admin() itself,
+  -- independent of which broader capability got them past assertCapability.
+  v_ok := pg_temp.as_user(pg_temp.id_of('auth_mgr'), format(
+    'select public.erp_delete_chemist_permanently(%L)', pg_temp.id_of('chemist')));
+  assert not v_ok, 'MANAGER must not be able to permanently delete a chemist';
+end $$;
+
+-- ============================================================================
+-- 3. MR — field work and own HR only, nothing about company money
 -- ============================================================================
 
 do $$
@@ -267,7 +302,7 @@ begin
 end $$;
 
 -- ============================================================================
--- 3. ACCOUNTANT — billing and inventory, no field-force or HR administration.
+-- 4. ACCOUNTANT — billing and inventory, no field-force or HR administration.
 --    Leave approval is hierarchical here too (reports_to), same mechanism
 --    as MANAGER and HR: RTest Accountant 2 reports to RTest Accountant
 --    (positive case); RTest MR reports to RTest Manager, not to RTest
@@ -354,7 +389,7 @@ begin
 end $$;
 
 -- ============================================================================
--- 4. MANAGER — reads the whole field force and the money, writes almost none
+-- 5. MANAGER — reads the whole field force and the money, writes almost none
 --    of it. (Previously untested — this role had zero coverage.)
 --
 --    Visibility into visits/orders/attendance/reports is now hierarchical
@@ -434,7 +469,7 @@ begin
 end $$;
 
 -- ============================================================================
--- 5. HR — leave approval is hierarchical too (20261023000003), same rule as
+-- 6. HR — leave approval is hierarchical too (20261023000003), same rule as
 --    MANAGER: no more blanket "any HR approves anyone". RTest HR 2 reports
 --    to RTest HR 1 (positive case); RTest MR reports to RTest Manager, not
 --    to HR 1 at all (negative case).
@@ -472,7 +507,7 @@ begin
 end $$;
 
 -- ============================================================================
--- 6. VIEWER — read-only observer/audit role, writes nowhere.
+-- 7. VIEWER — read-only observer/audit role, writes nowhere.
 --    (Previously untested — this role had zero coverage.)
 -- ============================================================================
 
@@ -513,7 +548,7 @@ begin
 end $$;
 
 -- ============================================================================
--- 7. KNOWN FINDINGS — reported via NOTICE, not asserted, so the whole run
+-- 8. KNOWN FINDINGS — reported via NOTICE, not asserted, so the whole run
 --    always completes and reports everything in one pass even where the
 --    outcome is expected to reveal a real gap rather than confirm one.
 --
