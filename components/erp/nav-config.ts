@@ -3,7 +3,7 @@ import {
   ClipboardList, CalendarClock, Receipt, ShoppingCart, Warehouse, Truck,
   Factory, BarChart3, Target, Settings, ScrollText, Globe, Fingerprint,
   CalendarDays, CalendarRange, SlidersHorizontal, IndianRupee, Wallet, Tag, Gift, Tags, Percent, FileText,
-  MapPin, MapPinned, Route, type LucideIcon,
+  MapPin, MapPinned, Route, Megaphone, ClipboardCheck, type LucideIcon,
 } from 'lucide-react'
 import { can, type Capability } from '@/lib/erp/permissions'
 import type { ErpRole } from '@/lib/erp/types'
@@ -62,6 +62,9 @@ const ALL_GROUPS: ErpNavGroup[] = [
       { href: '/erp/mr/chemist-visits', label: 'Chemist Visits', icon: Store,          capability: 'visits.read.own' },
       { href: '/erp/mr/orders',         label: 'Field Orders',   icon: ClipboardList,  capability: 'orders.read.own' },
       { href: '/erp/mr/followups',      label: 'Follow-ups',     icon: CalendarClock,  capability: 'followups.manage' },
+      { href: '/erp/activities',           label: 'Activity Requests',   icon: Megaphone,      capability: 'activities.request' },
+      { href: '/erp/activities/approvals', label: 'Activity Approvals',  icon: ClipboardCheck, capability: 'activities.approve' },
+      { href: '/erp/activities/records',   label: 'Approved Activities', icon: Gift,           capability: 'activities.approve' },
     ],
   },
   {

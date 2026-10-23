@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  ATTENDANCE_STATUSES, BILLING_CUSTOMER_TYPES, CALCULATION_BASES, CALCULATION_METHODS,
+  ACTIVITY_TARGETS, ATTENDANCE_STATUSES, BILLING_CUSTOMER_TYPES, CHEMIST_ACTIVITY_TYPES, DOCTOR_ACTIVITY_TYPES, CALCULATION_BASES, CALCULATION_METHODS,
   DISCUSSION_TYPES, ERP_ROLES, EXPENSE_CATEGORIES, FIELD_ORDER_STATUSES, FOLLOWUP_PRIORITIES,
   FOLLOWUP_STATUSES, LEAVE_STATUSES, MANUAL_TXN_TYPES, OFFER_COMPONENT_CATEGORIES, OFFER_STATUSES,
   PAYMENT_METHODS, PAYROLL_ITEM_TYPES, SCHEME_TYPES, TARGET_TYPES, VISIT_PURPOSES,
@@ -904,3 +904,36 @@ export type TravelAllowanceReviewInput = z.infer<typeof TravelAllowanceReviewSch
 export type TravelDayInput             = z.infer<typeof TravelDaySchema>
 export type ReassignMrInput           = z.infer<typeof ReassignMrSchema>
 export type ReassignDistributorInput  = z.infer<typeof ReassignDistributorSchema>
+
+// ─── Doctor / chemist activity requests ─────────────────────────────────────
+
+export const ActivityRequestSchema = z.object({
+  target_type:   z.enum(ACTIVITY_TARGETS),
+  target_id:     uuid,
+  activity_type: z.string(),
+  budget:        money,
+  description:   optionalText(1000),
+  planned_date:  optionalDate,
+}).superRefine((v, ctx) => {
+  const allowed: readonly string[] =
+    v.target_type === 'DOCTOR' ? DOCTOR_ACTIVITY_TYPES : CHEMIST_ACTIVITY_TYPES
+  if (!allowed.includes(v.activity_type)) {
+    ctx.addIssue({ code: 'custom', path: ['activity_type'], message: 'Choose an activity type' })
+  }
+  if (v.activity_type === 'OTHER' && !v.description) {
+    ctx.addIssue({ code: 'custom', path: ['description'], message: 'Describe the activity when the type is "Other"' })
+  }
+})
+
+export const ActivityReviewSchema = z.object({
+  request_id: uuid,
+  decision:   z.enum(['APPROVE', 'REJECT']),
+  remarks:    optionalText(500),
+}).superRefine((v, ctx) => {
+  if (v.decision === 'REJECT' && !v.remarks) {
+    ctx.addIssue({ code: 'custom', path: ['remarks'], message: 'Give a reason when rejecting a request' })
+  }
+})
+
+export type ActivityRequestInput = z.infer<typeof ActivityRequestSchema>
+export type ActivityReviewInput  = z.infer<typeof ActivityReviewSchema>

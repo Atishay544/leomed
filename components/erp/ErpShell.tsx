@@ -15,7 +15,8 @@ function initialsOf(name: string) {
 function isActive(pathname: string, href: string) {
   // /erp/mr must not light up for /erp/mr/doctor-visits, but
   // /erp/masters/doctors must stay lit on /erp/masters/doctors/new.
-  if (href === '/erp/mr') return pathname === href
+  // Likewise /erp/activities (requests) vs /erp/activities/approvals.
+  if (href === '/erp/mr' || href === '/erp/activities') return pathname === href
   return pathname === href || pathname.startsWith(href + '/')
 }
 

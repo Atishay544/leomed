@@ -145,6 +145,16 @@ export const CAPABILITIES = [
   'expenses.submit',
   'expenses.read.own',
   'expenses.manage',     // approve/reject/mark paid, read every employee's
+
+  // Activities on a doctor or chemist (cash benefit, conference, gift,
+  // display, flex/light board…), approved level by level up the
+  // erp_users.reports_to chain and finally by an admin. Raising is for
+  // field staff; approving is for anyone who can sit in that chain. Both are
+  // only the app-layer gate — erp_raise/review/cancel_activity_request()
+  // enforce the real rules (only the current approver, or an admin, may
+  // decide; nobody approves their own).
+  'activities.request',
+  'activities.approve',
 ] as const
 
 export type Capability = (typeof CAPABILITIES)[number]
@@ -171,6 +181,7 @@ const MR_CAPABILITIES: readonly Capability[] = [
   'payroll.read.own',
   'expenses.submit',
   'expenses.read.own',
+  'activities.request',
 ]
 
 /**
@@ -229,6 +240,7 @@ const ACCOUNTANT_CAPABILITIES: readonly Capability[] = [
   'payroll.read.own',
   'expenses.submit',
   'expenses.read.own',
+  'activities.approve',
 ]
 
 /** Reads the whole field force and the money, changes only order status.
@@ -259,6 +271,8 @@ const MANAGER_CAPABILITIES: readonly Capability[] = [
   'payroll.read.own',
   'expenses.submit',
   'expenses.read.own',
+  'activities.request',
+  'activities.approve',
 ]
 
 /**
@@ -296,6 +310,7 @@ const HR_CAPABILITIES: readonly Capability[] = [
   'expenses.submit',
   'expenses.read.own',
   'expenses.manage',
+  'activities.approve',
 ]
 
 /**

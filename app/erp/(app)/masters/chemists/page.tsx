@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { Store } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
+import { canAny } from '@/lib/erp/permissions'
 import { listChemists, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { listAreas, listAreasForMr } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
@@ -27,6 +29,7 @@ export default async function ChemistsPage({ searchParams }: Props) {
   const isAdmin = session.role === 'ADMIN'
   const isMr = session.role === 'MR'
   const canAdd = isAdmin || isMr
+  const canSeeActivities = canAny(session.role, ['activities.request', 'activities.approve'])
 
   // Same scoping as the Doctors page — see the note there.
   const areas = isMr ? await listAreasForMr(session.id) : await listAreas()
@@ -124,6 +127,15 @@ export default async function ChemistsPage({ searchParams }: Props) {
                       <Td className="font-mono text-[11.5px]">{chemist.gst_number ?? '—'}</Td>
                       <Td align="right">
                         <div className="flex items-center justify-end gap-2">
+                          {canSeeActivities && (
+                            <Link
+                              href={`/erp/activities/records?chemist=${chemist.id}`}
+                              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1
+                                         text-[12px] font-medium text-gray-700 transition hover:bg-gray-50"
+                            >
+                              Activities
+                            </Link>
+                          )}
                           {canEdit && (
                             <MasterFormDialog
                               action={saveChemist}

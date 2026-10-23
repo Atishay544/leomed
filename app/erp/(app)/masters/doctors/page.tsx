@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { UserRound } from 'lucide-react'
 import { requireCapability } from '@/lib/erp/auth'
+import { canAny } from '@/lib/erp/permissions'
 import { listDoctors, PAGE_SIZE } from '@/lib/erp/data/masters'
 import { listAreas, listAreasForMr } from '@/lib/erp/data/geography'
 import { getErpSettings, withinEditWindow } from '@/lib/erp/data/settings'
@@ -29,6 +31,7 @@ export default async function DoctorsPage({ searchParams }: Props) {
   const isAdmin = session.role === 'ADMIN'
   const isMr = session.role === 'MR'
   const canAdd = isAdmin || isMr
+  const canSeeActivities = canAny(session.role, ['activities.request', 'activities.approve'])
 
   // MRs see (and may only add) doctors in their own working areas — everyone
   // else browses the whole shared master. myAreaIds stays undefined for
@@ -137,6 +140,15 @@ export default async function DoctorsPage({ searchParams }: Props) {
                       <Td className="tabular-nums">{doctor.phone ?? '—'}</Td>
                       <Td align="right">
                         <div className="flex items-center justify-end gap-2">
+                          {canSeeActivities && (
+                            <Link
+                              href={`/erp/activities/records?doctor=${doctor.id}`}
+                              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1
+                                         text-[12px] font-medium text-gray-700 transition hover:bg-gray-50"
+                            >
+                              Activities
+                            </Link>
+                          )}
                           {canEdit && (
                             <MasterFormDialog
                               action={saveDoctor}

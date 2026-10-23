@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
  * a real URL, so it survives a refresh and can be shared.
  */
 export default function Pagination({
-  page, pageCount, total, pageSize, searchParams, basePath,
+  page, pageCount, total, pageSize, searchParams, basePath, pageParam = 'page',
 }: {
   page: number
   pageCount: number
@@ -14,15 +14,18 @@ export default function Pagination({
   pageSize: number
   searchParams: Record<string, string | undefined>
   basePath: string
+  /** Query-string key this list pages on — only needs changing when a page
+   *  shows two paginated lists, so each keeps its own position. */
+  pageParam?: string
 }) {
   if (total === 0) return null
 
   const href = (target: number) => {
     const params = new URLSearchParams()
     for (const [key, value] of Object.entries(searchParams)) {
-      if (value && key !== 'page') params.set(key, value)
+      if (value && key !== pageParam) params.set(key, value)
     }
-    if (target > 1) params.set('page', String(target))
+    if (target > 1) params.set(pageParam, String(target))
     const qs = params.toString()
     return qs ? `${basePath}?${qs}` : basePath
   }

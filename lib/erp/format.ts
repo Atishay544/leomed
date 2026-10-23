@@ -1,6 +1,6 @@
 import type {
   AttendanceStatus, DiscussionType, DoctorStatus, ExpenseCategory, ExpenseStatus,
-  FieldOrderStatus, FollowupPriority, FollowupStatus, InventoryTxnType, LeaveStatus,
+  ActivityStatus, ActivityStepAction, ActivityType, FieldOrderStatus, FollowupPriority, FollowupStatus, InventoryTxnType, LeaveStatus,
   OfferStatus, OrderInvoiceStatus, PaymentMethod, PaymentStatus, PayrollStatus, TargetType,
   VisitPurpose,
 } from './types'
@@ -368,4 +368,35 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   BANK_CHARGES:      'Bank charges',
   MISCELLANEOUS:  'Miscellaneous',
   OTHER:          'Other',
+}
+
+export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
+  CASH_BENEFIT: 'Direct cash benefit',
+  CONFERENCE:   'Conference',
+  GIFT:         'Gift',
+  DISPLAY:      'Display',
+  FLEX_BOARD:   'Flex board',
+  LIGHT_BOARD:  'Light board',
+  OTHER:        'Other',
+}
+
+export const ACTIVITY_STATUS_LABELS: Record<ActivityStatus, string> = {
+  PENDING:   'Pending',
+  APPROVED:  'Approved',
+  REJECTED:  'Rejected',
+  CANCELLED: 'Cancelled',
+}
+
+export const ACTIVITY_STATUS_STYLES: Record<ActivityStatus, string> = {
+  PENDING:   'bg-amber-50 text-amber-700 ring-amber-600/20',
+  APPROVED:  'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  REJECTED:  'bg-red-50 text-red-700 ring-red-600/20',
+  CANCELLED: 'bg-gray-100 text-gray-600 ring-gray-500/20',
+}
+
+export const ACTIVITY_STEP_LABELS: Record<ActivityStepAction, string> = {
+  SUBMITTED: 'Submitted',
+  APPROVED:  'Approved',
+  REJECTED:  'Rejected',
+  CANCELLED: 'Cancelled',
 }
